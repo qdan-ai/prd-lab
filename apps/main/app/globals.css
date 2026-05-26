@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+/**
+ * PRD-Lab Design Tokens（Linear / Vercel / shadcn-ui 风格）
+ * 极简黑色系：白底深黑文字、subtle 灰阶分层、克制 accent
+ */
+@theme {
+  /* ---- Typography ---- */
+  --font-sans:
+    ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC",
+    "Microsoft YaHei", "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  /* ---- Ink (主体黑阶，类 Linear) ---- */
+  --color-ink-50: oklch(0.985 0 0);   /* 近白：背景 */
+  --color-ink-100: oklch(0.96 0 0);   /* 极浅：hover 底色 */
+  --color-ink-150: oklch(0.94 0 0);   /* surface 背景 */
+  --color-ink-200: oklch(0.91 0 0);   /* 边框 */
+  --color-ink-300: oklch(0.83 0 0);   /* 弱化边框 */
+  --color-ink-400: oklch(0.69 0 0);   /* 占位文字 */
+  --color-ink-500: oklch(0.55 0 0);   /* 次要文字 */
+  --color-ink-600: oklch(0.42 0 0);   /* 主文字 secondary */
+  --color-ink-700: oklch(0.30 0 0);   /* 主文字 */
+  --color-ink-800: oklch(0.20 0 0);   /* 主体深黑 */
+  --color-ink-900: oklch(0.13 0 0);   /* 近黑（主色） */
+  --color-ink-950: oklch(0.08 0 0);   /* 极深黑（hover primary） */
+
+  /* ---- Accent（克制强调，用于 cmd+K 提示、focus ring 等） ---- */
+  --color-accent: oklch(0.55 0.18 254);     /* 收敛蓝 */
+  --color-accent-bg: oklch(0.96 0.02 254);  /* 极浅蓝底 */
+
+  /* ---- 状态色（极简） ---- */
+  --color-danger: oklch(0.55 0.20 27);
+  --color-danger-bg: oklch(0.96 0.02 27);
+  --color-warning: oklch(0.70 0.16 70);
+  --color-success: oklch(0.55 0.15 145);
+  --color-success-bg: oklch(0.96 0.04 145);
+
+  /* ---- 圆角（统一三档） ---- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  /* ---- 阴影（subtle） ---- */
+  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.04);
+  --shadow-md: 0 4px 12px -2px oklch(0 0 0 / 0.06), 0 2px 4px -2px oklch(0 0 0 / 0.04);
+  --shadow-popup: 0 8px 24px -6px oklch(0 0 0 / 0.10), 0 4px 8px -4px oklch(0 0 0 / 0.06);
+
+  /* ---- 动画时长（统一） ---- */
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --duration-slow: 260ms;
+
+  /* ---- Easing（更自然的曲线） ---- */
+  /* ease-out-quart：先快后慢，类似系统弹出动画 */
+  --ease-out-quart: cubic-bezier(0.16, 1, 0.3, 1);
+  /* ease-out-cubic：温和减速 */
+  --ease-out-cubic: cubic-bezier(0.33, 1, 0.68, 1);
+  /* ease-in-cubic：温和加速（用于退场） */
+  --ease-in-cubic: cubic-bezier(0.32, 0, 0.67, 0);
+}
+
+/* ---- 基础重置 ---- */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  color: var(--color-ink-900);
+  background: var(--color-ink-50);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--color-ink-900);
+  color: var(--color-ink-50);
+}
+
+/* ---- Radix Dialog / Popover 动画 ---- */
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+/**
+ * Spotlight 风格 dialog 动画
+ *
+ * 关键修复：Tailwind v4 的 `-translate-x-1/2 -translate-y-1/2` 编译为 CSS
+ * `translate` 属性（独立于 `transform`），两者会叠加。所以 keyframes 只能用
+ * `transform: scale()` —— 让 `translate: -50% -50%` 持续生效，避免动画期间
+ * dialog 飞出屏幕导致的视觉卡顿。
+ */
+@keyframes prd-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes prd-dialog-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes popover-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-2px) scale(0.98); }
+}
+
+/* dialog/overlay 动画规则（v2 — translate/transform 解耦） */
+[data-state="open"][data-prd-anim="overlay"] {
+  animation: overlay-in 160ms var(--ease-out-cubic);
+  will-change: opacity;
+}
+[data-state="closed"][data-prd-anim="overlay"] {
+  animation: overlay-out 120ms var(--ease-in-cubic);
+}
+[data-state="open"][data-prd-anim="dialog"] {
+  animation: prd-dialog-in 180ms var(--ease-out-quart);
+  will-change: opacity, transform;
+}
+[data-state="closed"][data-prd-anim="dialog"] {
+  animation: prd-dialog-out 140ms var(--ease-in-cubic);
+  will-change: opacity, transform;
+}
+[data-state="open"][data-prd-anim="popover"] {
+  animation: popover-in 160ms var(--ease-out-quart);
+  will-change: opacity, transform;
+}
+[data-state="closed"][data-prd-anim="popover"] {
+  animation: popover-out 120ms var(--ease-in-cubic);
+}
+
+/* ---- 抽屉滑入动画 ---- */
+@keyframes sidebar-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes sidebar-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.prd-sidebar-left-enter {
+  animation: sidebar-in-left 240ms var(--ease-out-quart);
+  will-change: transform;
+}
+.prd-sidebar-right-enter {
+  animation: sidebar-in-right 240ms var(--ease-out-quart);
+  will-change: transform;
+}
+
+/* ---- 高亮脉冲（设为当前快照后的高亮）---- */
+@keyframes pulse-accent {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: var(--color-accent-bg); }
+}
+.prd-pulse-highlight {
+  animation: pulse-accent 1s ease-in-out;
+}
+
+/* ---- 不定进度条扫光（上传 parse 阶段）---- */
+@keyframes prd-progress-indet {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+.prd-progress-indet {
+  animation: prd-progress-indet 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: transform;
+}
+
+/* ---- 简易 kbd 样式 ---- */
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.7em;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--color-ink-100);
+  color: var(--color-ink-600);
+  border: 1px solid var(--color-ink-200);
+  border-bottom-width: 2px;
+  line-height: 1.2;
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@prd-lab/prd-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "prd": "./dist/cli.js"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch"
+  },
+  "devDependencies": {
+    "@types/archiver": "^7.0.0",
+    "@types/node": "^22.0.0",
+    "@types/yauzl": "^2.10.3",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.0",
+    "yauzl": "^3.3.0"
+  },
+  "dependencies": {
+    "archiver": "^8.0.0",
+    "cac": "^6.7.14",
+    "open": "^10.2.0"
+  }
+}

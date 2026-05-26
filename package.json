@@ -1,0 +1,31 @@
+{
+  "name": "prd-lab",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI 产品经理方案交付平台",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "dev:main": "pnpm --filter @prd-lab/main dev",
+    "dev:preview": "pnpm --filter @prd-lab/preview dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "db:generate": "pnpm --filter @prd-lab/core db:generate",
+    "db:migrate": "pnpm --filter @prd-lab/core db:migrate",
+    "docker:up": "docker compose -f docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f docker/docker-compose.yml down",
+    "docker:logs": "docker compose -f docker/docker-compose.yml logs -f"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0"
+  }
+}

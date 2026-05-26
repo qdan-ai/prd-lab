@@ -1,0 +1,68 @@
+name: prd-lab
+
+services:
+  mysql:
+    image: mysql:5.7
+    platform: linux/amd64  # Apple Silicon 通过 Rosetta 跑 amd64（mysql:5.7 无 arm64 官方镜像）
+    container_name: prd-lab-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: prdlab_root
+      MYSQL_DATABASE: prdlab
+      MYSQL_USER: prdlab
+      MYSQL_PASSWORD: prdlab
+      TZ: UTC
+    ports:
+      - "5433:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+      - --explicit_defaults_for_timestamp=ON
+      - --sql_mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "prdlab", "-pprdlab"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: prd-lab-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9100:9000"   # S3 API（宿主机 9100 → 容器 9000）
+      - "9101:9001"   # Console（宿主机 9101 → 容器 9001）
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nginx:
+    image: nginx:alpine
+    container_name: prd-lab-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    extra_hosts:
+      # Linux: 让容器内的 host.docker.internal 解析到宿主机
+      # macOS / Windows 上 Docker Desktop 自动支持，这条无害
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - mysql
+      - minio
+
+volumes:
+  mysql_data:
+  minio_data:

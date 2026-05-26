@@ -1,0 +1,39 @@
+{
+  "name": "@prd-lab/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./db": "./src/db/index.ts",
+    "./db/schema": "./src/db/schema.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1045.0",
+    "bcryptjs": "^2.4.3",
+    "drizzle-orm": "^0.45.0",
+    "iconv-lite": "^0.6.3",
+    "linkedom": "^0.18.12",
+    "mysql2": "^3.22.3",
+    "nanoid": "^5.0.0",
+    "yauzl": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/archiver": "^7.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.0.0",
+    "@types/yauzl": "^2.10.3",
+    "archiver": "^8.0.0",
+    "drizzle-kit": "^0.31.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

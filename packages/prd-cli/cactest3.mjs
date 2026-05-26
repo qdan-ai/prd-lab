@@ -1,0 +1,11 @@
+import { cac } from "cac";
+const cli = cac("prd");
+const c1 = cli.command("list projects", "lp").option("--json","").action((opts)=>console.log("LIST_PROJECTS", opts));
+console.log("c1.name=", JSON.stringify(c1.name), "args=", c1.args);
+const c2 = cli.command("project create <name>", "pc").option("--json","").action((name, opts)=>console.log("PROJECT_CREATE", name, opts));
+console.log("c2.name=", JSON.stringify(c2.name), "args=", c2.args);
+const c3 = cli.command("whoami", "who").action(() => console.log("WHOAMI"));
+console.log("c3.name=", JSON.stringify(c3.name));
+cli.help();
+cli.parse();
+console.log("MATCHED:", cli.matchedCommand?.name ?? "(NONE)", "args:", cli.args);

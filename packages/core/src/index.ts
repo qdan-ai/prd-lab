@@ -36,11 +36,9 @@ export {
 export {
   parseAndValidateZip,
   detectEntryMode,
-  detectEmbeddedAnnotations,
   ZIP_LIMITS,
   type ZipFile,
   type ParseZipResult,
   type ParseZipError,
   type EntryMode,
-  type AnnotationItem,
 } from "./zip-utils";

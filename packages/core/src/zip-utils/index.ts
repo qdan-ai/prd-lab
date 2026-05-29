@@ -237,7 +237,6 @@ function sniffContentType(relPath: string): string {
 // ---- 入口探测 ----
 
 export type EntryMode =
-  | { mode: "canvas"; entryHtml: "index.html"; canvasJson: "canvas.json" }
   | { mode: "bare-html"; entryHtml: string }
   | { mode: "multi-html-candidates"; candidates: string[] }
   | { mode: "no-html-entry" };
@@ -245,11 +244,7 @@ export type EntryMode =
 export function detectEntryMode(files: ZipFile[]): EntryMode {
   const rootHtmls = files.filter((f) => !f.relPath.includes("/") && f.relPath.endsWith(".html"));
   const hasIndex = rootHtmls.some((f) => f.relPath === "index.html");
-  const hasCanvas = files.some((f) => f.relPath === "canvas.json");
 
-  if (hasIndex && hasCanvas) {
-    return { mode: "canvas", entryHtml: "index.html", canvasJson: "canvas.json" };
-  }
   if (rootHtmls.length === 1) {
     return { mode: "bare-html", entryHtml: rootHtmls[0]!.relPath };
   }
@@ -260,56 +255,4 @@ export function detectEntryMode(files: ZipFile[]): EntryMode {
     return { mode: "no-html-entry" };
   }
   return { mode: "multi-html-candidates", candidates: rootHtmls.map((f) => f.relPath) };
-}
-
-// ---- embedded annotations 探测 ----
-
-export type EmbeddedAnnotations =
-  | { present: true; data: { annotations: AnnotationItem[] } }
-  | { present: false }
-  | { present: true; data: { annotations: AnnotationItem[] }; warning: string };
-
-export type AnnotationItem = {
-  id: string;
-  frameId: string;
-  x: number;
-  y: number;
-  title?: string;
-  module?: string;
-  content?: string;
-};
-
-export function detectEmbeddedAnnotations(files: ZipFile[]):
-  | { present: false }
-  | { present: true; data: { annotations: AnnotationItem[] } }
-  | { present: false; error: string } {
-  const file = files.find((f) => f.relPath === "annotations.json");
-  if (!file) return { present: false };
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(file.buffer.toString("utf8"));
-  } catch (e) {
-    return { present: false, error: `invalid JSON: ${(e as Error).message}` };
-  }
-  if (
-    typeof parsed !== "object" ||
-    parsed === null ||
-    !Array.isArray((parsed as { annotations?: unknown }).annotations)
-  ) {
-    return { present: false, error: "missing 'annotations' array" };
-  }
-  const items = (parsed as { annotations: unknown[] }).annotations;
-  for (const item of items) {
-    if (
-      typeof item !== "object" ||
-      item === null ||
-      typeof (item as { id?: unknown }).id !== "string" ||
-      typeof (item as { frameId?: unknown }).frameId !== "string" ||
-      typeof (item as { x?: unknown }).x !== "number" ||
-      typeof (item as { y?: unknown }).y !== "number"
-    ) {
-      return { present: false, error: "annotation item missing id/frameId/x/y" };
-    }
-  }
-  return { present: true, data: { annotations: items as AnnotationItem[] } };
 }

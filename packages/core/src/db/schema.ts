@@ -34,6 +34,7 @@ import {
  *        - jsonb → json；MySQL 5.7 不支持 JSON 默认值，改用 $defaultFn
  *        - partial unique WHERE → 生成列 + 普通 unique（NULL 不参与 UNIQUE）
  *        - text → varchar(N) for 索引列，长度算清 utf8mb4 上限
+ *   S15：移除评论/标注协作层（comments / annotation_links 表与相关 route 从未在 MySQL 落地，已删）
  */
 
 const uuidPk = () =>

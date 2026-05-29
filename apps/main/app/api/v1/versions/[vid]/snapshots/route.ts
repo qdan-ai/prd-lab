@@ -25,7 +25,6 @@ type Ctx = { params: Promise<{ vid: string }> };
 /**
  * GET /api/v1/versions/:vid/snapshots
  * 列出活跃快照（按 seq 降序），含 uploader_name + is_current。
- * S2：comment_count 固定 0（S4 才真接 comments）。
  */
 export async function GET(_: Request, { params }: Ctx) {
   const session = await getSession();

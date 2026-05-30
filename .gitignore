@@ -47,6 +47,7 @@ packages/prd-cli/test/
 # ---- 本地保留：内部文档 / 过程文件 / 脚手架（不推 GitHub）----
 docs/
 sprints/
+ai/
 CLAUDE.md
 PROGRESS.md
 plan.md
@@ -55,3 +56,4 @@ screenshots/
 .s9-trash/
 .s12-trash/
 .s14-trash/
+.playwright-mcp/

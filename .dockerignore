@@ -1,0 +1,77 @@
+# Docker build context 排除清单（renderer-codex-followup sprint Step 6）。
+#
+# 用途：本地 `docker build .` / `docker compose build` 不应把以下内容打进 build context：
+#   - 协作产物（ai/、docs/、sprints/）— 含机密 / 内部决策
+#   - 机密配置（.env*）
+#   - 已编译产物（dist/、dist-node/、.next/、node_modules/）— Dockerfile builder 阶段重新生成
+#   - 测试与截图（screenshots/、coverage/、playwright-report/、test-results/、e2e/）
+#   - 编辑器 / OS 噪音
+#
+# 注：服务器生产部署走 `git archive HEAD | scp`，已经天然尊重 .gitignore；
+# 本文件主要保障本地 docker build 与未来 CI build 的纪律一致。
+
+# ===== 协作产物（本地保留，不进镜像）=====
+ai/
+docs/
+sprints/
+CLAUDE.md
+PROGRESS.md
+plan.md
+screenshots/
+.playwright-mcp/
+.s9-trash/
+.s12-trash/
+.s14-trash/
+
+# ===== 机密 =====
+.env
+.env.*
+!.env.example
+
+# ===== 已编译产物 / 缓存（builder 阶段重新生成）=====
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+dist/
+**/dist/
+dist-node/
+**/dist-node/
+out/
+build/
+**/*.tsbuildinfo
+.turbo/
+.pnpm-store/
+
+# ===== 测试与覆盖率 =====
+e2e/
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+vitest.config.ts
+playwright.config.ts
+apps/main/test/
+apps/preview/test/
+packages/core/test/
+packages/prd-cli/test/
+# 注：packages/core/src/__fixtures__ 不排除，受版本控制的测试 fixture，
+# 保留可让未来 CI 在 builder 阶段加 test 时不出错；体积仅 ~130KB
+
+# ===== zip / 大文件（根目录与 ai 下的 demo zip，受 ai/ 排除间接覆盖）=====
+/*.zip
+
+# ===== 编辑器 / OS =====
+.DS_Store
+.idea/
+.vscode/
+.git/
+.gitignore
+.gitattributes
+*.log
+README.md
+
+# ===== Docker 自身 =====
+docker-compose*.yml
+.dockerignore
+Dockerfile

@@ -11,9 +11,10 @@ import { describe, expect, it } from "vitest";
  *
  * 规则：任何 .ts 文件中，**同一行**既包含 `update(snapshots)` 又包含
  * `rendererName` 或 `rendererMetadata` 字段名 → 测试失败。
- * （drizzle 的 update 链式可能跨多行，但 .set({ ... }) 大多在同一文件可读区，
- * 实际项目里 update(snapshots) 与字段赋值距离很近；多行的 set 模式如果出现，
- * 可在 follow-up sprint 引入 AST 解析升级。）
+ * 多行 set：对**每个** `update(snapshots)` 出现位置，扫其后 800 字符窗口内的
+ * `.set(...)` 区段是否含上述字段（renderer-codex-followup Step 7 修复：原实现只看
+ * 第一次出现，同文件多次 `update(snapshots)` 时漏检后续 occurrence）。
+ * 若未来需要更稳的保障，再升级为 AST 解析。
  *
  * 扫描范围：apps/ + packages/ 下所有 .ts/.tsx；跳过 node_modules / dist /
  * .next / 本测试文件自身。
@@ -32,9 +33,12 @@ const IGNORE_DIRS = new Set([
 const SELF_FILE = "immutability.test.ts";
 
 function walkTsFiles(root: string, out: string[]): void {
-  let entries: ReturnType<typeof readdirSync>;
+  // 显式 inline 形状，避开 @types/node 24+ readdirSync 默认 `Dirent<NonSharedBuffer>`
+  // 的 Buffer 化推断（让 ent.name.endsWith / isDirectory 都报错）。
+  type SimpleDirent = { name: string; isDirectory: () => boolean; isFile: () => boolean };
+  let entries: SimpleDirent[];
   try {
-    entries = readdirSync(root, { withFileTypes: true });
+    entries = readdirSync(root, { withFileTypes: true }) as unknown as SimpleDirent[];
   } catch {
     return;
   }
@@ -80,16 +84,18 @@ describe("snapshot renderer 字段不可变性 lint", () => {
           violations.push({ file, line: i + 1, text: line.trim() });
         }
       }
-      // 多行 set：扫 update(snapshots) 之后的 .set({...}) 区域里有没有这两个字段
-      const updateIdx = content.indexOf("update(snapshots)");
-      if (updateIdx >= 0) {
-        // 取从 update(snapshots) 起 800 字符内的连续片段
+      // 多行 set：扫**所有** update(snapshots) 出现位置；每个位置看其后 800 字符内
+      // 的 .set({...}) 区域里有没有这两个字段。原实现只看第一次 occurrence 会漏检
+      // 同文件多次 update(snapshots) 的后续位置（renderer-codex-followup Step 7）。
+      let searchFrom = 0;
+      while (true) {
+        const updateIdx = content.indexOf("update(snapshots)", searchFrom);
+        if (updateIdx < 0) break;
         const window = content.slice(updateIdx, updateIdx + 800);
         if (
           window.includes(".set(") &&
           (window.includes("rendererName") || window.includes("rendererMetadata"))
         ) {
-          // 计算行号
           const prefix = content.slice(0, updateIdx);
           const startLine = prefix.split("\n").length;
           violations.push({
@@ -98,6 +104,7 @@ describe("snapshot renderer 字段不可变性 lint", () => {
             text: `update(snapshots) ... .set({ ...rendererName|rendererMetadata }) in window`,
           });
         }
+        searchFrom = updateIdx + "update(snapshots)".length;
       }
     }
 

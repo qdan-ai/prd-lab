@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, resolve, sep } from "node:path";
-import { RENDERERS } from "@prd-lab/core";
+import { RENDERERS } from "@prd-lab/core/renderers";
 
 export const runtime = "nodejs";
 

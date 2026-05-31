@@ -194,5 +194,37 @@ describe("parseRendererManifest", () => {
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.error.code).toBe("manifest_invalid_options");
     });
+
+    it("manifest 文件 > 64KB → manifest_invalid_json (renderer-codex-followup Step 7)", () => {
+      // 65KB 的 manifest（buffer 长度判定）
+      const bigJunk = "x".repeat(65 * 1024);
+      const r = parseRendererManifest([
+        file(
+          "prd-renderer.json",
+          JSON.stringify({ schemaVersion: 1, renderer: "pm-canvas", junk: bigJunk }),
+        ),
+        ...pmCanvasBaseFiles(),
+      ]);
+      expect(r.ok).toBe(false);
+      if (!r.ok && r.error.code === "manifest_invalid_json") {
+        expect(r.error.message).toMatch(/exceeds.*limit/);
+      }
+    });
+
+    it("rendererOptions 序列化 > 16KB → manifest_invalid_options (renderer-codex-followup Step 7)", () => {
+      const bigPayload = "y".repeat(17 * 1024);
+      const r = parseRendererManifest([
+        manifestFile({
+          schemaVersion: 1,
+          renderer: "pm-canvas",
+          rendererOptions: { huge: bigPayload },
+        }),
+        ...pmCanvasBaseFiles(),
+      ]);
+      expect(r.ok).toBe(false);
+      if (!r.ok && r.error.code === "manifest_invalid_options") {
+        expect(r.error.reason).toMatch(/exceeds.*limit/);
+      }
+    });
   });
 });

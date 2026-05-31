@@ -8,8 +8,8 @@ import {
   verifyToken,
   versions,
   projects,
-  RENDERERS,
 } from "@prd-lab/core";
+import { RENDERERS } from "@prd-lab/core/renderers";
 import { renderLoadingShell } from "./shell";
 import { renderRendererSpaShell } from "./renderer-shell";
 

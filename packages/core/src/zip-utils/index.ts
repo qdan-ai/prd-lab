@@ -230,6 +230,9 @@ function sniffContentType(relPath: string): string {
     ttf: "font/ttf",
     txt: "text/plain; charset=utf-8",
     md: "text/markdown; charset=utf-8",
+    // pm-canvas docs 后缀（renderer-codex-followup Step 7 / BRIEF §包含#2 漏项）
+    drawio: "application/xml; charset=utf-8",
+    excalidraw: "application/json; charset=utf-8",
   };
   return map[ext] ?? "application/octet-stream";
 }

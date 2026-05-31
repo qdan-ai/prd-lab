@@ -13,10 +13,8 @@ import { RENDERERS } from "../renderers/registry";
  * 确认现网格式的 zip 不会在任一环节"水土不服"。
  */
 
-const ZIPS_DIR = resolve(
-  __dirname,
-  "../../../../ai/sprints/active/preview-renderer-adapter/artifacts/zips",
-);
+// fixture 受版本控制，确保干净 clone 也能跑测试（renderer-codex-followup sprint P0 修复）
+const ZIPS_DIR = resolve(__dirname, "../__fixtures__/zips");
 
 describe("canvas-v2-demo 真实 zip 集成", () => {
   it("canvas-default.zip（无 manifest）→ manifest=null，等价 default", async () => {
@@ -71,5 +69,16 @@ describe("canvas-v2-demo 真实 zip 集成", () => {
     if (!parsed.ok) return;
     const validateFiles = RENDERERS["pm-canvas"]!.validateFiles(parsed.result.files);
     expect(validateFiles).toBeNull();
+  });
+
+  it("canvas-pm.zip 内 .drawio / .excalidraw content-type 已正确推断 (renderer-codex-followup Step 7)", async () => {
+    const buffer = readFileSync(resolve(ZIPS_DIR, "canvas-pm.zip"));
+    const parsed = await parseAndValidateZip(buffer);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const drawio = parsed.result.files.find((f) => f.relPath.endsWith(".drawio"));
+    const excalidraw = parsed.result.files.find((f) => f.relPath.endsWith(".excalidraw"));
+    expect(drawio?.contentType).toBe("application/xml; charset=utf-8");
+    expect(excalidraw?.contentType).toBe("application/json; charset=utf-8");
   });
 });

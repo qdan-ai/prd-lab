@@ -8,7 +8,10 @@ import type { AnchorsFile } from "./types";
  */
 
 export async function fetchText(baseUrl: string, relPath: string): Promise<string> {
-  const url = baseUrl + relPath;
+  // 按 path segment 做 encodeURIComponent，防止文件名含 `#`、`?`、空格、CJK 等
+  // 字符被浏览器解释成 fragment/query（renderer-codex-followup Step 7 / codex P2#5）。
+  // zip-utils 已禁 `..` 与控制字符，这里只解决合法字符的转义问题。
+  const url = baseUrl + relPath.split("/").map(encodeURIComponent).join("/");
   const res = await fetch(url, { credentials: "same-origin" });
   if (!res.ok) {
     throw new FetchError(res.status, `GET ${relPath} → ${res.status}`);

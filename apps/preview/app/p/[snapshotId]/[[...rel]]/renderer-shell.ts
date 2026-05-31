@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
-import type { RendererSpec } from "@prd-lab/core";
+import type { RendererSpec } from "@prd-lab/core/renderers";
 
 /**
  * Renderer SPA shell HTML 渲染（DESIGN §6.2 / 决策 D8）。
@@ -57,6 +57,15 @@ export async function renderRendererSpaShell(args: {
   };
 
   const inlineScript = `<script>window.__PRD_LAB_RENDERER_CONFIG__ = ${jsonForInline(config)};</script>`;
+
+  // 防御断言（renderer-codex-followup Step 7 / codex P2#1）：renderer 包构建产物若
+  // 因模板变化丢失 </head>，下面的 replace 会静默返回原 html、SPA 拿不到 config 静默挂掉。
+  // 这种"全员看着像 OK 实则 panel 全黑"的 bug 应在响应阶段就抛出，定位到本函数。
+  if (!template.html.includes("</head>")) {
+    throw new Error(
+      `renderer-shell: SPA template for renderer ${spec.name} missing </head>; cannot inject config.`,
+    );
+  }
 
   return template.html.replace(/<\/head>/i, `${inlineScript}</head>`);
 }

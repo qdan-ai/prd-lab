@@ -12,9 +12,9 @@ import {
   parseAndValidateZip,
   detectEntryMode,
   parseRendererManifest,
-  RENDERERS,
   ZIP_LIMITS,
 } from "@prd-lab/core";
+import { RENDERERS } from "@prd-lab/core/renderers";
 import { getSession } from "@/lib/api/auth-guard";
 import { errorResponse } from "@/lib/api/errors";
 import { insertReturning } from "@/lib/db/insert-returning";

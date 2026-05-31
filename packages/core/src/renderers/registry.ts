@@ -1,14 +1,19 @@
 import type { ZipFile } from "../zip-utils";
-import { computeMetadata as pmCanvasComputeMetadata } from "@prd-lab/renderer-pm-canvas/node";
+import {
+  computeMetadata as pmCanvasComputeMetadata,
+  validateFiles as pmCanvasValidateFiles,
+  validateOptions as pmCanvasValidateOptions,
+} from "@prd-lab/renderer-pm-canvas/node";
 
 /**
  * Renderer 注册表（v1 硬编码）。
  *
  * 设计原则（DESIGN §3.4 / 决策 D3）：prd-lab 主体不懂任何具体 renderer 格式，
- * 所有格式知识封装在 renderer 包；注册表仅持有引用。
+ * 所有格式知识封装在 renderer 包；注册表仅持有函数引用。
  *
- *   - `computeMetadata` 来自 `@prd-lab/renderer-pm-canvas/node`，prd-lab 不感知 docs 后缀映射
- *   - `validateFiles` / `validateOptions` 是 prd-lab 端用于上传时校验 zip 结构的轻量规则
+ *   - `computeMetadata` / `validateFiles` / `validateOptions` 全部来自 renderer 包，
+ *     core 不感知文件布局、docs 后缀映射、必需文件清单等格式细节
+ *     （renderer-codex-followup sprint Step 3 补齐 validateFiles / validateOptions 搬迁）
  *
  * 不可变性约束（决策 D12）：注册表条目应视为只增不删；下线 renderer 走 fallback。
  */
@@ -35,35 +40,13 @@ export type RendererSpec = {
 /** rendererOptions 保留键：prd-lab 在 INSERT 时自动注入 __computed 命名空间，不允许 PM 手填 */
 export const RESERVED_OPTION_KEYS = ["__computed"] as const;
 
-function rejectReservedOptionKeys(options: unknown): null | string {
-  if (options === null || options === undefined) return null;
-  if (typeof options !== "object") return "rendererOptions must be an object";
-  for (const key of RESERVED_OPTION_KEYS) {
-    if (key in (options as Record<string, unknown>)) {
-      return `rendererOptions key "${key}" is reserved`;
-    }
-  }
-  return null;
-}
-
 export const RENDERERS: Record<string, RendererSpec> = {
   "pm-canvas": {
     name: "pm-canvas",
     configVersion: 1,
     description: "PM Canvas 画板（含 docs + anchors 只读浏览）",
-    validateFiles: (files) => {
-      if (!files.some((f) => f.relPath === "index.html"))
-        return "renderer pm-canvas requires index.html at zip root";
-      if (!files.some((f) => f.relPath === "canvas.json"))
-        return "renderer pm-canvas requires canvas.json at zip root";
-      // pm-canvas 约定：docs/ 平铺，禁止嵌套子目录（与 viewer 一致）
-      const nestedDocs = files.find(
-        (f) => f.relPath.startsWith("docs/") && f.relPath.slice("docs/".length).includes("/"),
-      );
-      if (nestedDocs) return `renderer pm-canvas does not allow nested docs path: ${nestedDocs.relPath}`;
-      return null;
-    },
-    validateOptions: rejectReservedOptionKeys,
+    validateFiles: pmCanvasValidateFiles,
+    validateOptions: pmCanvasValidateOptions,
     computeMetadata: pmCanvasComputeMetadata,
     staticMountPath: "/renderers/pm-canvas/static",
     spaEntryHtml: "dist/index.html",

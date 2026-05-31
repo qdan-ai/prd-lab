@@ -30,9 +30,26 @@ export type ParseManifestResult =
 
 const MANIFEST_FILENAME = "prd-renderer.json";
 
+/** manifest 文件大小硬上限：64KB（renderer-codex-followup Step 7 / codex P2#4）。
+ *  防止恶意 manifest 占爆内存进 JSON.parse 与 DB JSON 列。 */
+const MANIFEST_MAX_BYTES = 64 * 1024;
+/** rendererOptions 序列化大小硬上限：16KB。 */
+const RENDERER_OPTIONS_MAX_BYTES = 16 * 1024;
+
 export function parseRendererManifest(files: ZipFile[]): ParseManifestResult {
   const manifestFile = files.find((f) => f.relPath === MANIFEST_FILENAME);
   if (!manifestFile) return { ok: true, manifest: null };
+
+  // size guard：在 JSON.parse 前拦截，避免恶意 manifest 触发解析层 OOM 或下游 DB 列爆掉
+  if (manifestFile.buffer.byteLength > MANIFEST_MAX_BYTES) {
+    return {
+      ok: false,
+      error: {
+        code: "manifest_invalid_json",
+        message: `manifest file exceeds ${MANIFEST_MAX_BYTES} bytes limit`,
+      },
+    };
+  }
 
   let json: unknown;
   try {
@@ -103,6 +120,19 @@ export function parseRendererManifest(files: ZipFile[]): ParseManifestResult {
       };
     }
     rendererOptions = root.rendererOptions as Record<string, unknown>;
+    // size guard：rendererOptions 序列化后 > 16KB → 拒。
+    // 防止 PM 把图片 base64 / 大段文本塞进 manifest（应放 zip 内文件）。
+    const serialized = JSON.stringify(rendererOptions);
+    if (serialized.length > RENDERER_OPTIONS_MAX_BYTES) {
+      return {
+        ok: false,
+        error: {
+          code: "manifest_invalid_options",
+          renderer,
+          reason: `rendererOptions exceeds ${RENDERER_OPTIONS_MAX_BYTES} bytes limit`,
+        },
+      };
+    }
   }
 
   const optionsErr = spec.validateOptions(rendererOptions);

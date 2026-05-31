@@ -7,7 +7,18 @@ type Props = {
 };
 
 /**
- * 左侧画板 iframe（DESIGN §7.3.4 / D7）：
+ * 左侧画板 iframe（DESIGN §7.3.4 / D7）。
+ *
+ * ⚠️ 信任模型（renderer-codex-followup Step 5 明文化，对应 codex 评审 P1#5）：
+ *   - 画板 HTML = PM 通过 prd-lab 上传的内容，本架构**视为可信代码**
+ *   - 之所以**不**给画板 iframe 加 sandbox：D7 的 anchors / scrollToRow 等
+ *     "SPA ↔ 画板" 互动要求 contentDocument 同源访问，sandbox 会切断这条路径
+ *   - 由此带来的代价：上传画板里若藏恶意脚本，可同源访问/篡改 renderer 父页面 DOM；
+ *     此场景由"PM 自己上传自己审过的画板"的组织流程承担
+ *   - 若未来支持任意第三方/不可信上传，必须改为 postMessage/proxy 模型（sandbox iframe
+ *     + 显式 message 协议），不要在此处偷偷 sandbox
+ *
+ * 实现要点：
  * - src 走 `?raw=1`，预览站据此绕过 SPA 分支返回画板原文（DESIGN §6.1）
  * - 与 SPA 同 origin（都在 preview.local 下），可通过 iframe.contentDocument 直接互访
  * - 暴露 imperative API `scrollToRow` 给父组件，触发画板内 row-XX 元素 scrollIntoView（D10 v1 不做实时 overlay）

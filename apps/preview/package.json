@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@prd-lab/core": "workspace:*",
+    "@prd-lab/renderer-pm-canvas": "workspace:*",
     "dotenv": "^16.6.1",
     "drizzle-orm": "^0.45.2",
     "mysql2": "^3.22.3",

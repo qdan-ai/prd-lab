@@ -42,3 +42,16 @@ export {
   type ParseZipError,
   type EntryMode,
 } from "./zip-utils";
+export {
+  parseRendererManifest,
+  type RendererManifest,
+  type ParseManifestError,
+  type ParseManifestResult,
+} from "./zip-utils/manifest";
+export {
+  RENDERERS,
+  RESERVED_OPTION_KEYS,
+  listSupportedRenderers,
+  type RendererSpec,
+  type RendererComputedMetadata,
+} from "./renderers/registry";

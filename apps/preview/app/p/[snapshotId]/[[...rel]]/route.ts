@@ -8,8 +8,10 @@ import {
   verifyToken,
   versions,
   projects,
+  RENDERERS,
 } from "@prd-lab/core";
 import { renderLoadingShell } from "./shell";
+import { renderRendererSpaShell } from "./renderer-shell";
 
 export const runtime = "nodejs";
 
@@ -54,6 +56,8 @@ export async function GET(request: NextRequest, { params }: Ctx) {
       id: snapshots.id,
       entryHtmlPath: snapshots.entryHtmlPath,
       archivedAt: snapshots.archivedAt,
+      rendererName: snapshots.rendererName,
+      rendererMetadata: snapshots.rendererMetadata,
     })
     .from(snapshots)
     .innerJoin(versions, eq(snapshots.versionId, versions.id))
@@ -65,6 +69,46 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   const snap = snapRows[0];
   if (!snap) return text(404, "snapshot not found");
   if (snap.archivedAt !== null) return goneHtml();
+
+  // ── renderer SPA 分支（DESIGN §6.1 / 决策 D6）──
+  // 命中条件：rendererName != null && tokenInQuery && (rel 为空 || rel===entryHtmlPath) && 非 raw=1
+  // raw=1 不是鉴权机制，只是"取画板原文，别给我 SPA"的元信号；缺失时按 SPA 走
+  const usesCustomRenderer = snap.rendererName !== null && snap.rendererName !== "default";
+  const isRawRequest = request.nextUrl.searchParams.get("raw") === "1";
+  const isEntryHtmlRequest =
+    !rel || rel.length === 0 || rel.join("/") === snap.entryHtmlPath;
+
+  if (usesCustomRenderer && tokenInQuery && isEntryHtmlRequest && !isRawRequest) {
+    const spec = RENDERERS[snap.rendererName!];
+    if (!spec) {
+      return text(500, `renderer ${snap.rendererName} not registered`);
+    }
+    const setCookie = `${cookieName}=${tokenInQuery}; Path=/p/${snapshotId}; HttpOnly; SameSite=Lax; Max-Age=300`;
+
+    let spaHtml: string;
+    try {
+      spaHtml = await renderRendererSpaShell({
+        spec,
+        snapshotId,
+        entryHtmlPath: snap.entryHtmlPath,
+        rendererMetadata: snap.rendererMetadata,
+      });
+    } catch (e) {
+      console.error("[preview] renderer-shell render failed:", e);
+      return text(500, `renderer ${spec.name} asset missing or invalid`);
+    }
+
+    return new Response(spaHtml, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-Frame-Options": "SAMEORIGIN",
+        "Content-Security-Policy": buildRendererCsp(),
+        "Set-Cookie": setCookie,
+      },
+    });
+  }
 
   if (tokenInQuery) {
     const cleanPath = request.nextUrl.pathname;
@@ -156,6 +200,30 @@ function text(status: number, body: string): Response {
     status,
     headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
+}
+
+/**
+ * CSP for renderer SPA shell（DESIGN §6.6 / 决策 D15 / D22）。
+ *
+ * 关键点：
+ *   - frame-src 仅放行 viewer.diagrams.net（D22 drawio embed），不给 *.diagrams.net 通配
+ *   - script-src/style-src 含 'unsafe-inline'：renderer SPA 注入的 inline config + 画板内联 style
+ *   - frame-ancestors 'self' 与 X-Frame-Options:SAMEORIGIN 对齐，防 clickjacking
+ *   - default 子资源路径不返回 CSP（与现状一致），仅 renderer SPA 分支挂此头
+ */
+function buildRendererCsp(): string {
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "frame-src 'self' https://viewer.diagrams.net",
+    "frame-ancestors 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+  ].join("; ");
 }
 
 function goneHtml(): Response {

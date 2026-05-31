@@ -1,0 +1,59 @@
+// 走 core 的细粒度 zip-utils export 而非根 "."；避免 tsc 跨包跟进 core/renderers/registry.ts
+// （registry.ts 反向 import 本包 → 触发"先有鸡还是先有蛋"的编译循环）
+import type { ZipFile } from "@prd-lab/core/zip-utils";
+
+/**
+ * pm-canvas renderer Node 入口（DESIGN §7.3.3 / 决策 D3）。
+ *
+ * 由 prd-lab 上传 route 在解析完 zip 后调用，产出的对象写入
+ * snapshots.renderer_metadata.__computed。SPA 启动时通过 window.__PRD_LAB_RENDERER_CONFIG__
+ * 拿到本对象，据此渲染 docs 面板。
+ *
+ * 设计约束：
+ *   - prd-lab 主体不懂 pm-canvas 格式，所有"什么文件算 doc / anchors flag 怎么算"的知识
+ *     封装在本函数（D3）
+ *   - 函数纯粹无副作用，可在 Node / 测试环境直接调用
+ *   - 输出字段稳定，schema 不向下破坏；新增字段走 schemaVersion 升级（D11）
+ */
+
+export type PmCanvasDoc = {
+  path: string;
+  type: "md" | "excalidraw" | "drawio";
+};
+
+export type PmCanvasComputedMetadata = {
+  docs: PmCanvasDoc[];
+  hasAnchors: boolean;
+};
+
+const DOCS_PREFIX = "docs/";
+const ANCHORS_PATH = "docs/anchors.json";
+
+export function computeMetadata(files: ZipFile[]): PmCanvasComputedMetadata {
+  const docs: PmCanvasDoc[] = [];
+  let hasAnchors = false;
+
+  for (const f of files) {
+    if (f.relPath === ANCHORS_PATH) {
+      hasAnchors = true;
+      continue;
+    }
+    if (!f.relPath.startsWith(DOCS_PREFIX)) continue;
+    const rest = f.relPath.slice(DOCS_PREFIX.length);
+    // validateFiles 已拒绝嵌套子目录；防御性二次拦截
+    if (rest.includes("/")) continue;
+    if (rest.endsWith(".md")) {
+      docs.push({ path: f.relPath, type: "md" });
+    } else if (rest.endsWith(".excalidraw")) {
+      docs.push({ path: f.relPath, type: "excalidraw" });
+    } else if (rest.endsWith(".drawio")) {
+      docs.push({ path: f.relPath, type: "drawio" });
+    }
+    // 其他 docs/ 下文件（如 .png 附件）忽略，SPA 不展示
+  }
+
+  // 稳定排序，便于 SPA UI 列表展示与测试断言
+  docs.sort((a, b) => a.path.localeCompare(b.path));
+
+  return { docs, hasAnchors };
+}

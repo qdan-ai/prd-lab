@@ -28,9 +28,13 @@ export const errorCodes = {
 
 export type ErrorCode = keyof typeof errorCodes;
 
-export function errorResponse(code: ErrorCode, message?: string): Response {
+export function errorResponse(
+  code: ErrorCode,
+  message?: string,
+  details?: Record<string, unknown>,
+): Response {
   return Response.json(
-    { error_code: code, message: message ?? code },
+    { error_code: code, message: message ?? code, ...(details ? { details } : {}) },
     { status: errorCodes[code].status },
   );
 }

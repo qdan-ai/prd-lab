@@ -12,11 +12,16 @@ COPY apps/main/package.json apps/main/
 COPY apps/preview/package.json apps/preview/
 COPY packages/core/package.json packages/core/
 COPY packages/prd-cli/package.json packages/prd-cli/
+COPY packages/renderer-pm-canvas/package.json packages/renderer-pm-canvas/
 RUN pnpm install --frozen-lockfile
 
-# --- Stage 2: 构建 main + preview ---
+# --- Stage 2: 构建 renderer 包（产出 dist + dist-node，apps/preview 运行时读取）→ main + preview ---
+# 决策 D5：renderer 包 dist 不进 git，在镜像构建期生成。renderer 必须先于 apps/preview 编译，
+# 否则 apps/preview 的 import { computeMetadata } from "@prd-lab/renderer-pm-canvas/node"
+# 会因 dist-node/ 不存在而 typecheck 失败。
 FROM deps AS builder
 COPY . .
+RUN pnpm --filter @prd-lab/renderer-pm-canvas build
 RUN pnpm --filter @prd-lab/main build
 RUN pnpm --filter @prd-lab/preview build
 

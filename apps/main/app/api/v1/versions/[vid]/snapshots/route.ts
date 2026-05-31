@@ -11,6 +11,8 @@ import {
   users,
   parseAndValidateZip,
   detectEntryMode,
+  parseRendererManifest,
+  RENDERERS,
   ZIP_LIMITS,
 } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
@@ -174,6 +176,29 @@ export async function POST(request: Request, { params }: Ctx) {
     );
   }
 
+  // 6. renderer manifest 解析（DESIGN §5.2 / preview-renderer-adapter）
+  //    - 缺失 / renderer="default" → rendererName=null（行为等同当前）
+  //    - 其余 4 类错误（json/schema/unknown/options/requirements）→ 400
+  const manifestResult = parseRendererManifest(files);
+  if (!manifestResult.ok) {
+    const err = manifestResult.error;
+    const { code: _omit, ...rest } = err;
+    return errorResponse("validation_error", err.code, rest as Record<string, unknown>);
+  }
+  const manifest = manifestResult.manifest;
+  const rendererName = manifest ? manifest.renderer : null;
+  let rendererMetadata: Record<string, unknown> | null = null;
+  if (rendererName !== null && manifest) {
+    const spec = RENDERERS[rendererName]!;
+    const userOptions = manifest.rendererOptions ?? {};
+    const computed = spec.computeMetadata(files);
+    rendererMetadata = {
+      schemaVersion: spec.configVersion,
+      options: userOptions,
+      __computed: computed,
+    };
+  }
+
   // S7：version_label 唯一性预检（同方案下活跃 snapshot 占用 → 409）
   if (versionLabel) {
     const labelDup = await db
@@ -277,6 +302,9 @@ export async function POST(request: Request, { params }: Ctx) {
       versionId: vid,
       seqNo: nextSeq,
       entryHtmlPath,
+      // renderer_name / renderer_metadata 仅在 INSERT 时一次性写入（DESIGN §4.4 / 决策 D12，禁后续 UPDATE）
+      rendererName,
+      rendererMetadata,
       totalSizeBytes: files.reduce((s, f) => s + f.sizeBytes, 0),
       fileCount: files.length,
       contentSha256: zipSha256,

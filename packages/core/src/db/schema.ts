@@ -35,6 +35,9 @@ import {
  *        - partial unique WHERE → 生成列 + 普通 unique（NULL 不参与 UNIQUE）
  *        - text → varchar(N) for 索引列，长度算清 utf8mb4 上限
  *   S15：移除评论/标注协作层（comments / annotation_links 表与相关 route 从未在 MySQL 落地，已删）
+ *   preview-renderer-adapter：snapshots + renderer_name / renderer_metadata
+ *        - 上传时由 zip 根的 prd-renderer.json 声明 renderer；缺失 = default（NULL）
+ *        - INSERT 一次性写入，禁止 UPDATE（snapshot immutable，详见 DESIGN §4.4 / D12）
  */
 
 const uuidPk = () =>
@@ -116,6 +119,8 @@ export const snapshots = mysqlTable(
       .references(() => versions.id, { onDelete: "cascade" }),
     seqNo: int("seq_no").notNull(),
     entryHtmlPath: varchar("entry_html_path", { length: 512 }).notNull().default("index.html"),
+    rendererName: varchar("renderer_name", { length: 64 }),
+    rendererMetadata: json("renderer_metadata"),
     totalSizeBytes: bigint("total_size_bytes", { mode: "number" }).notNull(),
     fileCount: int("file_count").notNull(),
     contentSha256: char("content_sha256", { length: 64 }).notNull(),

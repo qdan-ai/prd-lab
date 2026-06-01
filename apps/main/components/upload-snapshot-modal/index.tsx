@@ -2,6 +2,7 @@
 
 import { useCallback, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import { FileArchive, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,49 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { snapshotsApi, type ApiError } from "@/lib/api-client";
+import {
+  renderersApi,
+  snapshotsApi,
+  type ApiError,
+  type RendererOption,
+} from "@/lib/api-client";
 import { handleListContinuation } from "@/components/markdown";
 
 const MAX_ZIP_BYTES = 50 * 1024 * 1024;
+
+/**
+ * D12 错误契约（upload-renderer-selector sprint）：
+ *   - 顶层 error_code 是大类 → TOP_LEVEL_LABEL
+ *   - validation_error 下 message 是 subcode → describeValidationSubcode 优先解析
+ * 两层均不命中时 fall back 到 apiErr.message，最后兜底「上传失败」
+ */
+const TOP_LEVEL_LABEL: Record<string, string> = {
+  version_label_conflict: "版本号已被占用",
+  unauthorized: "请先登入",
+  not_owner: "需要项目所有者权限",
+  not_found: "项目或方案不存在",
+  validation_error: "提交内容有误",
+};
+
+function describeValidationSubcode(apiErr: ApiError): string | null {
+  if (apiErr.error_code !== "validation_error") return null;
+  const subcode = apiErr.message;
+  const details = (apiErr.details ?? {}) as {
+    renderer?: string;
+    supported?: string[];
+    reason?: string;
+  };
+  switch (subcode) {
+    case "unknown_renderer":
+      return `不支持的渲染方式「${details.renderer ?? "?"}」，请选择：${(details.supported ?? []).join(" / ") || "default"}`;
+    case "renderer_requirements_unmet":
+      return details.reason
+        ? `该渲染方式的文件结构未满足：${details.reason}`
+        : "该渲染方式的文件结构未满足，请检查 zip 内容";
+    default:
+      return null;
+  }
+}
 
 type UploadState = "idle" | "selected" | "uploading" | "failed";
 
@@ -44,6 +84,7 @@ export function UploadSnapshotModal({ open, onOpenChange, versionId }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [changeNote, setChangeNote] = useState("");
   const [versionLabel, setVersionLabel] = useState("");
+  const [renderer, setRenderer] = useState<string>("default");
   const [errorMsg, setErrorMsg] = useState("");
   const [dupInfo, setDupInfo] = useState<DuplicateOfInfo | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -52,11 +93,20 @@ export function UploadSnapshotModal({ open, onOpenChange, versionId }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
+  // Renderer 注册表（D11 / upload-renderer-selector）
+  // SWR dedupingInterval 长一些：注册表数据在 session 内基本不变
+  const { data: rendererOptions } = useSWR<RendererOption[]>(
+    open ? "/api/v1/renderers" : null,
+    () => renderersApi.list(),
+    { dedupingInterval: 5 * 60_000, revalidateOnFocus: false },
+  );
+
   const reset = useCallback(() => {
     setState("idle");
     setFile(null);
     setChangeNote("");
     setVersionLabel("");
+    setRenderer("default");
     setErrorMsg("");
     setDupInfo(null);
     setIsDragOver(false);
@@ -126,6 +176,12 @@ export function UploadSnapshotModal({ open, onOpenChange, versionId }: Props) {
     setState("selected");
   };
 
+  const rendererDisplayName = (id: string): string => {
+    if (id === "default") return "默认";
+    const found = rendererOptions?.find((o) => o.id === id);
+    return found?.displayName ?? id;
+  };
+
   /** 真正调用 upload；forceNew 用于 dup 二次确认后强制走新建 */
   const performUpload = async (forceNew: boolean) => {
     if (!file || !changeNote.trim()) return;
@@ -139,6 +195,7 @@ export function UploadSnapshotModal({ open, onOpenChange, versionId }: Props) {
           changeNote: changeNote.trim(),
           versionLabel: versionLabel.trim() || undefined,
           forceNew,
+          renderer,
         },
         { silent: true },
       );
@@ -146,13 +203,14 @@ export function UploadSnapshotModal({ open, onOpenChange, versionId }: Props) {
       const label = result.snapshot.versionLabel
         ? `${result.snapshot.versionLabel}（v${result.snapshot.seqNo}）`
         : `v${result.snapshot.seqNo}`;
+      const rendererNote = `已按「${rendererDisplayName(renderer)}」渲染器处理`;
 
       if (result.matchedArchived) {
         toast.success(`已新建版本 ${label}`, {
-          description: `检测到此内容曾在 v${result.matchedArchived.seqNo} 被删除，旧评论未自动恢复`,
+          description: `${rendererNote}；检测到此内容曾在 v${result.matchedArchived.seqNo} 被删除，旧评论未自动恢复`,
         });
       } else {
-        toast.success(`已新建版本 ${label}`);
+        toast.success(`已新建版本 ${label}`, { description: rendererNote });
       }
 
       onOpenChange(false);
@@ -170,18 +228,18 @@ export function UploadSnapshotModal({ open, onOpenChange, versionId }: Props) {
         return;
       }
 
-      // 其它错误：显示行内红框 + toast
-      const labelMap: Record<string, string> = {
-        version_label_conflict: "版本号已被占用",
-        unauthorized: "请先登入",
-        not_owner: "需要项目所有者权限",
-        not_found: "项目或方案不存在",
-        validation_error: "提交内容有误",
-      };
-      const friendly = labelMap[apiErr.error_code] ?? apiErr.message ?? "上传失败";
+      // D12 两层错误映射：validation_error 下 message 是 subcode（如 unknown_renderer），
+      // 优先解析 subcode + details；不命中则 fall back 到大类 labelMap，避免可读信息退化
+      const friendly =
+        describeValidationSubcode(apiErr) ??
+        TOP_LEVEL_LABEL[apiErr.error_code] ??
+        apiErr.message ??
+        "上传失败";
       setErrorMsg(friendly);
       setState("failed");
-      toast.error(friendly, { description: apiErr.message });
+      toast.error(friendly, {
+        description: friendly === apiErr.message ? undefined : apiErr.message,
+      });
     }
   };
 
@@ -220,7 +278,7 @@ export function UploadSnapshotModal({ open, onOpenChange, versionId }: Props) {
         <div className="px-6 pt-6 pb-5 border-b border-ink-150">
           <DialogTitle className="text-[16px]">上传新版本</DialogTitle>
           <DialogDescription className="text-[13px] text-ink-500 mt-1">
-            选择画板 zip 文件，描述本次改动。
+            选择原型 zip 文件（含 HTML 入口），描述本次改动。
           </DialogDescription>
         </div>
 
@@ -324,6 +382,39 @@ export function UploadSnapshotModal({ open, onOpenChange, versionId }: Props) {
               data-testid="upload-version-label"
             />
             <div className="text-[11px] text-ink-500 mt-1">留空将自动用 v{`{seq}`}</div>
+          </div>
+
+          {/* renderer 选择（D11 / upload-renderer-selector）*/}
+          <div>
+            <label
+              htmlFor={`${inputId}-renderer`}
+              className="flex items-center gap-1 text-[12px] font-medium text-ink-900 mb-1.5"
+            >
+              文件预览方法
+            </label>
+            <select
+              id={`${inputId}-renderer`}
+              value={renderer}
+              onChange={(e) => setRenderer(e.target.value)}
+              disabled={state === "uploading" || !rendererOptions}
+              className={`w-full px-3 py-2 text-[13px] leading-[1.55] border border-ink-200 rounded-[var(--radius-md)] bg-white focus:outline-none focus:border-ink-900 focus:ring-2 focus:ring-ink-900/15 transition-shadow ${
+                state === "uploading" ? "opacity-50 pointer-events-none" : ""
+              }`}
+              data-testid="upload-renderer"
+            >
+              {!rendererOptions ? (
+                <option value="default">默认</option>
+              ) : (
+                rendererOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.id === "default" ? opt.displayName : `${opt.displayName} — ${opt.description}`}
+                  </option>
+                ))
+              )}
+            </select>
+            <div className="text-[11px] text-ink-500 mt-1">
+              默认渲染裸 HTML；选择具体 renderer 后预览页注入对应 SPA shell（如 pm-canvas 含 docs 面板）
+            </div>
           </div>
 
           {/* change_note */}

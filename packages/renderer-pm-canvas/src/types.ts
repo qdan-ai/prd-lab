@@ -19,13 +19,12 @@ export type RendererConfig = {
   dataBaseUrl: string;
   /** 画板入口 HTML 在 snapshot 内的相对路径（如 `index.html`），由预览站从 snapshots.entryHtmlPath 拷贝 */
   entryHtmlPath: string;
-  /** snapshots.renderer_metadata 整体；含 PM 在 manifest 写的 options + 上传 route 注入的 __computed */
+  /** snapshots.renderer_metadata 整体；schemaVersion + 上传 route 注入的 __computed */
   rendererMetadata: PmCanvasRendererMetadata;
 };
 
 export type PmCanvasRendererMetadata = {
   schemaVersion: number;
-  options: Record<string, unknown>;
   __computed: PmCanvasComputedMetadata;
 };
 

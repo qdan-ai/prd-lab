@@ -194,11 +194,12 @@ cli
 
 // ---- prd push ----
 cli
-  .command("push [dir]", "打包并上传画板（默认当前目录）")
+  .command("push [dir]", "打包并上传原型 zip（默认当前目录）")
   .option("--change-note <text>", "改动说明")
   .option("--auto-note", "自动生成 change_note（auto:{sha}@{ISO}）")
   .option("--project <name>", "覆盖 .prdrc.json projectName")
   .option("--version <name>", "覆盖 .prdrc.json versionName")
+  .option("--renderer <name>", "文件预览方法（default / pm-canvas / ...），默认 default")
   .option("--no-interactive", "禁止交互（CI / MCP 场景）")
   .option("--json", "stdout 输出单行 JSON（含 snapshot.id 等下游必需字段）；进度信息走 stderr")
   .action(
@@ -209,6 +210,7 @@ cli
         autoNote?: boolean;
         project?: string;
         version?: string;
+        renderer?: string;
         interactive: boolean;
         json?: boolean;
       },
@@ -285,6 +287,7 @@ cli
           sha256: pack.sha256,
           changeNote,
           uploaderType: "cli",
+          renderer: flags.renderer,
         });
         if (result.status >= 400) {
           if (flags.json) {

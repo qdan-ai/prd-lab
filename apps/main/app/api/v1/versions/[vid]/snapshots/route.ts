@@ -11,7 +11,6 @@ import {
   users,
   parseAndValidateZip,
   detectEntryMode,
-  parseRendererManifest,
   ZIP_LIMITS,
 } from "@prd-lab/core";
 import { RENDERERS } from "@prd-lab/core/renderers";
@@ -127,6 +126,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const uploaderTypeRaw = formData.get("uploader_type");
   const versionLabelRaw = formData.get("version_label");
   const forceNewRaw = formData.get("force_new");
+  const rendererRaw = formData.get("renderer");
   if (!(file instanceof Blob)) return errorResponse("validation_error", "missing file");
   if (typeof changeNoteRaw !== "string") return errorResponse("validation_error", "missing change_note");
   const changeNote = changeNoteRaw.trim();
@@ -142,6 +142,7 @@ export async function POST(request: Request, { params }: Ctx) {
     return errorResponse("validation_error", "version_label must be 1..64 chars");
   }
   const forceNew = forceNewRaw === "true" || forceNewRaw === "1";
+  const rendererInput = (typeof rendererRaw === "string" ? rendererRaw.trim() : "") || "default";
 
   if (file.size > ZIP_LIMITS.maxZipBytes) {
     return errorResponse("validation_error", `zip too large (max ${ZIP_LIMITS.maxZipBytes} bytes)`);
@@ -176,26 +177,32 @@ export async function POST(request: Request, { params }: Ctx) {
     );
   }
 
-  // 6. renderer manifest 解析（DESIGN §5.2 / preview-renderer-adapter）
-  //    - 缺失 / renderer="default" → rendererName=null（行为等同当前）
-  //    - 其余 4 类错误（json/schema/unknown/options/requirements）→ 400
-  const manifestResult = parseRendererManifest(files);
-  if (!manifestResult.ok) {
-    const err = manifestResult.error;
-    const { code: _omit, ...rest } = err;
-    return errorResponse("validation_error", err.code, rest as Record<string, unknown>);
-  }
-  const manifest = manifestResult.manifest;
-  const rendererName = manifest ? manifest.renderer : null;
+  // 6. renderer 字段处理（D1 / upload-renderer-selector）
+  //    - multipart form 字段 `renderer` 是唯一声明渠道
+  //    - "default" / 未传 → rendererName=null（走裸 HTML，无 docs 面板）
+  //    - 注册表未知 → 400 `unknown_renderer`（含 supported 列表）
+  //    - 注册表已知但 zip 不符合 renderer 要求 → 400 `renderer_requirements_unmet`
+  let rendererName: string | null = null;
   let rendererMetadata: Record<string, unknown> | null = null;
-  if (rendererName !== null && manifest) {
-    const spec = RENDERERS[rendererName]!;
-    const userOptions = manifest.rendererOptions ?? {};
-    const computed = spec.computeMetadata(files);
+  if (rendererInput !== "default") {
+    const spec = RENDERERS[rendererInput];
+    if (!spec) {
+      return errorResponse("validation_error", "unknown_renderer", {
+        renderer: rendererInput,
+        supported: ["default", ...Object.keys(RENDERERS)],
+      });
+    }
+    const filesErr = spec.validateFiles(files);
+    if (filesErr !== null) {
+      return errorResponse("validation_error", "renderer_requirements_unmet", {
+        renderer: rendererInput,
+        reason: filesErr,
+      });
+    }
+    rendererName = rendererInput;
     rendererMetadata = {
       schemaVersion: spec.configVersion,
-      options: userOptions,
-      __computed: computed,
+      __computed: spec.computeMetadata(files),
     };
   }
 

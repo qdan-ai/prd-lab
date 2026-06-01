@@ -38,6 +38,9 @@ import {
  *   preview-renderer-adapter：snapshots + renderer_name / renderer_metadata
  *        - 上传时由 zip 根的 prd-renderer.json 声明 renderer；缺失 = default（NULL）
  *        - INSERT 一次性写入，禁止 UPDATE（snapshot immutable，详见 DESIGN §4.4 / D12）
+ *   upload-renderer-selector：声明渠道从 zip 内 manifest 迁至 multipart `renderer` form 字段
+ *        - 上传时由 multipart form 字段 `renderer` 声明；`default` / 未传 = NULL
+ *        - schema 列定义保持不变，落库逻辑不变，仅数据来源变更（D7 / D11）
  */
 
 const uuidPk = () =>

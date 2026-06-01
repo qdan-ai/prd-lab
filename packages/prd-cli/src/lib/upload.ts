@@ -119,6 +119,12 @@ export interface UploadOptions {
   sha256: string;
   changeNote: string;
   uploaderType: "cli" | "mcp";
+  /**
+   * D11 / upload-renderer-selector：上传通道声明 renderer 的唯一渠道。
+   * `default` / undefined / "" → 后端 rendererName=null（走裸 HTML）。
+   * 注册表未知 renderer → 后端返 400 unknown_renderer + supported。
+   */
+  renderer?: string;
 }
 
 export interface UploadResult {
@@ -142,9 +148,12 @@ export async function uploadSnapshot(
   const zipBuf = await readFile(opts.zipPath);
   const form = new FormData();
   const blob = new Blob([new Uint8Array(zipBuf)], { type: "application/zip" });
-  form.append("file", blob, basename(opts.zipPath));
   form.append("change_note", opts.changeNote);
   form.append("uploader_type", opts.uploaderType);
+  if (opts.renderer && opts.renderer.trim()) {
+    form.append("renderer", opts.renderer.trim());
+  }
+  form.append("file", blob, basename(opts.zipPath));
 
   const res = await fetch(`${client.endpoint}/api/v1/versions/${versionId}/snapshots`, {
     method: "POST",

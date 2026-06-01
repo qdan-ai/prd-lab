@@ -29,10 +29,6 @@ export type PmCanvasComputedMetadata = {
 const DOCS_PREFIX = "docs/";
 const ANCHORS_PATH = "docs/anchors.json";
 
-// rendererOptions 保留键（与 core registry.RESERVED_OPTION_KEYS 同步），
-// 让 validateOptions 校验闭环在 renderer 包内。
-const RESERVED_OPTION_KEYS = ["__computed"] as const;
-
 export function computeMetadata(files: ZipFile[]): PmCanvasComputedMetadata {
   const docs: PmCanvasDoc[] = [];
   let hasAnchors = false;
@@ -79,24 +75,5 @@ export function validateFiles(files: ZipFile[]): null | string {
     (f) => f.relPath.startsWith(DOCS_PREFIX) && f.relPath.slice(DOCS_PREFIX.length).includes("/"),
   );
   if (nestedDocs) return `renderer pm-canvas does not allow nested docs path: ${nestedDocs.relPath}`;
-  return null;
-}
-
-/**
- * 校验 manifest.rendererOptions 用户字段（DESIGN §3.4）：
- *   - null/undefined 直接通过
- *   - 必须是对象（不是数组）
- *   - 禁止 RESERVED_OPTION_KEYS 中的保留键（如 `__computed`，prd-lab INSERT 时注入）
- *
- * pm-canvas 当前没有自定义选项，只跑公共保留键校验。
- */
-export function validateOptions(options: unknown): null | string {
-  if (options === null || options === undefined) return null;
-  if (typeof options !== "object") return "rendererOptions must be an object";
-  for (const key of RESERVED_OPTION_KEYS) {
-    if (key in (options as Record<string, unknown>)) {
-      return `rendererOptions key "${key}" is reserved`;
-    }
-  }
   return null;
 }

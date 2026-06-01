@@ -3,7 +3,14 @@ import { toast } from "sonner";
 
 export type ApiError = {
   error_code: string;
+  /**
+   * D12 错误契约（upload-renderer-selector sprint）：
+   *   - 顶层 error_code 是大类（如 validation_error / not_owner / not_found）
+   *   - validation_error 下 message 承担 subcode 角色（如 unknown_renderer / renderer_requirements_unmet）
+   *   - 前端按"先 subcode 后 error_code"两层映射，避免可读错误信息退化为通用「校验失败」
+   */
   message?: string;
+  details?: Record<string, unknown>;
 };
 
 /**
@@ -146,6 +153,7 @@ export const snapshotsApi = {
       changeNote: string;
       versionLabel?: string;
       forceNew?: boolean;
+      renderer?: string;
     },
     opts?: { idempotencyKey?: string; silent?: boolean },
   ) => {
@@ -156,6 +164,9 @@ export const snapshotsApi = {
       fd.set("version_label", body.versionLabel.trim());
     }
     if (body.forceNew) fd.set("force_new", "true");
+    if (body.renderer && body.renderer.trim()) {
+      fd.set("renderer", body.renderer.trim());
+    }
     fd.set("file", body.file);
     const headers: Record<string, string> = {};
     if (opts?.idempotencyKey) headers["Idempotency-Key"] = opts.idempotencyKey;
@@ -216,6 +227,17 @@ export type SnapshotFileRow = {
 
 export const filesApi = {
   list: (sid: string) => apiFetch<{ files: SnapshotFileRow[] }>(`/api/v1/snapshots/${sid}/files`),
+};
+
+/** Renderer 注册表（upload-renderer-selector sprint）。UploadSnapshotModal 渲染 select 用。 */
+export type RendererOption = {
+  id: string;
+  displayName: string;
+  description: string;
+};
+
+export const renderersApi = {
+  list: () => apiFetch<RendererOption[]>("/api/v1/renderers"),
 };
 
 /**

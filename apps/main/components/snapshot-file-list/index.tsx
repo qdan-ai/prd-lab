@@ -31,7 +31,10 @@ export function SnapshotFileList({ snapshotId, entryHtmlPath, changeNote }: Prop
     try {
       const { token } = await snapshotsApi.refreshPreviewToken(snapshotId);
       const encodedRel = relPath.split("/").map(encodeURIComponent).join("/");
-      const url = `http://preview.local/p/${snapshotId}/${encodedRel}?token=${encodeURIComponent(token)}`;
+      // NEXT_PUBLIC_PREVIEW_ORIGIN：build time inline，未配置 fallback 本地 host
+      const previewOrigin =
+        process.env.NEXT_PUBLIC_PREVIEW_ORIGIN ?? "http://preview.local";
+      const url = `${previewOrigin}/p/${snapshotId}/${encodedRel}?token=${encodeURIComponent(token)}`;
       window.open(url, "_blank", "noopener");
     } catch {
       // toast 已自动

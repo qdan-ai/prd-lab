@@ -24,6 +24,10 @@ export function getDb(): Db {
     connectionLimit: 10,
     timezone: "Z",
     dateStrings: false,
+    // mysql2 默认连接 charset 是 latin1（即使 server / db / 表都是 utf8mb4），
+    // 不显式声明会让中文姓名 / 备注等被存成 "???"。
+    // 与 schema.ts 表声明的 utf8mb4_unicode_ci 对齐。
+    charset: "utf8mb4_unicode_ci",
   });
   _db = drizzle(_pool, { schema, mode: "default" }) as unknown as Db;
   return _db;

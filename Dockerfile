@@ -20,6 +20,11 @@ RUN pnpm install --frozen-lockfile
 # 否则 apps/preview 的 import { computeMetadata } from "@prd-lab/renderer-pm-canvas/node"
 # 会因 dist-node/ 不存在而 typecheck 失败。
 FROM deps AS builder
+# Next.js NEXT_PUBLIC_* 是 build time inline，必须在 `next build` 跑前进 process.env。
+# 由 docker-compose.prod.yml main 服务的 build.args 段传入；
+# 本地 docker build 不传则等价于"不设"，前端 fallback 到 http://preview.local（开发默认）。
+ARG NEXT_PUBLIC_PREVIEW_ORIGIN
+ENV NEXT_PUBLIC_PREVIEW_ORIGIN=$NEXT_PUBLIC_PREVIEW_ORIGIN
 COPY . .
 RUN pnpm --filter @prd-lab/renderer-pm-canvas build
 RUN pnpm --filter @prd-lab/main build

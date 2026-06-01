@@ -47,6 +47,9 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      args:
+        # build time inline 进 next bundle；与 .env 的 NEXT_PUBLIC_PREVIEW_ORIGIN 保持一致
+        NEXT_PUBLIC_PREVIEW_ORIGIN: ${NEXT_PUBLIC_PREVIEW_ORIGIN:-http://preview.local}
     container_name: prd-lab-main
     restart: unless-stopped
     env_file:

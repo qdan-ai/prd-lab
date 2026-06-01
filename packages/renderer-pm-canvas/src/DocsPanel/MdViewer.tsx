@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import MarkdownIt from "markdown-it";
 import DOMPurify from "dompurify";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import { fetchText, FetchError } from "../api";
 
 type Props = {
@@ -9,10 +11,11 @@ type Props = {
 };
 
 /**
- * Markdown 只读 viewer：markdown-it 渲染 + DOMPurify 净化（DESIGN §7.4）。
+ * Markdown 只读 viewer：markdown-it 转 HTML → DOMPurify 净化 → Tiptap editable=false 渲染。
  *
- * - 不支持任何编辑能力（与 BRIEF 红线一致）
- * - DOMPurify 默认 profile 已禁用 <script>、危险 attr handler；不再额外配置
+ * - editable=false：renderer BRIEF 红线，PM 上传的 snapshot 是 immutable 不可改
+ * - markdown-it 仍负责 markdown→HTML 桥（Tiptap 不原生读 markdown 字符串）
+ * - DOMPurify 默认 profile 拦截 <script> / on* handler，setContent 收到的 HTML 安全
  */
 export function MdViewer(props: Props) {
   const { baseUrl, docPath } = props;
@@ -22,13 +25,21 @@ export function MdViewer(props: Props) {
   const md = useMemo(
     () =>
       new MarkdownIt({
-        html: false, // 不接受原始 HTML（PM 的 md 文档应为纯 markdown）
+        html: false,
         linkify: true,
         breaks: false,
         typographer: false,
       }),
     [],
   );
+
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: "",
+    editable: false,
+    // React 19 SSR-safe；Vite SPA 实际不 SSR，但保留避免 hydration mismatch 警告
+    immediatelyRender: false,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -48,16 +59,15 @@ export function MdViewer(props: Props) {
     };
   }, [baseUrl, docPath]);
 
+  useEffect(() => {
+    if (!editor || src === null) return;
+    if (editor.isDestroyed) return;
+    const html = DOMPurify.sanitize(md.render(src));
+    editor.commands.setContent(html);
+  }, [editor, src, md]);
+
   if (error) return <div className="pm-canvas-doc-error">{error}</div>;
-  if (src === null) return <div className="pm-canvas-doc-loading">加载中…</div>;
+  if (src === null || !editor) return <div className="pm-canvas-doc-loading">加载中…</div>;
 
-  const html = DOMPurify.sanitize(md.render(src));
-
-  return (
-    <div
-      className="pm-canvas-md"
-      // sanitize 后的 HTML 安全注入；不接受画板/外部数据走此路径
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
+  return <EditorContent editor={editor} className="pm-canvas-md" />;
 }

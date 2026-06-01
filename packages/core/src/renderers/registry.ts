@@ -23,10 +23,13 @@ import {
 export type RendererComputedMetadata = Record<string, unknown>;
 
 export type RendererSpec = {
-  /** 必须与 multipart form 字段 `renderer` 字符串匹配（小写连字符） */
+  /** 必须与 multipart form 字段 `renderer` 字符串匹配（小写连字符）；面向 API/CLI */
   name: string;
+  /** 面向 PM 的人类可读名（UI select 文案），与技术 name 解耦 */
+  displayName: string;
   /** manifest schema 期望的版本，SPA 据此做兼容（写入 renderer_metadata.schemaVersion） */
   configVersion: number;
+  /** 一句话描述，UI select 选项附文（建议 ≤ 20 字） */
   description: string;
   /** 校验 zip 内文件是否满足 renderer 必需结构；不满足返 string 错误信息 */
   validateFiles: (files: ZipFile[]) => null | string;
@@ -41,8 +44,9 @@ export type RendererSpec = {
 export const RENDERERS: Record<string, RendererSpec> = {
   "pm-canvas": {
     name: "pm-canvas",
+    displayName: "PM Canvas 画板",
     configVersion: 1,
-    description: "PM Canvas 画板（含 docs + anchors 只读浏览）",
+    description: "含 docs 面板与 anchors 联动",
     validateFiles: pmCanvasValidateFiles,
     computeMetadata: pmCanvasComputeMetadata,
     staticMountPath: "/renderers/pm-canvas/static",

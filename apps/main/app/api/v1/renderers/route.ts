@@ -14,12 +14,12 @@ export async function GET() {
   const items = [
     {
       id: "default",
-      displayName: "默认（直接渲染 HTML）",
-      description: "不注入任何 SPA shell，按 zip 内 HTML 入口直接渲染",
+      displayName: "默认",
+      description: "直接渲染 zip 内 HTML 入口",
     },
     ...Object.entries(RENDERERS).map(([id, spec]) => ({
       id,
-      displayName: spec.name,
+      displayName: spec.displayName,
       description: spec.description,
     })),
   ];

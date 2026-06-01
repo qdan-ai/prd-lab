@@ -1,10 +1,20 @@
 import { redirect } from "next/navigation";
+import { AuthError } from "next-auth";
 import { Lock, ShieldCheck, Sparkles } from "lucide-react";
 import { auth, signIn } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type SearchParams = Promise<{ callbackUrl?: string; error?: string }>;
+
+function formatLoginError(code: string): string {
+  switch (code) {
+    case "credentials":
+      return "登入失败：姓名或团队密码错误，请重试";
+    default:
+      return `登入失败：${code}`;
+  }
+}
 
 export default async function LoginPage({
   searchParams,
@@ -22,7 +32,16 @@ export default async function LoginPage({
     "use server";
     const name = String(formData.get("name") ?? "");
     const password = String(formData.get("password") ?? "");
-    await signIn("credentials", { name, password, redirectTo: callbackUrl });
+    try {
+      await signIn("credentials", { name, password, redirectTo: callbackUrl });
+    } catch (e) {
+      // signIn 成功后会抛 NEXT_REDIRECT control flow，必须 rethrow 才能完成跳转
+      // 凭据错 / server action ID 失效 → AuthError 子类（CredentialsSignin 等），兜底回登录页带 error
+      if (e instanceof AuthError) {
+        redirect(`/login?error=credentials&callbackUrl=${encodeURIComponent(callbackUrl)}`);
+      }
+      throw e;
+    }
   }
 
   return (
@@ -97,7 +116,7 @@ export default async function LoginPage({
                 role="alert"
                 className="text-[12px] text-[color:var(--color-danger)] bg-[color:var(--color-danger-bg)] rounded-[var(--radius-sm)] px-3 py-2"
               >
-                登入失败：{params.error}
+                {formatLoginError(params.error)}
               </p>
             ) : null}
           </form>

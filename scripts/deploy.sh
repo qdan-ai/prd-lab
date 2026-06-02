@@ -180,14 +180,16 @@ if [[ "$WITH_MIGRATE" -eq 1 ]]; then
 fi
 
 if [[ "$SKIP_PRUNE" -eq 0 ]]; then
-  echo "▸ docker prune（共享 ECS 安全模式：只删 dangling + 自家 untagged 旧 image）"
+  echo "▸ docker prune（共享 ECS 安全模式：只删 dangling + 自家 untagged 旧 image + buildkit cache 裁到 1GB）"
   # 共享机器（finance-ingest / rsshub 共存），不能 prune -a 否则会误删别人的 image
   # 只删 dangling（没 tag 也没 container 引用的孤儿层）+ 自家旧 untagged
   docker image prune -f || true
   # 找自家旧的 untagged prd-lab-app image（recreate 后被替换的旧 image 会变 <none>:<none>）
   docker images --filter "dangling=true" --filter "label=app=prd-lab" -q | xargs -r docker rmi || true
-  # 构建缓存全清没问题（不影响其他项目）
-  docker builder prune -af --filter "until=24h" || true
+  # buildkit cache：用 --keep-storage 按 LRU 裁到 1GB
+  # （历史踩坑：--filter until=24h 看的是 LAST USED 距今，每次 deploy 都把 cache 摸成"刚用过"，
+  #  时间窗永远满足不了，结果 cache 无限累积；2026-06-02 实测 5.2G 不被清；换 keep-storage 解决）
+  docker builder prune -af --keep-storage 1GB || true
 fi
 
 echo "▸ 健康检查"

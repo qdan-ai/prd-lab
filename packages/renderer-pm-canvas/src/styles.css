@@ -300,6 +300,37 @@ body,
 }
 .pm-canvas-md .tiptap td { background: #fff; }
 
+.pm-canvas-md .tiptap img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.6em 0;
+  border-radius: 4px;
+}
+
+.pm-canvas-md .tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+.pm-canvas-md .tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0.15em 0;
+}
+.pm-canvas-md .tiptap ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  user-select: none;
+}
+.pm-canvas-md .tiptap ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pm-canvas-md .tiptap ul[data-type="taskList"] input[type="checkbox"] {
+  cursor: default;
+}
+
 .pm-canvas-doc-loading,
 .pm-canvas-doc-error,
 .pm-canvas-docs-empty {

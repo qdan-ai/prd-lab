@@ -2,19 +2,15 @@
 
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSwitcherStore } from "@/components/command-switcher/use-switcher-store";
+import { useCreateDialogStore } from "@/components/create-dialog/use-create-dialog-store";
 
 export function NewProjectButton() {
-  const setOpen = useSwitcherStore((s) => s.setOpen);
-  const setCreateMode = useSwitcherStore((s) => s.setCreateMode);
+  const openProject = useCreateDialogStore((s) => s.openProject);
   return (
     <Button
       variant="primary"
       size="md"
-      onClick={() => {
-        setOpen(true);
-        setCreateMode("project");
-      }}
+      onClick={() => openProject()}
       className="gap-1.5"
       data-testid="workbench-new-project"
     >

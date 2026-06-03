@@ -1,9 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { ArrowRight, FolderOpen, Lock, Users } from "lucide-react";
-import { OpenSwitcherButton } from "@/components/command-switcher/open-switcher-button";
+import { useMemo, useState } from "react";
+import { ArrowRight, FolderOpen, Lock, MoreHorizontal, Trash2, Users } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DeleteProjectModal } from "@/components/delete-project-modal";
+import { useCreateDialogStore } from "@/components/create-dialog/use-create-dialog-store";
 import { formatRelative } from "./format";
 import { useWorkbenchSearchStore } from "./search-store";
 
@@ -14,7 +23,7 @@ export interface WorkbenchProject {
   name: string;
   visibility: "private" | "team";
   createdAt: string;
-  firstVersionId: string | null;
+  ownedByMe: boolean;
   snapshotCount: number;
   latestSnapshotAt: string | null;
 }
@@ -26,6 +35,7 @@ interface Props {
 
 export function WorkbenchTabPanel({ tab, projects }: Props) {
   const query = useWorkbenchSearchStore((s) => s.query);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const filtered = useMemo(() => {
     const kw = query.trim().toLowerCase();
@@ -38,36 +48,73 @@ export function WorkbenchTabPanel({ tab, projects }: Props) {
   }
 
   return (
-    <ul
-      className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-      data-testid="workbench-grid"
-    >
-      {filtered.map((p) => (
-        <ProjectCard key={p.id} project={p} />
-      ))}
-    </ul>
+    <>
+      <ul
+        className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+        data-testid="workbench-grid"
+      >
+        {filtered.map((p) => (
+          <ProjectCard key={p.id} project={p} onDelete={() => setDeleteTarget({ id: p.id, name: p.name })} />
+        ))}
+      </ul>
+      <DeleteProjectModal
+        open={deleteTarget !== null}
+        target={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+      />
+    </>
   );
 }
 
-function ProjectCard({ project }: { project: WorkbenchProject }) {
-  const v = project.firstVersionId;
-  const disabled = !v;
+function ProjectCard({ project, onDelete }: { project: WorkbenchProject; onDelete: () => void }) {
   return (
     <li>
       <Link
-        href={v ? `/projects/${project.id}/versions/${v}` : "#"}
-        aria-disabled={disabled}
-        className={`group relative block rounded-[var(--radius-md)] bg-white border border-ink-200 p-4 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900 focus-visible:ring-offset-2 ${
-          disabled
-            ? "opacity-50 cursor-not-allowed"
-            : "hover:bg-ink-50/60 hover:border-ink-300 hover:shadow-[var(--shadow-sm)]"
-        }`}
+        href={`/projects/${project.id}`}
+        className="group relative block rounded-[var(--radius-md)] bg-white border border-ink-200 p-4 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900 focus-visible:ring-offset-2 hover:bg-ink-50/60 hover:border-ink-300 hover:shadow-[var(--shadow-sm)]"
       >
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="text-[14px] font-semibold text-ink-900 truncate leading-tight pr-1">
             {project.name}
           </div>
-          <VisibilityChip visibility={project.visibility} />
+          <div className="flex items-center gap-1 shrink-0">
+            <VisibilityChip visibility={project.visibility} />
+            {project.ownedByMe ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    aria-label={`${project.name} 菜单`}
+                    data-testid={`card-menu-${project.id}`}
+                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 hover:bg-ink-200 rounded-[var(--radius-sm)]"
+                  >
+                    <MoreHorizontal size={14} strokeWidth={2.25} className="text-ink-700" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  <DropdownMenuItem
+                    destructive
+                    onSelect={onDelete}
+                    data-testid={`card-delete-${project.id}`}
+                    className="gap-2"
+                  >
+                    <Trash2 size={13} />
+                    删除项目
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+          </div>
         </div>
 
         <CardMeta project={project} />
@@ -131,6 +178,7 @@ function VisibilityChip({ visibility }: { visibility: "private" | "team" }) {
 }
 
 function EmptyState({ tab, hasQuery }: { tab: WorkbenchTab; hasQuery: boolean }) {
+  const openProject = useCreateDialogStore((s) => s.openProject);
   if (hasQuery) {
     return (
       <div className="border border-dashed border-ink-200 rounded-[var(--radius-lg)] p-12 text-center bg-ink-50">
@@ -150,7 +198,18 @@ function EmptyState({ tab, hasQuery }: { tab: WorkbenchTab; hasQuery: boolean })
       </div>
       <h2 className="text-[17px] font-semibold text-ink-900 mb-1 tracking-tight">{title}</h2>
       <p className="text-[13px] text-ink-500 mb-5 max-w-sm mx-auto leading-relaxed">{hint}</p>
-      {!isTeam ? <OpenSwitcherButton variant="primary" label="新建项目" /> : null}
+      {!isTeam ? (
+        <Button
+          variant="primary"
+          size="md"
+          className="gap-1.5"
+          onClick={() => openProject()}
+          data-testid="empty-new-project"
+        >
+          <Plus size={14} strokeWidth={2.25} />
+          <span>新建项目</span>
+        </Button>
+      ) : null}
     </div>
   );
 }

@@ -30,24 +30,15 @@ export async function POST(request: Request) {
   if (!parsed.ok) return errorResponse("validation_error", parsed.message);
 
   try {
-    const result = await db.transaction(async (tx) => {
-      const project = await insertReturning(tx, projects, {
-        name: parsed.name,
-        ownerId: session.userId,
-        visibility: parsed.visibility,
-      });
-
-      const version = await insertReturning(tx, versions, {
-        projectId: project.id,
-        name: parsed.firstVersionName,
-        seqNo: 1,
-        createdBy: session.userId,
-      });
-
-      return { project, version };
+    // S17：项目与方案解耦——只建 project，不再自动建第一个 version。
+    // 项目可处于「0 方案」状态，由 /projects/[pid] 落地页渲染空状态引导新建方案。
+    const project = await insertReturning(db, projects, {
+      name: parsed.name,
+      ownerId: session.userId,
+      visibility: parsed.visibility,
     });
 
-    return Response.json(result, { status: 201 });
+    return Response.json({ project }, { status: 201 });
   } catch (e: unknown) {
     if (isPgError(e, PG_UNIQUE_VIOLATION)) {
       return errorResponse("name_conflict", "project name already exists");
@@ -78,7 +69,7 @@ export async function POST(request: Request) {
 // ---- helpers ----
 
 function parseCreateBody(body: unknown):
-  | { ok: true; name: string; visibility: "private" | "team"; firstVersionName: string }
+  | { ok: true; name: string; visibility: "private" | "team" }
   | { ok: false; message: string } {
   if (typeof body !== "object" || body === null) {
     return { ok: false, message: "body must be JSON object" };
@@ -89,12 +80,7 @@ function parseCreateBody(body: unknown):
 
   const visibility = b.visibility === "team" ? "team" : "private";
 
-  const firstVersionRaw = typeof b.firstVersionName === "string" ? b.firstVersionName.trim() : "v1";
-  if (!firstVersionRaw || firstVersionRaw.length > 64) {
-    return { ok: false, message: "invalid first version name" };
-  }
-
-  return { ok: true, name, visibility, firstVersionName: firstVersionRaw };
+  return { ok: true, name, visibility };
 }
 
 async function getProjectList(userId: string) {

@@ -3,7 +3,7 @@
 import useSWR from "swr";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Search, X, Plus, ArrowLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { Search, X, Plus, ChevronRight, MoreHorizontal, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,11 +20,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSwitcherStore } from "./use-switcher-store";
+import { useCreateDialogStore } from "@/components/create-dialog/use-create-dialog-store";
 import { useModalStack } from "@/components/modal-stack";
 import { apiFetch, projectsApi, versionsApi, type SwitcherProject } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { RenameDialog } from "@/components/rename-dialog";
+import { DeleteProjectModal } from "@/components/delete-project-modal";
+import { DeleteVersionModal } from "@/components/delete-version-modal";
 
 type SwitcherVersion = SwitcherProject["versions"][number];
 
@@ -37,24 +40,25 @@ export function CommandSwitcher() {
   const setQuery = useSwitcherStore((s) => s.setQuery);
   const focusedProjectId = useSwitcherStore((s) => s.focusedProjectId);
   const setFocusedProject = useSwitcherStore((s) => s.setFocusedProject);
-  const createMode = useSwitcherStore((s) => s.createMode);
-  const setCreateMode = useSwitcherStore((s) => s.setCreateMode);
   const reset = useSwitcherStore((s) => s.reset);
+
+  const openProjectDialog = useCreateDialogStore((s) => s.openProject);
+  const openVersionDialog = useCreateDialogStore((s) => s.openVersion);
 
   const router = useRouter();
   const params = useParams<{ pid?: string }>();
   const currentPid = params?.pid;
 
-  // 重命名 modal 状态
+  // 重命名 / 删除 modal 状态
   const [renameProjectTarget, setRenameProjectTarget] = useState<SwitcherProject | null>(null);
   const [renameVersionTarget, setRenameVersionTarget] = useState<SwitcherVersion | null>(null);
+  const [deleteProjectTarget, setDeleteProjectTarget] = useState<SwitcherProject | null>(null);
+  const [deleteVersionTarget, setDeleteVersionTarget] = useState<
+    { version: SwitcherVersion; projectId: string } | null
+  >(null);
 
-  // ESC LIFO：在 createMode 时 ESC 仅退出 createMode；否则关闭整个弹窗
+  // ESC：关闭整个弹窗（创建/删除已迁出为独立 modal，由各自 modalStack 处理）
   useModalStack(open, () => {
-    if (createMode !== "none") {
-      setCreateMode("none");
-      return true;
-    }
     setOpen(false);
     return true;
   });
@@ -85,11 +89,8 @@ export function CommandSwitcher() {
 
   // 关闭时清查询
   useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setCreateMode("none");
-    }
-  }, [open, setQuery, setCreateMode]);
+    if (!open) setQuery("");
+  }, [open, setQuery]);
 
   // 过滤
   const filtered = useMemo(() => {
@@ -106,6 +107,16 @@ export function CommandSwitcher() {
     () => (focusedProjectId ? data?.find((p) => p.id === focusedProjectId) ?? null : null),
     [data, focusedProjectId],
   );
+
+  // 新建项目 / 方案：关闭 switcher 后打开独立聚焦弹窗
+  function startCreateProject() {
+    setOpen(false);
+    openProjectDialog();
+  }
+  function startCreateVersion(projectId: string, projectName: string) {
+    setOpen(false);
+    openVersionDialog(projectId, projectName);
+  }
 
   return (
     <>
@@ -161,7 +172,7 @@ export function CommandSwitcher() {
               ) : error ? (
                 <ErrorState onRetry={() => mutate()} />
               ) : filtered.length === 0 && data?.length === 0 ? (
-                <EmptyProjectsState onCreate={() => setCreateMode("project")} />
+                <EmptyProjectsState onCreate={startCreateProject} />
               ) : (
                 <ul role="listbox" aria-label="项目列表" className="px-1">
                   {filtered.map((p) => (
@@ -189,39 +200,50 @@ export function CommandSwitcher() {
                         <span className="text-[10px] text-ink-500 shrink-0 ml-2">
                           {p.versions.length} 方案
                         </span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={(e) => e.stopPropagation()}
-                              aria-label={`${p.name} 菜单`}
-                              data-testid={`project-menu-${p.id}`}
-                              className="ml-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 hover:bg-ink-200 rounded-[var(--radius-sm)]"
-                            >
-                              <MoreHorizontal size={13} strokeWidth={2.25} className="text-ink-700" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem onSelect={() => setRenameProjectTarget(p)}>
-                              重命名项目
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={async () => {
-                                const next = p.visibility === "team" ? "private" : "team";
-                                try {
-                                  await projectsApi.rename(p.id, { visibility: next });
-                                  toast.success(next === "team" ? "已改为团队可见" : "已改为私有");
-                                  await mutate();
-                                  router.refresh();
-                                } catch {
-                                  // toast 已自动
-                                }
-                              }}
-                            >
-                              {p.visibility === "team" ? "改为私有" : "改为团队可见"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {p.ownedByMe ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={(e) => e.stopPropagation()}
+                                aria-label={`${p.name} 菜单`}
+                                data-testid={`project-menu-${p.id}`}
+                                className="ml-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 hover:bg-ink-200 rounded-[var(--radius-sm)]"
+                              >
+                                <MoreHorizontal size={13} strokeWidth={2.25} className="text-ink-700" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem onSelect={() => setRenameProjectTarget(p)}>
+                                重命名项目
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={async () => {
+                                  const next = p.visibility === "team" ? "private" : "team";
+                                  try {
+                                    await projectsApi.rename(p.id, { visibility: next });
+                                    toast.success(next === "team" ? "已改为团队可见" : "已改为私有");
+                                    await mutate();
+                                    router.refresh();
+                                  } catch {
+                                    // toast 已自动
+                                  }
+                                }}
+                              >
+                                {p.visibility === "team" ? "改为私有" : "改为团队可见"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                destructive
+                                className="gap-2"
+                                onSelect={() => setDeleteProjectTarget(p)}
+                                data-testid={`project-delete-${p.id}`}
+                              >
+                                <Trash2 size={13} />
+                                删除项目
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
                       </div>
                     </li>
                   ))}
@@ -232,7 +254,7 @@ export function CommandSwitcher() {
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => setCreateMode("project")}
+                onClick={startCreateProject}
                 className="w-full gap-1.5"
               >
                 <Plus size={14} />
@@ -241,37 +263,27 @@ export function CommandSwitcher() {
             </div>
           </div>
 
-          {/* 右列：方案（或 createMode form） */}
+          {/* 右列：方案 */}
           <div className="flex-1 flex flex-col">
-            {createMode === "project" ? (
-              <CreateProjectForm
-                onCancel={() => setCreateMode("none")}
-                onCreated={async () => {
-                  await mutate();
-                  setCreateMode("none");
-                }}
-              />
-            ) : (
-              <VersionPanel
-                project={focusedProject}
-                onCreateVersion={() => setCreateMode("version")}
-                createMode={createMode}
-                onCancelCreate={() => setCreateMode("none")}
-                onVersionCreated={async () => {
-                  await mutate();
-                  setCreateMode("none");
-                }}
-                onPickVersion={(vid) => {
-                  if (!focusedProject) return;
-                  const url = `/projects/${focusedProject.id}/versions/${vid}`;
-                  // 提前 prefetch + reset → router.push（客户端路由，比全页刷新快很多）
-                  router.prefetch(url);
-                  reset();
-                  router.push(url);
-                }}
-                onRenameVersion={(v) => setRenameVersionTarget(v)}
-              />
-            )}
+            <VersionPanel
+              project={focusedProject}
+              onCreateVersion={() =>
+                focusedProject && startCreateVersion(focusedProject.id, focusedProject.name)
+              }
+              onPickVersion={(vid) => {
+                if (!focusedProject) return;
+                const url = `/projects/${focusedProject.id}/versions/${vid}`;
+                // 提前 prefetch + reset → router.push（客户端路由，比全页刷新快很多）
+                router.prefetch(url);
+                reset();
+                router.push(url);
+              }}
+              onRenameVersion={(v) => setRenameVersionTarget(v)}
+              onDeleteVersion={(v) =>
+                focusedProject &&
+                setDeleteVersionTarget({ version: v, projectId: focusedProject.id })
+              }
+            />
           </div>
         </div>
       </DialogContent>
@@ -314,6 +326,39 @@ export function CommandSwitcher() {
           setRenameVersionTarget(null);
         }}
       />
+
+      <DeleteProjectModal
+        open={deleteProjectTarget !== null}
+        target={deleteProjectTarget ? { id: deleteProjectTarget.id, name: deleteProjectTarget.name } : null}
+        // 删的是当前正在看的项目 → 回工作台；否则留在原页只刷新
+        redirectTo={deleteProjectTarget?.id === currentPid ? "/projects" : undefined}
+        onClose={() => setDeleteProjectTarget(null)}
+        onDeleted={() => {
+          void mutate();
+          setOpen(false);
+        }}
+      />
+
+      <DeleteVersionModal
+        open={deleteVersionTarget !== null}
+        target={
+          deleteVersionTarget
+            ? { id: deleteVersionTarget.version.id, name: deleteVersionTarget.version.name }
+            : null
+        }
+        projectId={deleteVersionTarget?.projectId ?? ""}
+        // 删的方案正好是当前路由的项目 → 回项目落地页（自动转发/空状态）；否则只刷新
+        redirectTo={
+          deleteVersionTarget?.projectId === currentPid
+            ? `/projects/${deleteVersionTarget?.projectId}`
+            : undefined
+        }
+        onClose={() => setDeleteVersionTarget(null)}
+        onDeleted={() => {
+          void mutate();
+          setOpen(false);
+        }}
+      />
     </>
   );
 }
@@ -351,19 +396,15 @@ function EmptyProjectsState({ onCreate }: { onCreate: () => void }) {
 function VersionPanel({
   project,
   onCreateVersion,
-  createMode,
-  onCancelCreate,
-  onVersionCreated,
   onPickVersion,
   onRenameVersion,
+  onDeleteVersion,
 }: {
   project: SwitcherProject | null;
   onCreateVersion: () => void;
-  createMode: "none" | "version" | "project";
-  onCancelCreate: () => void;
-  onVersionCreated: () => Promise<void>;
   onPickVersion: (vid: string) => void;
   onRenameVersion: (v: SwitcherVersion) => void;
+  onDeleteVersion: (v: SwitcherVersion) => void;
 }) {
   const router = useRouter();
   if (!project) {
@@ -409,24 +450,35 @@ function VersionPanel({
                       seq v{v.seqNo} · {v.activeCount} 活跃快照
                     </span>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label={`${v.name} 菜单`}
-                        data-testid={`version-menu-${v.id}`}
-                        className="ml-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 hover:bg-ink-200 rounded-[var(--radius-sm)] shrink-0"
-                      >
-                        <MoreHorizontal size={13} strokeWidth={2.25} className="text-ink-700" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuItem onSelect={() => onRenameVersion(v)}>
-                        重命名方案
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {project.ownedByMe ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`${v.name} 菜单`}
+                          data-testid={`version-menu-${v.id}`}
+                          className="ml-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 hover:bg-ink-200 rounded-[var(--radius-sm)] shrink-0"
+                        >
+                          <MoreHorizontal size={13} strokeWidth={2.25} className="text-ink-700" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem onSelect={() => onRenameVersion(v)}>
+                          重命名方案
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          destructive
+                          className="gap-2"
+                          onSelect={() => onDeleteVersion(v)}
+                          data-testid={`version-delete-${v.id}`}
+                        >
+                          <Trash2 size={13} />
+                          删除方案
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
                   <ChevronRight
                     size={14}
                     className="text-ink-300 group-hover:text-ink-700 ml-1 shrink-0"
@@ -437,15 +489,8 @@ function VersionPanel({
           </ul>
         )}
       </div>
-      <div className="border-t border-ink-200 p-2 shrink-0">
-        {createMode === "version" ? (
-          <CreateVersionForm
-            projectId={project.id}
-            projectName={project.name}
-            onCancel={onCancelCreate}
-            onCreated={onVersionCreated}
-          />
-        ) : (
+      {project.ownedByMe ? (
+        <div className="border-t border-ink-200 p-2 shrink-0">
           <Button
             variant="secondary"
             size="sm"
@@ -455,161 +500,8 @@ function VersionPanel({
             <Plus size={14} />
             <span>在 {project.name} 下新建方案</span>
           </Button>
-        )}
-      </div>
-    </>
-  );
-}
-
-function CreateProjectForm({
-  onCancel,
-  onCreated,
-}: {
-  onCancel: () => void;
-  onCreated: () => Promise<void>;
-}) {
-  const router = useRouter();
-  const reset = useSwitcherStore((s) => s.reset);
-  const [name, setName] = useState("");
-  const [visibility, setVisibility] = useState<"private" | "team">("team");
-  const [firstVersionName, setFirstVersionName] = useState("");
-  const [pending, setPending] = useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim() || pending) return;
-    setPending(true);
-    try {
-      const result = await projectsApi.create({ name: name.trim(), visibility, firstVersionName });
-      const url = `/projects/${result.project.id}/versions/${result.version.id}`;
-      router.prefetch(url);
-      toast.success("项目已创建");
-      // 不 await onCreated()：mutate 在后台跑，立即跳转
-      void onCreated();
-      reset();
-      router.push(url);
-    } catch {
-      // toast 已在 apiFetch 里弹
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="flex-1 flex flex-col p-4 gap-3 overflow-y-auto">
-      <button
-        type="button"
-        onClick={onCancel}
-        className="self-start flex items-center gap-1 text-xs text-ink-500 hover:text-ink-900"
-      >
-        <ArrowLeft size={12} />
-        返回选择
-      </button>
-      <h3 className="text-base font-semibold">新建项目</h3>
-
-      <label className="text-sm">
-        <div className="text-ink-700 mb-1">项目名称</div>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="如：AI 投顾"
-          autoFocus
-          maxLength={128}
-          required
-        />
-      </label>
-
-      <fieldset>
-        <legend className="text-sm text-ink-700 mb-1">可见性</legend>
-        <div className="flex gap-3 text-sm">
-          {[
-            { v: "private", label: "私有（仅我）" },
-            { v: "team", label: "团队（所有人可见）" },
-          ].map((opt) => (
-            <label key={opt.v} className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="radio"
-                name="visibility"
-                value={opt.v}
-                checked={visibility === (opt.v as "private" | "team")}
-                onChange={() => setVisibility(opt.v as "private" | "team")}
-              />
-              <span>{opt.label}</span>
-            </label>
-          ))}
         </div>
-      </fieldset>
-
-      <label className="text-sm">
-        <div className="text-ink-700 mb-1">方案名称</div>
-        <Input
-          value={firstVersionName}
-          onChange={(e) => setFirstVersionName(e.target.value)}
-          placeholder="如：AI 选好股 4.0"
-          maxLength={64}
-          required
-        />
-      </label>
-
-      <div className="flex gap-2 mt-auto pt-3">
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          取消
-        </Button>
-        <Button type="submit" variant="primary" disabled={pending} className="flex-1">
-          {pending ? "创建中..." : "创建并进入"}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function CreateVersionForm({
-  projectId,
-  projectName,
-  onCancel,
-  onCreated,
-}: {
-  projectId: string;
-  projectName: string;
-  onCancel: () => void;
-  onCreated: () => Promise<void>;
-}) {
-  const [name, setName] = useState("");
-  const [pending, setPending] = useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim() || pending) return;
-    setPending(true);
-    try {
-      await versionsApi.create(projectId, { name: name.trim() });
-      toast.success(`方案「${name.trim()}」已建`);
-      setName("");
-      await onCreated();
-    } catch {
-      // toast already
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="flex items-center gap-2">
-      <Input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder={`在 ${projectName} 下新建方案名...`}
-        autoFocus
-        maxLength={64}
-        required
-        className="flex-1 min-w-0"
-      />
-      <Button type="submit" size="sm" disabled={pending} variant="primary" className="shrink-0">
-        {pending ? "..." : "创建"}
-      </Button>
-      <Button type="button" size="sm" variant="ghost" onClick={onCancel} className="shrink-0">
-        取消
-      </Button>
-    </form>
+      ) : null}
+    </>
   );
 }

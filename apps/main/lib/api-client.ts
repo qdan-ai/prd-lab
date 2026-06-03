@@ -93,8 +93,8 @@ export const projectsApi = {
 
   switcherView: () => apiFetch<SwitcherProject[]>("/api/v1/projects?view=switcher"),
 
-  create: async (body: { name: string; visibility?: "private" | "team"; firstVersionName?: string }) => {
-    const result = await apiFetch<{ project: ProjectRow; version: VersionRow }>(
+  create: async (body: { name: string; visibility?: "private" | "team" }) => {
+    const result = await apiFetch<{ project: ProjectRow }>(
       "/api/v1/projects",
       { method: "POST", body: JSON.stringify(body) },
     );
@@ -139,6 +139,14 @@ export const versionsApi = {
     });
     mutateKeys([`/api/v1/versions/${vid}`, "/api/v1/projects?view=switcher"]);
     return result;
+  },
+
+  archive: async (vid: string, pid: string) => {
+    await apiFetch<void>(`/api/v1/versions/${vid}`, { method: "DELETE" });
+    mutateKeys([
+      "/api/v1/projects?view=switcher",
+      `/api/v1/projects/${pid}/versions`,
+    ]);
   },
 };
 

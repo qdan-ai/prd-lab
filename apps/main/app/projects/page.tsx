@@ -2,6 +2,7 @@ import { and, count, desc, eq, isNull, max, or } from "drizzle-orm";
 import { db, projects, snapshots, versions } from "@prd-lab/core";
 import { auth, signOut } from "@/auth";
 import { CommandSwitcher } from "@/components/command-switcher";
+import { CreateDialog } from "@/components/create-dialog";
 import { GlobalHotkeys } from "@/components/global-hotkeys";
 import { ProjectsHeader } from "@/components/layout/projects-header";
 import { WorkbenchTitleBlock } from "@/components/workbench/title-block";
@@ -51,28 +52,8 @@ export default async function ProjectsListPage({
     )
     .orderBy(desc(projects.createdAt));
 
-  // 2) 每个项目的第一个活跃 version（跳转目标，不参与计数显示）
+  // 2) 每个项目活跃 snapshot 计数 + 最近一次时间（UI 文案"版本"指 snapshot）
   const projectIds = list.map((p) => p.id);
-  const versionRows =
-    projectIds.length === 0
-      ? []
-      : await db
-          .select({
-            id: versions.id,
-            projectId: versions.projectId,
-            seqNo: versions.seqNo,
-          })
-          .from(versions)
-          .where(isNull(versions.archivedAt))
-          .orderBy(versions.seqNo);
-  const firstVersionByProject = new Map<string, string>();
-  for (const v of versionRows) {
-    if (!firstVersionByProject.has(v.projectId)) {
-      firstVersionByProject.set(v.projectId, v.id);
-    }
-  }
-
-  // 3) 每个项目活跃 snapshot 计数 + 最近一次时间（UI 文案"版本"指 snapshot）
   const snapshotStats =
     projectIds.length === 0
       ? []
@@ -110,7 +91,7 @@ export default async function ProjectsListPage({
     name: p.name,
     visibility: p.visibility,
     createdAt: p.createdAt.toISOString(),
-    firstVersionId: firstVersionByProject.get(p.id) ?? null,
+    ownedByMe: p.ownerId === userId,
     snapshotCount: snapshotCountByProject.get(p.id) ?? 0,
     latestSnapshotAt: latestSnapshotByProject.get(p.id)?.toISOString() ?? null,
   });
@@ -146,6 +127,7 @@ export default async function ProjectsListPage({
       </main>
 
       <CommandSwitcher />
+      <CreateDialog />
       <GlobalHotkeys />
     </div>
   );

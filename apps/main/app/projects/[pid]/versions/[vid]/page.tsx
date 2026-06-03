@@ -8,6 +8,8 @@ import { SidebarLeft } from "@/components/sidebar-left";
 import { CanvasPlaceholder } from "@/components/layout/canvas-placeholder";
 import { SnapshotFileList } from "@/components/snapshot-file-list";
 import { CommandSwitcher } from "@/components/command-switcher";
+import { CreateDialog } from "@/components/create-dialog";
+import { DefaultOpenLeftSidebar } from "@/components/layout/default-open-left-sidebar";
 import { GlobalHotkeys } from "@/components/global-hotkeys";
 import { NoticeToast } from "@/components/notice-toast";
 
@@ -148,8 +150,15 @@ export default async function VersionPage({
         versionId={vid}
         viewingSnapshotSeq={viewingSnapshot?.seqNo ?? null}
       />
-      <SidebarLeft versionId={vid} ownedByMe={ownedByMe} />
+      <SidebarLeft
+        versionId={vid}
+        projectId={pid}
+        versionName={row.version.name}
+        ownedByMe={ownedByMe}
+      />
       <CommandSwitcher />
+      <CreateDialog />
+      <DefaultOpenLeftSidebar />
       <GlobalHotkeys />
       <NoticeToast notice={sp.notice} />
     </div>

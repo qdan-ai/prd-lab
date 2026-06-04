@@ -163,6 +163,7 @@ export function CommandSwitcher() {
           {/* 左列：项目 */}
           <div className="w-[240px] border-r border-ink-200 flex flex-col">
             <div className="flex-1 overflow-y-auto py-2">
+              <div className="px-3 py-1 text-xs font-semibold text-ink-700 select-none">项目</div>
               {isLoading ? (
                 <div className="px-2 space-y-2">
                   {Array.from({ length: 5 }, (_, i) => (
@@ -418,8 +419,8 @@ function VersionPanel({
   return (
     <>
       <div className="flex-1 overflow-y-auto py-2">
-        <div className="px-3 py-1 text-xs font-medium text-ink-500 select-none">
-          {project.name} 的方案
+        <div className="px-3 py-1 text-xs font-semibold text-ink-700 select-none">
+          方案
         </div>
         {project.versions.length === 0 ? (
           <div className="px-3 py-6 text-center text-xs text-ink-500">

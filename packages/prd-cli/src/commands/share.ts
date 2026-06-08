@@ -47,14 +47,15 @@ export function registerShareCommands(cli: CAC): void {
 
         // 决定密码：显式 --password > --random > 默认 random
         let password: string;
-        if (opts.password) {
-          if (opts.password.length < 6 || opts.password.length > 200) {
+        if (opts.password != null) {
+          // cac 会把纯数字 flag 解析为 number，强制转字符串再校验/提交
+          password = String(opts.password);
+          if (password.length < 6 || password.length > 200) {
             outputError(
               { status: 400, error_code: "validation_error", message: "password 长度需 6..200" },
               opts,
             );
           }
-          password = opts.password;
         } else {
           password = generateSharePassword();
         }

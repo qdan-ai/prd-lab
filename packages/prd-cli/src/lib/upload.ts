@@ -91,22 +91,31 @@ export async function resolveProjectVersion(
   if (!opts.autoCreate) {
     throw new Error(`项目 "${projectName}" 不存在`);
   }
-  const createRes = await client.postJson<{
-    project: { id: string; name: string };
-    version: { id: string; name: string };
-  }>("/api/v1/projects", {
-    name: projectName,
-    visibility: opts.visibility ?? "private",
-    firstVersionName: versionName,
-  });
-  if (createRes.status !== 201 || !createRes.data) {
+  // 建项目接口只建 project、返回 { project }，不建首个 version（项目与方案解耦）。
+  // 故建项目后需再单独建首个方案，复用「项目已存在、方案缺失」同一个建方案接口。
+  const createProjectRes = await client.postJson<{ project: { id: string; name: string } }>(
+    "/api/v1/projects",
+    { name: projectName, visibility: opts.visibility ?? "private" },
+  );
+  if (createProjectRes.status !== 201 || !createProjectRes.data) {
     throw new Error(
-      `创建项目失败 (HTTP ${createRes.status}: ${createRes.error?.error_code ?? "unknown"})`,
+      `创建项目失败 (HTTP ${createProjectRes.status}: ${createProjectRes.error?.error_code ?? "unknown"})`,
+    );
+  }
+  const newProjectId = createProjectRes.data.project.id;
+
+  const createVersionRes = await client.postJson<{ id: string }>(
+    `/api/v1/projects/${newProjectId}/versions`,
+    { name: versionName },
+  );
+  if (createVersionRes.status !== 201 || !createVersionRes.data) {
+    throw new Error(
+      `创建方案失败 (HTTP ${createVersionRes.status}: ${createVersionRes.error?.error_code ?? "unknown"})`,
     );
   }
   return {
-    projectId: createRes.data.project.id,
-    versionId: createRes.data.version.id,
+    projectId: newProjectId,
+    versionId: createVersionRes.data.id,
     projectName,
     versionName,
     createdProject: true,

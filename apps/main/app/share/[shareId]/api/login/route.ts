@@ -56,7 +56,7 @@ export async function POST(request: Request, { params }: Ctx) {
   cookieStore.set(shareCookieName(shareId), cookieValue, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: new URL(process.env.MAIN_ORIGIN ?? "http://localhost:3000").protocol === "https:",
     path: `/share/${shareId}`,
     maxAge: COOKIE_TTL_SECONDS,
   });

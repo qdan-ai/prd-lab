@@ -173,9 +173,11 @@ prd list snapshots <versionId> --json
 
 如果用户原话已经给了名字（如"建个项目叫 投顾 demo"），直接用。否则问一句："你想建的项目叫什么名字？"
 
-**步骤 2 · 确认可见性 + 首方案名**
+**步骤 2 · 确认可见性**
 
-默认就用 `visibility=private` + 首方案名 `v1`，不要每次都问。**但**如果用户原话提到"团队项目 / 给团队看"等就用 `team`；如果用户提到"方案 X" / "v2.0"等具体方案名就用上。
+默认就用 `visibility=private`，不要每次都问。**但**如果用户原话提到"团队项目 / 给团队看"等就用 `team`。
+
+> 注：建项目建的是**空项目**（不含任何方案）。方案会在用户首次 `prd push` 到该项目时自动建，或用户明确要建方案时走 C-2。
 
 **步骤 3 · 执行**
 
@@ -183,10 +185,10 @@ prd list snapshots <versionId> --json
 prd project create "<项目名>" --json
 ```
 
-需要 team 可见 + 自定义方案名时：
+需要 team 可见时：
 
 ```bash
-prd project create "<项目名>" --visibility team --first-version "<方案名>" --json
+prd project create "<项目名>" --visibility team --json
 ```
 
 **步骤 4 · 解析 JSON 回复**
@@ -194,15 +196,15 @@ prd project create "<项目名>" --visibility team --first-version "<方案名>"
 stdout 是一行 JSON 形如：
 
 ```json
-{"project":{"id":"<pid>","name":"<项目名>","visibility":"private"},"version":{"id":"<vid>","name":"v1"}}
+{"project":{"id":"<pid>","name":"<项目名>","visibility":"private"}}
 ```
 
 回给用户一句话确认（**不要**暴露 raw JSON 给用户）：
 
 ```
-✓ 已建项目「<项目名>」，附带方案「v1」。
+✓ 已建空项目「<项目名>」（暂无方案）。
 
-接下来可以 cd 到 demo 目录，跟我说"把这个 demo 推到 <项目名>"我就帮你发版给老板。
+接下来 cd 到 demo 目录，跟我说"把这个 demo 推到 <项目名>"，我会自动建好首个方案并发版给老板。
 ```
 
 ### C-2 · 新建方案（在已有项目下）

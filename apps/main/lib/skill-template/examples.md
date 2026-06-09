@@ -27,11 +27,11 @@
 [运行 prd push --json --change-note "调整顶栏布局 + 加暗色模式"]
 解析结果：snapshot.id = 7f3a..., seqNo = 4
 [运行 prd share create 7f3a... --random --rotate --json]
-解析结果：shareUrl = http://app.local/share/abc..., password = 458912
+解析结果：shareUrl = {{ENDPOINT}}/share/abc..., password = 458912
 
 ✓ 已推送到 PRD-Lab！
 
-  链接：http://app.local/share/abc123
+  链接：{{ENDPOINT}}/share/abc123
   密码：458912
 
 （密码只显示这一次，请保存好；建议私聊老板不要群发。）
@@ -97,11 +97,11 @@
 ✓ ~/.prdrc 存在 + endpoint 可达 + token 有效
 
 [运行 prd project create "AI 投顾" --json]
-解析结果：project.id = p_4f8a..., version.id = v_b3c1..., 默认方案 "v1"
+解析结果：project.id = p_4f8a...（空项目，暂无方案）
 
-✓ 已建项目「AI 投顾」，附带方案「v1」。
+✓ 已建空项目「AI 投顾」（暂无方案）。
 
-接下来可以 cd 到 demo 目录，跟我说"把这个 demo 推到 AI 投顾"我就帮你发版给老板。
+接下来 cd 到 demo 目录，跟我说"把这个 demo 推到 AI 投顾"，我会自动建好首个方案并发版给老板。
 ```
 
 ---
@@ -151,7 +151,7 @@
 [运行 prd share create <v3.snapshot.id> --random --rotate --json]
 ✓ 已为现有 v3 创建新的分享链接：
 
-  链接：http://app.local/share/def456
+  链接：{{ENDPOINT}}/share/def456
   密码：719284
 ```
 

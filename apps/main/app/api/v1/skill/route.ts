@@ -18,8 +18,8 @@ export const runtime = "nodejs";
  * GET /api/v1/skill
  *
  * 下发 PRD-Lab Publish Skill 的 zip 包（含 SKILL.md / README.md / examples.md / version.txt）。
- * SKILL.md 内的 {{ENDPOINT}} 占位符替换为请求时的主站 origin，让用户下载的 Skill
- * 默认就指向他刚才访问的主站（无需手改）。
+ * SKILL.md / examples.md 内的 {{ENDPOINT}} 占位符替换为请求时的主站 origin，让用户下载的
+ * Skill 默认就指向他刚才访问的主站（无需手改）。
  *
  * 鉴权：需登入（防爬虫；普通 PM 也只需点一下设置页按钮就能下载）。
  */
@@ -42,6 +42,7 @@ export async function GET(request: Request) {
   ]);
 
   const skillMd = skillRaw.replaceAll("{{ENDPOINT}}", endpoint);
+  const examplesMd = examplesRaw.replaceAll("{{ENDPOINT}}", endpoint);
 
   const archive = new ZipArchive({ zlib: { level: 9 } });
   const chunks: Buffer[] = [];
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
 
     archive.append(Buffer.from(skillMd, "utf8"), { name: "prd-publish/SKILL.md" });
     archive.append(Buffer.from(readmeRaw, "utf8"), { name: "prd-publish/README.md" });
-    archive.append(Buffer.from(examplesRaw, "utf8"), { name: "prd-publish/examples.md" });
+    archive.append(Buffer.from(examplesMd, "utf8"), { name: "prd-publish/examples.md" });
     archive.append(Buffer.from(versionRaw, "utf8"), { name: "prd-publish/version.txt" });
 
     archive.finalize().catch(rejectP);

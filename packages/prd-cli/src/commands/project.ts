@@ -14,20 +14,21 @@ interface ProjectRow {
 
 export function registerProjectCommands(cli: CAC): void {
   cli
-    .command("project create <name>", "新建项目（默认 visibility=private，含一个默认方案 v1）")
+    .command(
+      "project create <name>",
+      "新建项目（默认 visibility=private；建的是空项目，方案用 version create 另建、或首次 push 时自动建）",
+    )
     .option("--visibility <v>", "可见性：private | team", { default: "private" })
-    .option("--first-version <name>", "首个方案名", { default: "v1" })
     .option("--json", "输出单行 JSON")
     .action(
       async (
         name: string,
-        opts: OutputOptions & { visibility: string; firstVersion: string },
+        opts: OutputOptions & { visibility: string },
       ) => {
         const client = readClientOrExit();
-        const res = await client.postJson<{ project: ProjectRow; version: unknown }>(API.projects, {
+        const res = await client.postJson<{ project: ProjectRow }>(API.projects, {
           name,
           visibility: opts.visibility === "team" ? "team" : "private",
-          firstVersionName: opts.firstVersion,
         });
         if (res.status !== 201 || !res.data) {
           outputError({ status: res.status, ...res.error }, opts);
@@ -35,7 +36,8 @@ export function registerProjectCommands(cli: CAC): void {
         outputResult(
           res.data!,
           opts,
-          (d) => `[prd] ✓ 新建项目 "${d.project.name}" (${d.project.id})`,
+          (d) =>
+            `[prd] ✓ 新建空项目 "${d.project.name}" (${d.project.id})；推送 demo 时会自动建方案，或用 prd version create 另建`,
         );
       },
     );

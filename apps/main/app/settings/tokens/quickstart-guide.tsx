@@ -60,7 +60,10 @@ export function QuickstartGuide() {
 pnpm install                                  # 首次需要
 pnpm --filter @prd-lab/prd-cli build
 
-# macOS / Linux：软链到全局 PATH（首次可能要 sudo 密码）
+# 软链到全局 PATH（二选一）：
+# ① 免 sudo（推荐，若 ~/.local/bin 已在 PATH）
+ln -sf "$(pwd)/packages/prd-cli/dist/cli.js" ~/.local/bin/prd
+# ② 或装到 /usr/local/bin（需 sudo 密码）
 sudo ln -sf "$(pwd)/packages/prd-cli/dist/cli.js" /usr/local/bin/prd
 
 # 验证
@@ -162,7 +165,7 @@ prd --help`}</Cmd>
                 />
                 {`已推送到 PRD-Lab！
 
-  链接：http://app.local/share/abc123
+  链接：http://101.96.194.178/share/abc123
   密码：458912
 
 （密码仅显示这一次，建议私聊发老板不要群发）`}

@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db, projects, snapshots, versions } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
+import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 
@@ -67,6 +68,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
       snapshotId: snapshots.id,
       archivedAt: snapshots.archivedAt,
       ownerId: projects.ownerId,
+      visibility: projects.visibility,
     })
     .from(snapshots)
     .innerJoin(versions, eq(snapshots.versionId, versions.id))
@@ -75,7 +77,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     .limit(1);
   const row = rows[0];
   if (!row) return errorResponse("not_found");
-  if (row.ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(row, session)) return errorResponse("not_owner");
   if (row.archivedAt !== null) return errorResponse("snapshot_archived");
 
   try {
@@ -110,6 +112,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
     .select({
       archivedAt: snapshots.archivedAt,
       ownerId: projects.ownerId,
+      visibility: projects.visibility,
     })
     .from(snapshots)
     .innerJoin(versions, eq(snapshots.versionId, versions.id))
@@ -118,7 +121,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
     .limit(1);
   const row = rows[0];
   if (!row) return errorResponse("not_found");
-  if (row.ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(row, session)) return errorResponse("not_owner");
   if (row.archivedAt !== null) return errorResponse("snapshot_archived");
 
   await db

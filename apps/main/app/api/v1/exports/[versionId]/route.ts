@@ -18,6 +18,7 @@ import {
   versions,
 } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
+import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
@@ -41,6 +42,7 @@ export async function GET(_: Request, { params }: Ctx) {
       versionName: versions.name,
       projectName: projects.name,
       ownerId: projects.ownerId,
+      visibility: projects.visibility,
     })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
@@ -50,7 +52,7 @@ export async function GET(_: Request, { params }: Ctx) {
     .limit(1);
   const row = rows[0];
   if (!row) return errorResponse("not_found");
-  if (row.ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(row, session)) return errorResponse("not_owner");
 
   const snapRows = await db
     .select()

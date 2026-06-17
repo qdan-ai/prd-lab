@@ -2,6 +2,8 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { db, projects, versions } from "@prd-lab/core";
 import { auth, signOut } from "@/auth";
+import { isAdminName } from "@/lib/auth/admins";
+import { canManageProject } from "@/lib/api/owner-check";
 import { ProjectsHeader } from "@/components/layout/projects-header";
 import { ProjectEmptyState } from "@/components/project-empty-state";
 import { CommandSwitcher } from "@/components/command-switcher";
@@ -38,6 +40,12 @@ export default async function ProjectLandingPage({ params }: { params: Params })
   const canRead = project.visibility === "team" || ownedByMe;
   if (!canRead) notFound();
 
+  // 管理员可管理 team 项目（与 owner 同权显示编辑 UI）。规则统一走 canManageProject，与后端同源。
+  const canManage = canManageProject(
+    { ownerId: project.ownerId, visibility: project.visibility },
+    { userId: session.user.id, isAdmin: isAdminName(session.user.name) },
+  );
+
   const latest = await db
     .select({ id: versions.id })
     .from(versions)
@@ -58,7 +66,7 @@ export default async function ProjectLandingPage({ params }: { params: Params })
         }}
       />
       <main className="flex-1 flex flex-col">
-        <ProjectEmptyState projectId={pid} projectName={project.name} ownedByMe={ownedByMe} />
+        <ProjectEmptyState projectId={pid} projectName={project.name} ownedByMe={canManage} />
       </main>
       <CommandSwitcher />
       <CreateDialog />

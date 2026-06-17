@@ -6,7 +6,7 @@ import type { ApiClient } from "./api-client";
  * 项目/版本解析 + 自动建。
  *
  * lookup 走 `GET /api/v1/projects?view=switcher`（CLI 用户的视图 = 自己的 + team）。
- * 找不到时 autoCreate=true 会自动建 project 或 version（仅 owner 可建）。
+ * 找不到时 autoCreate=true 会自动建 project 或 version（owner 或 team 项目管理员可建）。
  */
 
 interface SwitcherVersion {
@@ -20,6 +20,9 @@ interface SwitcherProject {
   name: string;
   visibility: "private" | "team";
   ownedByMe: boolean;
+  /** owner 或 team 项目管理员 → 可上传 / 建方案（与后端 canManageProject 同口径）。
+   *  optional：旧主站（S18 之前）switcher 响应无此字段，消费方需兜底到 ownedByMe。 */
+  canManage?: boolean;
   versions: SwitcherVersion[];
 }
 
@@ -51,8 +54,9 @@ export async function resolveProjectVersion(
 
   const project = list.data.find((p) => p.name === projectName);
   if (project) {
-    if (!project.ownedByMe) {
-      throw new Error(`项目 "${projectName}" 非你拥有，无权上传`);
+    // canManage 兜底 ownedByMe：CLI 若早于主站升级，旧主站 switcher 无 canManage 字段，回退到 ownedByMe 不误拦 owner
+    if (!(project.canManage ?? project.ownedByMe)) {
+      throw new Error(`项目 "${projectName}" 非你拥有（也非团队管理员），无权上传`);
     }
     const version = project.versions.find((v) => v.name === versionName);
     if (version) {

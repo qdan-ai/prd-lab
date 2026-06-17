@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db, projects, versions } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
+import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION, PG_LOCK_NOT_AVAILABLE } from "@/lib/api/pg-errors";
 import { insertReturning } from "@/lib/db/insert-returning";
@@ -44,14 +45,14 @@ export async function POST(request: Request, { params }: Ctx) {
   const parsed = parseCreateBody(body);
   if (!parsed.ok) return errorResponse("validation_error", parsed.message);
 
-  // 仅 owner 可建 version
+  // owner 或管理员（team 项目）可建 version
   const projRows = await db
-    .select({ ownerId: projects.ownerId })
+    .select({ ownerId: projects.ownerId, visibility: projects.visibility })
     .from(projects)
     .where(and(eq(projects.id, pid), isNull(projects.archivedAt)))
     .limit(1);
   if (!projRows[0]) return errorResponse("not_found");
-  if (projRows[0].ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(projRows[0], session)) return errorResponse("not_owner");
 
   try {
     const result = await db.transaction(async (tx) => {

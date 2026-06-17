@@ -1,5 +1,20 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db, projects, versions } from "@prd-lab/core";
+import type { Session } from "@/lib/api/auth-guard"; // import type 避免运行时循环依赖
+
+/**
+ * 项目可管理判定（mutation 鉴权统一入口）。
+ * - owner 恒真
+ * - 管理员（isAdmin）且项目 visibility==="team" 为真
+ * - 他人 private 项目：管理员不可管（与可见性过滤正交，admin 也读不到）
+ */
+export function canManageProject(
+  target: { ownerId: string; visibility: "private" | "team" },
+  session: Pick<Session, "userId" | "isAdmin">,
+): boolean {
+  if (target.ownerId === session.userId) return true;
+  return session.isAdmin === true && target.visibility === "team";
+}
 
 /**
  * 判断指定项目是否归属指定用户（owner）。

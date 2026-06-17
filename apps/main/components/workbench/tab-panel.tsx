@@ -24,6 +24,8 @@ export interface WorkbenchProject {
   visibility: "private" | "team";
   createdAt: string;
   ownedByMe: boolean;
+  /** 可管理（owner 或 team 项目管理员）→ 控制卡片 ⋯ 删除菜单显隐。 */
+  canManage: boolean;
   snapshotCount: number;
   latestSnapshotAt: string | null;
 }
@@ -79,7 +81,7 @@ function ProjectCard({ project, onDelete }: { project: WorkbenchProject; onDelet
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <VisibilityChip visibility={project.visibility} />
-            {project.ownedByMe ? (
+            {project.canManage ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button

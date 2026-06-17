@@ -201,7 +201,7 @@ export function CommandSwitcher() {
                         <span className="text-[10px] text-ink-500 shrink-0 ml-2">
                           {p.versions.length} 方案
                         </span>
-                        {p.ownedByMe ? (
+                        {p.canManage ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button
@@ -218,21 +218,24 @@ export function CommandSwitcher() {
                               <DropdownMenuItem onSelect={() => setRenameProjectTarget(p)}>
                                 重命名项目
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onSelect={async () => {
-                                  const next = p.visibility === "team" ? "private" : "team";
-                                  try {
-                                    await projectsApi.rename(p.id, { visibility: next });
-                                    toast.success(next === "team" ? "已改为团队可见" : "已改为私有");
-                                    await mutate();
-                                    router.refresh();
-                                  } catch {
-                                    // toast 已自动
-                                  }
-                                }}
-                              >
-                                {p.visibility === "team" ? "改为私有" : "改为团队可见"}
-                              </DropdownMenuItem>
+                              {/* 可见性改动 = owner-only（后端 PATCH 已收紧）；管理员对他人 team 项目不显示此项，避免点了必 403 的死入口 */}
+                              {p.ownedByMe ? (
+                                <DropdownMenuItem
+                                  onSelect={async () => {
+                                    const next = p.visibility === "team" ? "private" : "team";
+                                    try {
+                                      await projectsApi.rename(p.id, { visibility: next });
+                                      toast.success(next === "team" ? "已改为团队可见" : "已改为私有");
+                                      await mutate();
+                                      router.refresh();
+                                    } catch {
+                                      // toast 已自动
+                                    }
+                                  }}
+                                >
+                                  {p.visibility === "team" ? "改为私有" : "改为团队可见"}
+                                </DropdownMenuItem>
+                              ) : null}
                               <DropdownMenuItem
                                 destructive
                                 className="gap-2"
@@ -451,7 +454,7 @@ function VersionPanel({
                       seq v{v.seqNo} · {v.activeCount} 活跃快照
                     </span>
                   </div>
-                  {project.ownedByMe ? (
+                  {project.canManage ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
@@ -490,7 +493,7 @@ function VersionPanel({
           </ul>
         )}
       </div>
-      {project.ownedByMe ? (
+      {project.canManage ? (
         <div className="border-t border-ink-200 p-2 shrink-0">
           <Button
             variant="secondary"

@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, isNull, max, or, sql as drizzleSql } from "drizzle-orm";
 import { db, projects, snapshots, versions, users } from "@prd-lab/core";
-import { getSession } from "@/lib/api/auth-guard";
+import { getSession, type Session } from "@/lib/api/auth-guard";
+import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_FOREIGN_KEY_VIOLATION, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 import { insertReturning } from "@/lib/db/insert-returning";
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   if (url.searchParams.get("view") === "switcher") {
-    return Response.json(await getSwitcherView(session.userId));
+    return Response.json(await getSwitcherView(session));
   }
   return Response.json(await getProjectList(session.userId));
 }
@@ -101,7 +102,8 @@ async function getProjectList(userId: string) {
  * 返回 [{ id, name, visibility, ownedByMe, versions: [...] }]
  * S1 因无 snapshot，latest_snapshot / current_snapshot_seq / active_count 暂为 null/0
  */
-async function getSwitcherView(userId: string) {
+async function getSwitcherView(session: Pick<Session, "userId" | "isAdmin">) {
+  const userId = session.userId;
   const visibleProjects = await db
     .select({
       id: projects.id,
@@ -219,6 +221,7 @@ async function getSwitcherView(userId: string) {
     name: p.name,
     visibility: p.visibility,
     ownedByMe: p.ownerId === userId,
+    canManage: canManageProject(p, session),
     versions: (versionsByProject.get(p.id) ?? []).map((v) => ({
       id: v.id,
       name: v.name,

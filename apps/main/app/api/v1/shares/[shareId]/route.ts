@@ -7,7 +7,8 @@ import {
   snapshots,
   versions,
 } from "@prd-lab/core";
-import { getSession } from "@/lib/api/auth-guard";
+import { getSession, type Session } from "@/lib/api/auth-guard";
+import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 
 type Ctx = { params: Promise<{ shareId: string }> };
@@ -32,7 +33,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
   const parsed = parsePatchBody(body);
   if (!parsed.ok) return errorResponse("validation_error", parsed.message);
 
-  const lookup = await loadShareForOwner(shareId, session.userId);
+  const lookup = await loadShareForOwner(shareId, session);
   if (lookup.kind === "error") return errorResponse(lookup.code);
 
   const setObj: Record<string, unknown> = {
@@ -74,7 +75,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
   if (!session) return errorResponse("unauthorized");
   const { shareId } = await params;
 
-  const lookup = await loadShareForOwner(shareId, session.userId);
+  const lookup = await loadShareForOwner(shareId, session);
   if (lookup.kind === "error") return errorResponse(lookup.code);
 
   await db
@@ -90,12 +91,16 @@ type LoadResult =
   | { kind: "ok"; snapshotId: string }
   | { kind: "error"; code: "share_not_found" | "share_revoked" | "not_owner" };
 
-async function loadShareForOwner(shareId: string, userId: string): Promise<LoadResult> {
+async function loadShareForOwner(
+  shareId: string,
+  session: Pick<Session, "userId" | "isAdmin">,
+): Promise<LoadResult> {
   const rows = await db
     .select({
       snapshotId: shareLinks.snapshotId,
       revokedAt: shareLinks.revokedAt,
       ownerId: projects.ownerId,
+      visibility: projects.visibility,
     })
     .from(shareLinks)
     .innerJoin(snapshots, eq(shareLinks.snapshotId, snapshots.id))
@@ -105,7 +110,7 @@ async function loadShareForOwner(shareId: string, userId: string): Promise<LoadR
     .limit(1);
   const row = rows[0];
   if (!row) return { kind: "error", code: "share_not_found" };
-  if (row.ownerId !== userId) return { kind: "error", code: "not_owner" };
+  if (!canManageProject(row, session)) return { kind: "error", code: "not_owner" };
   if (row.revokedAt !== null) return { kind: "error", code: "share_revoked" };
   return { kind: "ok", snapshotId: row.snapshotId };
 }

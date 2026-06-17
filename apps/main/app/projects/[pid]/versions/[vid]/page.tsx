@@ -2,6 +2,8 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { db, projects, snapshots, versions } from "@prd-lab/core";
 import { auth, signOut } from "@/auth";
+import { isAdminName } from "@/lib/auth/admins";
+import { canManageProject } from "@/lib/api/owner-check";
 import { TopToolbar } from "@/components/layout/top-toolbar";
 import { BottomBar } from "@/components/layout/bottom-bar";
 import { SidebarLeft } from "@/components/sidebar-left";
@@ -59,7 +61,11 @@ export default async function VersionPage({
     row.project.visibility === "team" || row.project.ownerId === session.user.id;
   if (!canRead) notFound();
 
-  const ownedByMe = row.project.ownerId === session.user.id;
+  // 管理员可管理 team 项目（与 owner 同权：上传/删快照/分享/导出）。规则统一走 canManageProject，与后端同源。
+  const canManage = canManageProject(
+    { ownerId: row.project.ownerId, visibility: row.project.visibility },
+    { userId: session.user.id, isAdmin: isAdminName(session.user.name) },
+  );
 
   const seqMatch = typeof sp.snapshot === "string" ? /^v(\d+)$/.exec(sp.snapshot) : null;
   const targetSeq = seqMatch ? Number(seqMatch[1]) : null;
@@ -124,7 +130,7 @@ export default async function VersionPage({
         viewingSnapshotVersionLabel={viewingSnapshot?.versionLabel ?? null}
         versionId={vid}
         snapshotId={viewingSnapshot?.id ?? null}
-        ownedByMe={ownedByMe}
+        ownedByMe={canManage}
         userName={session.user.name ?? "未命名"}
         logoutAction={async () => {
           "use server";
@@ -142,7 +148,7 @@ export default async function VersionPage({
           <CanvasPlaceholder
             versionName={row.version.name}
             versionId={vid}
-            ownedByMe={ownedByMe}
+            ownedByMe={canManage}
           />
         )}
       </main>
@@ -154,7 +160,7 @@ export default async function VersionPage({
         versionId={vid}
         projectId={pid}
         versionName={row.version.name}
-        ownedByMe={ownedByMe}
+        ownedByMe={canManage}
       />
       <CommandSwitcher />
       <CreateDialog />

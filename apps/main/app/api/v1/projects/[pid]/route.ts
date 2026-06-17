@@ -1,6 +1,7 @@
 import { and, eq, isNull, or } from "drizzle-orm";
 import { db, projects } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
+import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 
@@ -44,14 +45,19 @@ export async function PATCH(request: Request, { params }: Ctx) {
     return errorResponse("validation_error", "no editable fields");
   }
 
-  // 先校验 owner（必须 owner 才能改）
+  // 校验管理权（owner 恒可；管理员可管 team 项目）
   const ownerRows = await db
-    .select({ ownerId: projects.ownerId })
+    .select({ ownerId: projects.ownerId, visibility: projects.visibility })
     .from(projects)
     .where(and(eq(projects.id, pid), isNull(projects.archivedAt)))
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (ownerRows[0].ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
+  // 可见性改动收紧为 owner-only：管理员可改 team 项目的 name，但不得改可见性。
+  // 否则 admin 能把他人 team 项目改成 private，改完后自己既读不到也管不了（canManage 只放行 team），不可逆。
+  if (update.fields.visibility !== undefined && ownerRows[0].ownerId !== session.userId) {
+    return errorResponse("not_owner", "仅项目所有者可修改可见性");
+  }
 
   try {
     await db
@@ -79,12 +85,12 @@ export async function DELETE(_: Request, { params }: Ctx) {
   const { pid } = await params;
 
   const ownerRows = await db
-    .select({ ownerId: projects.ownerId })
+    .select({ ownerId: projects.ownerId, visibility: projects.visibility })
     .from(projects)
     .where(and(eq(projects.id, pid), isNull(projects.archivedAt)))
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (ownerRows[0].ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
 
   await db
     .update(projects)

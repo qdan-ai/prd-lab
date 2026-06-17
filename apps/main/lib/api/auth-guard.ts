@@ -2,12 +2,15 @@ import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { apiTokens, db, hashApiToken, users } from "@prd-lab/core";
 import { auth } from "@/auth";
+import { isAdminName } from "@/lib/auth/admins";
 
 export type Session = {
   userId: string;
   userName: string;
   /** 走 Bearer api_token 路径时为 token id；NextAuth 浏览器路径下不存在。 */
   tokenId?: string;
+  /** 登入姓名命中 AUTH_ADMIN_NAMES → true，可管理所有 team 项目。 */
+  isAdmin: boolean;
 };
 
 /**
@@ -23,7 +26,11 @@ export async function getSession(): Promise<Session | null> {
 
   const session = await auth();
   if (!session?.user?.id || !session.user.name) return null;
-  return { userId: session.user.id, userName: session.user.name };
+  return {
+    userId: session.user.id,
+    userName: session.user.name,
+    isAdmin: isAdminName(session.user.name),
+  };
 }
 
 async function tryBearerSession(): Promise<Session | null> {
@@ -64,5 +71,10 @@ async function tryBearerSession(): Promise<Session | null> {
     .set({ lastUsedAt: new Date() })
     .where(eq(apiTokens.id, row.tokenId));
 
-  return { userId: row.userId, userName: row.userName, tokenId: row.tokenId };
+  return {
+    userId: row.userId,
+    userName: row.userName,
+    tokenId: row.tokenId,
+    isAdmin: isAdminName(row.userName),
+  };
 }

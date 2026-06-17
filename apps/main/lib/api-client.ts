@@ -335,6 +335,8 @@ export type SwitcherProject = {
   name: string;
   visibility: "private" | "team";
   ownedByMe: boolean;
+  /** 是否可管理（owner 或 team 项目管理员）→ 控制 ⋯ 菜单/删除/改名/新建方案显隐。 */
+  canManage: boolean;
   versions: Array<{
     id: string;
     name: string;

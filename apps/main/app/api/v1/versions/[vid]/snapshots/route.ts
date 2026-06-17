@@ -15,6 +15,7 @@ import {
 } from "@prd-lab/core";
 import { RENDERERS } from "@prd-lab/core/renderers";
 import { getSession } from "@/lib/api/auth-guard";
+import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { insertReturning } from "@/lib/db/insert-returning";
 
@@ -80,12 +81,13 @@ export async function POST(request: Request, { params }: Ctx) {
   if (!session) return errorResponse("unauthorized");
   const { vid } = await params;
 
-  // 1. owner 校验
+  // 1. 管理权校验（owner 或 team 项目管理员）
   const versionRows = await db
     .select({
       versionId: versions.id,
       projectId: versions.projectId,
       ownerId: projects.ownerId,
+      visibility: projects.visibility,
     })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
@@ -93,7 +95,7 @@ export async function POST(request: Request, { params }: Ctx) {
     .limit(1);
   const versionRow = versionRows[0];
   if (!versionRow) return errorResponse("not_found");
-  if (versionRow.ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(versionRow, session)) return errorResponse("not_owner");
 
   // 2. Idempotency-Key 24h
   const idempotencyKey = request.headers.get("Idempotency-Key");

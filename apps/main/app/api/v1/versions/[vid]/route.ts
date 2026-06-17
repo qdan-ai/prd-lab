@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db, projects, versions } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
+import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 
@@ -65,9 +66,9 @@ export async function PATCH(request: Request, { params }: Ctx) {
     return errorResponse("validation_error", "invalid name");
   }
 
-  // owner 校验
+  // 管理权校验（owner 或 team 项目管理员）
   const ownerRows = await db
-    .select({ ownerId: projects.ownerId })
+    .select({ ownerId: projects.ownerId, visibility: projects.visibility })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(
@@ -79,7 +80,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     )
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (ownerRows[0].ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
 
   try {
     await db
@@ -107,7 +108,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
   const { vid } = await params;
 
   const ownerRows = await db
-    .select({ ownerId: projects.ownerId })
+    .select({ ownerId: projects.ownerId, visibility: projects.visibility })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(
@@ -119,7 +120,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
     )
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (ownerRows[0].ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
 
   await db
     .update(versions)

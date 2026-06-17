@@ -9,6 +9,7 @@ import {
   versions,
 } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
+import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 
@@ -25,14 +26,18 @@ export async function GET(_: Request, { params }: Ctx) {
   const { sid } = await params;
 
   const ownerRows = await db
-    .select({ ownerId: projects.ownerId, archivedAt: snapshots.archivedAt })
+    .select({
+      ownerId: projects.ownerId,
+      visibility: projects.visibility,
+      archivedAt: snapshots.archivedAt,
+    })
     .from(snapshots)
     .innerJoin(versions, eq(snapshots.versionId, versions.id))
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(and(eq(snapshots.id, sid), isNull(versions.archivedAt), isNull(projects.archivedAt)))
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (ownerRows[0].ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
   if (ownerRows[0].archivedAt !== null) return errorResponse("snapshot_archived");
 
   const rows = await db
@@ -76,14 +81,18 @@ export async function POST(request: Request, { params }: Ctx) {
   if (!parsed.ok) return errorResponse("validation_error", parsed.message);
 
   const ownerRows = await db
-    .select({ ownerId: projects.ownerId, archivedAt: snapshots.archivedAt })
+    .select({
+      ownerId: projects.ownerId,
+      visibility: projects.visibility,
+      archivedAt: snapshots.archivedAt,
+    })
     .from(snapshots)
     .innerJoin(versions, eq(snapshots.versionId, versions.id))
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(and(eq(snapshots.id, sid), isNull(versions.archivedAt), isNull(projects.archivedAt)))
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (ownerRows[0].ownerId !== session.userId) return errorResponse("not_owner");
+  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
   if (ownerRows[0].archivedAt !== null) return errorResponse("snapshot_archived");
 
   const id = generateShareId();

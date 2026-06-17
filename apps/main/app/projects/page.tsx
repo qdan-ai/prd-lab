@@ -1,6 +1,8 @@
 import { and, count, desc, eq, isNull, max, or } from "drizzle-orm";
 import { db, projects, snapshots, versions } from "@prd-lab/core";
 import { auth, signOut } from "@/auth";
+import { isAdminName } from "@/lib/auth/admins";
+import { canManageProject } from "@/lib/api/owner-check";
 import { CommandSwitcher } from "@/components/command-switcher";
 import { CreateDialog } from "@/components/create-dialog";
 import { GlobalHotkeys } from "@/components/global-hotkeys";
@@ -30,6 +32,7 @@ export default async function ProjectsListPage({
 
   const userId = session.user.id;
   const userName = session.user.name ?? "未命名";
+  const isAdmin = isAdminName(session.user.name);
 
   const params = await searchParams;
   const tab: WorkbenchTab = params.tab === "team" ? "team" : "mine";
@@ -92,6 +95,7 @@ export default async function ProjectsListPage({
     visibility: p.visibility,
     createdAt: p.createdAt.toISOString(),
     ownedByMe: p.ownerId === userId,
+    canManage: canManageProject(p, { userId, isAdmin }),
     snapshotCount: snapshotCountByProject.get(p.id) ?? 0,
     latestSnapshotAt: latestSnapshotByProject.get(p.id)?.toISOString() ?? null,
   });

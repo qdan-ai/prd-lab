@@ -14,14 +14,15 @@ import {
  *
  * cookie 名：`prd_share_${shareId}`（path=/share/${shareId}，HttpOnly，SameSite=Lax）
  *
- * 校验流程（每请求）：
- *   1. cookie 缺失 / hmac 不通 / 过期 → invalid
- *   2. cookie.sid !== shareId → invalid（防 cookie 跨 share 注入）
- *   3. share_links 不存在 → not_found
- *   4. share_links.revoked_at NOT NULL → revoked
- *   5. cookie.pv !== db.password_version → invalid（密码已重置）
- *   6. snapshot/version/project archived → not_found
- *   → ok：返回 share 元数据 + cookie payload
+ * 校验流程（每请求，顺序不可乱）：
+ *   1. 查 DB share 行（含 passwordHash）
+ *   2. 不存在 / snapshot/version/project archived → not_found
+ *   3. revoked_at NOT NULL → revoked（先于无密码放行；撤销的无密码链接也要 410）
+ *   4. passwordHash 为 null（无密码）→ ok（完全不读 cookie）
+ *   5. 有密码：cookie 缺失 / hmac 不通 / 过期 → invalid
+ *   6.        cookie.sid !== shareId → invalid（防 cookie 跨 share 注入）
+ *   7.        cookie.pv !== db.password_version → invalid（密码已重置）
+ *   8.        → ok：返回 share 元数据 + cookie payload
  */
 export type ShareSessionOk = {
   kind: "ok";
@@ -44,22 +45,12 @@ export function shareCookieName(shareId: string): string {
 }
 
 export async function getShareSession(shareId: string): Promise<ShareSessionResult> {
-  const cookieStore = await cookies();
-  const cookie = cookieStore.get(shareCookieName(shareId));
-  if (!cookie) return { kind: "invalid", reason: "no_cookie" };
-
-  const verify = verifyShareCookie(cookie.value);
-  if (!verify.valid) {
-    return { kind: "invalid", reason: verify.expired ? "expired" : verify.reason };
-  }
-  if (verify.payload.sid !== shareId) {
-    return { kind: "invalid", reason: "share_id_mismatch" };
-  }
-
+  // 1. 查 DB share 行（含 passwordHash，无密码判定的唯一依据）
   const rows = await db
     .select({
       id: shareLinks.id,
       snapshotId: shareLinks.snapshotId,
+      passwordHash: shareLinks.passwordHash,
       passwordVersion: shareLinks.passwordVersion,
       revokedAt: shareLinks.revokedAt,
       snapshotArchivedAt: snapshots.archivedAt,
@@ -71,13 +62,40 @@ export async function getShareSession(shareId: string): Promise<ShareSessionResu
     .where(and(eq(shareLinks.id, shareId), isNull(versions.archivedAt), isNull(projects.archivedAt)))
     .limit(1);
   const row = rows[0];
+
+  // 2. 不存在 / snapshot archived → not_found
   if (!row) return { kind: "not_found" };
-  if (row.revokedAt !== null) return { kind: "revoked" };
   if (row.snapshotArchivedAt !== null) return { kind: "not_found" };
+
+  // 3. 已撤销 → revoked（必须先于无密码放行，撤销的无密码链接也要拦）
+  if (row.revokedAt !== null) return { kind: "revoked" };
+
+  // 4. 无密码 → 直接放行，完全不读 cookie
+  if (row.passwordHash === null) {
+    return { kind: "ok", shareId, snapshotId: row.snapshotId, pv: row.passwordVersion };
+  }
+
+  // 5. 有密码：读 cookie，无 / 签名失败 / 过期 → invalid
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(shareCookieName(shareId));
+  if (!cookie) return { kind: "invalid", reason: "no_cookie" };
+
+  const verify = verifyShareCookie(cookie.value);
+  if (!verify.valid) {
+    return { kind: "invalid", reason: verify.expired ? "expired" : verify.reason };
+  }
+
+  // 6. cookie.sid !== shareId → invalid（防 cookie 跨 share 注入，不可删）
+  if (verify.payload.sid !== shareId) {
+    return { kind: "invalid", reason: "share_id_mismatch" };
+  }
+
+  // 7. cookie.pv !== db.password_version → invalid（密码已重置）
   if (row.passwordVersion !== verify.payload.pv) {
     return { kind: "invalid", reason: "pv_mismatch" };
   }
 
+  // 8. 全部通过 → ok
   return {
     kind: "ok",
     shareId,

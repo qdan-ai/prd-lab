@@ -42,6 +42,10 @@ export async function POST(request: Request, { params }: Ctx) {
   const share = shareRows[0];
   if (!share) return errorResponse("share_not_found");
   if (share.revokedAt !== null) return errorResponse("share_revoked");
+  // 无密码链接不应走登录流程：verifyPassword(plain, null) 会崩，须早返回。
+  if (share.passwordHash === null) {
+    return errorResponse("validation_error", "该链接无需密码");
+  }
 
   const ok = await verifyPassword(parsed.password, share.passwordHash);
   if (!ok) {

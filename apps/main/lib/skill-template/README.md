@@ -1,6 +1,6 @@
 # PRD-Lab Publish Skill
 
-让 Claude Code 帮你一句话把当前 demo 发到 PRD-Lab，并把带密码的分享链接给你。
+让 Claude Code 帮你一句话把当前 demo 发到 PRD-Lab，并把分享链接给你（默认无密码，可选加密码）。
 
 ## 安装
 
@@ -37,7 +37,7 @@ unzip -o prd-publish-skill.zip -d ~/.claude/skills/
 ~/.claude/skills/prd-publish/
 ├── SKILL.md       # 主指令书（Claude 加载用）
 ├── README.md      # 本文件
-├── examples.md    # 6 个对话样例
+├── examples.md    # 7 个对话样例
 └── version.txt    # 当前 Skill 版本
 ```
 
@@ -61,7 +61,7 @@ unzip -o prd-publish-skill.zip -d ~/.claude/skills/
 
 | 你说 | Claude 自动跑 |
 |---|---|
-| "把这个 demo 推到 PRD-Lab" | 列项目让你选 → 上传 → 生成带 6 位密码分享链接 |
+| "把这个 demo 推到 PRD-Lab" | 列项目让你选 → 上传 → 生成无密码分享链接（需要可加密码） |
 | "上次那个项目改了什么" | 列方案的版本时间轴 + 改动说明 |
 | "建一个 PRD-Lab 项目叫 X" | 直接跑 `prd project create` |
 | "把试验场项目归档" | 二次确认后 archive |
@@ -75,7 +75,7 @@ unzip -o prd-publish-skill.zip -d ~/.claude/skills/
 ## 已知限制
 
 - 仅支持 Claude Code（Cursor / Cline 不支持 Skill，但可以让 AI 直接用 bash 调 `prd` 命令，效果差不多）
-- 6 位数字密码组合 100 万种，配合后端 5/15min 限流和撤销机制使用；如需更强密码 AI 会用 `--password "<自定义>"` 替代
+- 分享链接默认无密码，任何拿到链接的人都能查看；需要保护时让 AI 加 `--random`（6 位数字密码）或 `--password "<自定义>"`（6-200 字符）
 
 ## 反馈
 

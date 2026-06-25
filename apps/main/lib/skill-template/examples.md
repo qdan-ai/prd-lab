@@ -1,6 +1,6 @@
 # 对话样例
 
-下面是 6 个真实场景的对话样例（含发版三连、未登录引导、查询、新建项目、归档确认、撞车强制），演示 Claude 在这个 Skill 加载后会怎么回应。
+下面是 7 个真实场景的对话样例（含发版三连、未登录引导、查询、新建项目、归档确认、撞车强制、加密码），演示 Claude 在这个 Skill 加载后会怎么回应。
 
 > 除样例 2 外，所有样例都假设本会话已跑过 `prd doctor` 且通过。每个新会话首次触发本 skill 时，Claude 都会先跑一次 doctor（详见 SKILL.md "前置假设"段）。为简洁起见，示例只在样例 4 演示了 doctor，其他样例省略了重复的 doctor 步骤。
 
@@ -26,15 +26,14 @@
 ```
 [运行 prd push --json --change-note "调整顶栏布局 + 加暗色模式"]
 解析结果：snapshot.id = 7f3a..., seqNo = 4
-[运行 prd share create 7f3a... --random --rotate --json]
-解析结果：shareUrl = {{ENDPOINT}}/share/abc..., password = 458912
+[运行 prd share create 7f3a... --rotate --json]
+解析结果：shareUrl = {{ENDPOINT}}/share/abc..., password = null（无密码）
 
 ✓ 已推送到 PRD-Lab！
 
   链接：{{ENDPOINT}}/share/abc123
-  密码：458912
 
-（密码只显示这一次，请保存好；建议私聊老板不要群发。）
+（任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
 ```
 
 ---
@@ -138,7 +137,7 @@
 解析结果：duplicateOfActive = true, 命中现有快照 v3
 
 这次内容跟上次（v3）一模一样没有改动。你是想：
-  A) 给现有 v3 创建新的分享链接（重新生成密码）
+  A) 给现有 v3 创建新的分享链接
   B) 强制新建一个 v4（即使内容相同）
 
 通常选 A 就够了。要 B 的话告诉我。
@@ -148,12 +147,36 @@
 
 **Claude**：
 ```
-[运行 prd share create <v3.snapshot.id> --random --rotate --json]
+[运行 prd share create <v3.snapshot.id> --rotate --json]
 ✓ 已为现有 v3 创建新的分享链接：
 
   链接：{{ENDPOINT}}/share/def456
-  密码：719284
+
+（任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
 ```
+
+---
+
+## 样例 7：给链接加密码
+
+**用户**：刚才那个 demo 再发一版，这次加个密码
+
+**Claude**：
+```
+[运行 prd push --json --change-note "..."]
+解析结果：snapshot.id = 9c1b..., seqNo = 5
+[运行 prd share create 9c1b... --random --rotate --json]
+解析结果：shareUrl = {{ENDPOINT}}/share/ghi789, password = 458912
+
+✓ 已推送到 PRD-Lab（带密码）！
+
+  链接：{{ENDPOINT}}/share/ghi789
+  密码：458912
+
+（密码只显示这一次，请保存好；建议私聊老板不要群发。）
+```
+
+> 想用自定义密码而非随机的，把 `--random` 换成 `--password "<你的密码>"`（6-200 字符）。
 
 ---
 
@@ -161,4 +184,4 @@
 
 - 这些示例里 ID 都是占位（`7f3a...` / `p_xyz789` 等），实际跑时 Claude 会用真实 ID
 - 进度信息（`[运行 ...]`、`解析结果：...`）是为了让你看明白 Claude 内部在跑什么，实际对话里 Claude 通常直接给结果
-- 密码丢了只能 `prd share create --rotate` 重置（后端不存明文）
+- 带密码的链接密码丢了只能 `prd share create --random --rotate` 重置（后端不存明文）；无密码链接没有密码可丢

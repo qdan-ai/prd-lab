@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ExternalLink, FileCode, FileImage, FileText, FileVideo, File } from "lucide-react";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, type ApiError } from "@/lib/api-client";
 
 interface Props {
   shareId: string;
@@ -23,6 +23,14 @@ type FileRow = {
  * - 拉 GET /share/[shareId]/api/files 取文件清单
  * - 点击 → POST /share/[shareId]/api/preview-token 签短期 token → window.open
  */
+/**
+ * 访客原本在看「无密码」链接，owner 中途加了密码 → 访客所有访客 API 返回 401
+ * （error_code === "unauthorized"）。此时跳登录页让访客输密码，而非原地报错卡死。
+ */
+function isUnauthorized(err: unknown): boolean {
+  return (err as ApiError | null)?.error_code === "unauthorized";
+}
+
 export function ShareFileList({ shareId, snapshotId, entryHtmlPath }: Props) {
   const [files, setFiles] = useState<FileRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +41,13 @@ export function ShareFileList({ shareId, snapshotId, entryHtmlPath }: Props) {
       .then((data) => {
         if (!cancelled) setFiles(data.files);
       })
-      .catch(() => {
-        if (!cancelled) setError("文件清单加载失败");
+      .catch((err) => {
+        if (cancelled) return;
+        if (isUnauthorized(err)) {
+          window.location.assign(`/share/${shareId}/login`);
+          return;
+        }
+        setError("文件清单加载失败");
       });
     return () => {
       cancelled = true;
@@ -53,7 +66,11 @@ export function ShareFileList({ shareId, snapshotId, entryHtmlPath }: Props) {
         process.env.NEXT_PUBLIC_PREVIEW_ORIGIN ?? "http://preview.local";
       const url = `${previewOrigin}/p/${snapshotId}/${encodedRel}?token=${encodeURIComponent(token)}`;
       window.open(url, "_blank", "noopener");
-    } catch {
+    } catch (err) {
+      if (isUnauthorized(err)) {
+        window.location.assign(`/share/${shareId}/login`);
+        return;
+      }
       // toast 已自动
     }
   };

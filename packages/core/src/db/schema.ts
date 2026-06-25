@@ -201,7 +201,8 @@ export const shareLinks = mysqlTable(
     snapshotId: varchar("snapshot_id", { length: 36 })
       .notNull()
       .references(() => snapshots.id, { onDelete: "cascade" }),
-    passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+    // NULL = 无密码分享（点开直接看）；非 NULL = bcrypt hash。密码为可选项，默认无。
+    passwordHash: varchar("password_hash", { length: 255 }),
     passwordVersion: int("password_version").notNull().default(1),
     allowExternalApi: boolean("allow_external_api").notNull().default(false),
     externalApiAllowlist: json("external_api_allowlist")

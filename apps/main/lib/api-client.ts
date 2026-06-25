@@ -256,7 +256,7 @@ export const sharesApi = {
   getForSnapshot: (sid: string) =>
     apiFetch<{ share: ShareRow | null }>(`/api/v1/snapshots/${sid}/shares`),
 
-  create: async (sid: string, body: { password: string }) => {
+  create: async (sid: string, body: { password?: string }) => {
     const result = await apiFetch<{ share: ShareRow }>(
       `/api/v1/snapshots/${sid}/shares`,
       { method: "POST", body: JSON.stringify(body) },
@@ -265,7 +265,11 @@ export const sharesApi = {
     return result;
   },
 
-  update: async (shareId: string, sid: string, body: { password: string }) => {
+  update: async (
+    shareId: string,
+    sid: string,
+    body: { action: "set"; password: string } | { action: "remove" },
+  ) => {
     const result = await apiFetch<{ share: ShareRow }>(
       `/api/v1/shares/${shareId}`,
       { method: "PATCH", body: JSON.stringify(body) },
@@ -284,6 +288,7 @@ export type ShareRow = {
   shareId: string;
   createdAt: string;
   passwordVersion: number;
+  hasPassword: boolean;
 };
 
 // ---- types ----

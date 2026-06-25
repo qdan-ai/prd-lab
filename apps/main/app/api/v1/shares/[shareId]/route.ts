@@ -16,7 +16,9 @@ type Ctx = { params: Promise<{ shareId: string }> };
 /**
  * PATCH /api/v1/shares/:shareId
  *
- * owner-only。仅支持 body { password } 重置密码（hash + password_version++ → 旧 cookie pv 失效）。
+ * owner-only。密码管理三合一，请求体为互斥 tagged union：
+ *   - { action: "set", password }   → 设/改密码：校验 6..200，写新 hash，password_version + 1（旧 cookie pv 失效）。
+ *   - { action: "remove" }          → 去密码：password_hash = null，pv 不变（无密码分支不读 cookie，正在看的访客不受影响）。
  * 已 revoked → 410 share_revoked。
  */
 export async function PATCH(request: Request, { params }: Ctx) {
@@ -36,10 +38,16 @@ export async function PATCH(request: Request, { params }: Ctx) {
   const lookup = await loadShareForOwner(shareId, session);
   if (lookup.kind === "error") return errorResponse(lookup.code);
 
-  const setObj: Record<string, unknown> = {
-    passwordHash: await hashPassword(parsed.password),
-    passwordVersion: sql`${shareLinks.passwordVersion} + 1`,
-  };
+  const setObj: Record<string, unknown> =
+    parsed.action === "set"
+      ? {
+          passwordHash: await hashPassword(parsed.password),
+          passwordVersion: sql`${shareLinks.passwordVersion} + 1`,
+        }
+      : {
+          // 去密码：pv 不变（见状态迁移矩阵）。
+          passwordHash: null,
+        };
 
   await db
     .update(shareLinks)
@@ -50,6 +58,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
       id: shareLinks.id,
       createdAt: shareLinks.createdAt,
       passwordVersion: shareLinks.passwordVersion,
+      passwordHash: shareLinks.passwordHash,
     })
     .from(shareLinks)
     .where(and(eq(shareLinks.id, shareId), isNull(shareLinks.revokedAt)))
@@ -61,6 +70,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
       shareId: row.id,
       createdAt: row.createdAt,
       passwordVersion: row.passwordVersion,
+      hasPassword: row.passwordHash !== null,
     },
   });
 }
@@ -116,17 +126,24 @@ async function loadShareForOwner(
 }
 
 function parsePatchBody(body: unknown):
-  | { ok: true; password: string }
+  | { ok: true; action: "set"; password: string }
+  | { ok: true; action: "remove" }
   | { ok: false; message: string } {
   if (typeof body !== "object" || body === null) {
     return { ok: false, message: "body must be JSON object" };
   }
   const b = body as Record<string, unknown>;
-  if (typeof b.password !== "string") {
-    return { ok: false, message: "password required string" };
+  if (b.action === "set") {
+    if (typeof b.password !== "string") {
+      return { ok: false, message: "password required string for action=set" };
+    }
+    if (b.password.length < 6 || b.password.length > 200) {
+      return { ok: false, message: "password length must be 6..200" };
+    }
+    return { ok: true, action: "set", password: b.password };
   }
-  if (b.password.length < 6 || b.password.length > 200) {
-    return { ok: false, message: "password length must be 6..200" };
+  if (b.action === "remove") {
+    return { ok: true, action: "remove" };
   }
-  return { ok: true, password: b.password };
+  return { ok: false, message: 'action must be "set" or "remove"' };
 }

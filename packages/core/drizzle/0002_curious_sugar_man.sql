@@ -1,0 +1,1 @@
+ALTER TABLE `share_links` MODIFY COLUMN `password_hash` varchar(255);

@@ -45,6 +45,7 @@ export async function GET(_: Request, { params }: Ctx) {
       id: shareLinks.id,
       createdAt: shareLinks.createdAt,
       passwordVersion: shareLinks.passwordVersion,
+      passwordHash: shareLinks.passwordHash,
     })
     .from(shareLinks)
     .where(and(eq(shareLinks.snapshotId, sid), isNull(shareLinks.revokedAt)))
@@ -57,6 +58,7 @@ export async function GET(_: Request, { params }: Ctx) {
       shareId: row.id,
       createdAt: row.createdAt,
       passwordVersion: row.passwordVersion,
+      hasPassword: row.passwordHash !== null,
     },
   });
 }
@@ -96,7 +98,7 @@ export async function POST(request: Request, { params }: Ctx) {
   if (ownerRows[0].archivedAt !== null) return errorResponse("snapshot_archived");
 
   const id = generateShareId();
-  const passwordHash = await hashPassword(parsed.password);
+  const passwordHash = parsed.password ? await hashPassword(parsed.password) : null;
 
   try {
     await db
@@ -113,6 +115,7 @@ export async function POST(request: Request, { params }: Ctx) {
         id: shareLinks.id,
         createdAt: shareLinks.createdAt,
         passwordVersion: shareLinks.passwordVersion,
+        passwordHash: shareLinks.passwordHash,
       })
       .from(shareLinks)
       .where(eq(shareLinks.id, id))
@@ -124,6 +127,7 @@ export async function POST(request: Request, { params }: Ctx) {
           shareId: row.id,
           createdAt: row.createdAt,
           passwordVersion: row.passwordVersion,
+          hasPassword: row.passwordHash !== null,
         },
       },
       { status: 201 },
@@ -137,14 +141,19 @@ export async function POST(request: Request, { params }: Ctx) {
 }
 
 function parseCreateBody(body: unknown):
-  | { ok: true; password: string }
+  | { ok: true; password?: string }
   | { ok: false; message: string } {
   if (typeof body !== "object" || body === null) {
     return { ok: false, message: "body must be JSON object" };
   }
   const b = body as Record<string, unknown>;
+  // 密码可选：缺省 / null / 空串 三者一律视为无密码（不报 400）。
+  // 仅当传入非空字符串时才设密码，并走 6..200 长度校验。
+  if (b.password === undefined || b.password === null || b.password === "") {
+    return { ok: true };
+  }
   if (typeof b.password !== "string") {
-    return { ok: false, message: "password required string" };
+    return { ok: false, message: "password must be string" };
   }
   if (b.password.length < 6 || b.password.length > 200) {
     return { ok: false, message: "password length must be 6..200" };

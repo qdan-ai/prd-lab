@@ -13,11 +13,12 @@ COPY apps/preview/package.json apps/preview/
 COPY packages/core/package.json packages/core/
 COPY packages/prd-cli/package.json packages/prd-cli/
 COPY packages/renderer-pm-canvas/package.json packages/renderer-pm-canvas/
+COPY packages/renderer-html-canvas/package.json packages/renderer-html-canvas/
 RUN pnpm install --frozen-lockfile
 
 # --- Stage 2: 构建 renderer 包（产出 dist + dist-node，apps/preview 运行时读取）→ main + preview ---
 # 决策 D5：renderer 包 dist 不进 git，在镜像构建期生成。renderer 必须先于 apps/preview 编译，
-# 否则 apps/preview 的 import { computeMetadata } from "@prd-lab/renderer-pm-canvas/node"
+# 否则 apps/preview 的 import { computeMetadata } from "@prd-lab/renderer-{name}/node"
 # 会因 dist-node/ 不存在而 typecheck 失败。
 FROM deps AS builder
 # Next.js NEXT_PUBLIC_* 是 build time inline，必须在 `next build` 跑前进 process.env。
@@ -27,6 +28,7 @@ ARG NEXT_PUBLIC_PREVIEW_ORIGIN
 ENV NEXT_PUBLIC_PREVIEW_ORIGIN=$NEXT_PUBLIC_PREVIEW_ORIGIN
 COPY . .
 RUN pnpm --filter @prd-lab/renderer-pm-canvas build
+RUN pnpm --filter @prd-lab/renderer-html-canvas build
 RUN pnpm --filter @prd-lab/main build
 RUN pnpm --filter @prd-lab/preview build
 

@@ -3,6 +3,10 @@ import {
   computeMetadata as pmCanvasComputeMetadata,
   validateFiles as pmCanvasValidateFiles,
 } from "@prd-lab/renderer-pm-canvas/node";
+import {
+  computeMetadata as htmlCanvasComputeMetadata,
+  validateFiles as htmlCanvasValidateFiles,
+} from "@prd-lab/renderer-html-canvas/node";
 
 /**
  * Renderer 注册表（v1 硬编码）。
@@ -50,6 +54,16 @@ export const RENDERERS: Record<string, RendererSpec> = {
     validateFiles: pmCanvasValidateFiles,
     computeMetadata: pmCanvasComputeMetadata,
     staticMountPath: "/renderers/pm-canvas/static",
+    spaEntryHtml: "dist/index.html",
+  },
+  "html-canvas": {
+    name: "html-canvas",
+    displayName: "HTML Canvas 画板",
+    configVersion: 1,
+    description: "board/v1 六元素无限画布",
+    validateFiles: htmlCanvasValidateFiles,
+    computeMetadata: htmlCanvasComputeMetadata,
+    staticMountPath: "/renderers/html-canvas/static",
     spaEntryHtml: "dist/index.html",
   },
 };

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HTML Canvas Welcome Block</title>
+    <style>
+      :root {
+        --hc-bg: #f8fafc;
+        --hc-panel: #ffffff;
+        --hc-ink: #172033;
+        --hc-muted: #64748b;
+        --hc-line: #d7dee8;
+        --hc-accent: #0f766e;
+        --hc-accent-soft: #d9f3ef;
+        --hc-radius: 8px;
+        --hc-shadow: 0 18px 40px rgba(20, 31, 48, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--hc-bg);
+        color: var(--hc-ink);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      main {
+        width: 560px;
+        min-height: 360px;
+        padding: 32px;
+        background: var(--hc-panel);
+        border: 1px solid var(--hc-line);
+        border-radius: var(--hc-radius);
+        box-shadow: var(--hc-shadow);
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--hc-accent);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 460px;
+        font-size: 36px;
+        line-height: 1.12;
+      }
+
+      .intro {
+        margin: 16px 0 24px;
+        max-width: 480px;
+        color: var(--hc-muted);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .status {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin: 0 0 24px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .status li {
+        min-height: 72px;
+        padding: 14px;
+        border: 1px solid var(--hc-line);
+        border-radius: 6px;
+        background: #fbfdff;
+      }
+
+      .status strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 20px;
+      }
+
+      .status span {
+        color: var(--hc-muted);
+        font-size: 12px;
+      }
+
+      .callout {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+        padding: 14px 16px;
+        border-radius: 6px;
+        background: var(--hc-accent-soft);
+        color: #134e4a;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow" data-pm-id="eyebrow">HTML Canvas / board-v1</p>
+      <h1 data-pm-id="title">把真实 HTML 放进自由画板</h1>
+      <p class="intro" data-pm-id="intro">
+        这个块是形态①自包含完整网页：样式全内嵌、没有脚本、没有外网依赖，可以被单独打开，也可以由 viewer 拆壳后注入画布。
+      </p>
+      <ul class="status" aria-label="画板能力">
+        <li>
+          <strong data-pm-id="metric-elements">6</strong>
+          <span data-pm-id="metric-elements-label">元素类型</span>
+        </li>
+        <li>
+          <strong data-pm-id="metric-scripts">0</strong>
+          <span data-pm-id="metric-scripts-label">脚本依赖</span>
+        </li>
+        <li>
+          <strong data-pm-id="metric-assets">1</strong>
+          <span data-pm-id="metric-assets-label">本地素材</span>
+        </li>
+      </ul>
+      <p class="callout" data-pm-id="callout">
+        文案节点带有 data-pm-id，后续 text-patch 可以精确定位到块内可编辑内容。
+      </p>
+    </main>
+  </body>
+</html>

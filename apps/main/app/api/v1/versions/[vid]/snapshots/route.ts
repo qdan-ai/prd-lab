@@ -165,18 +165,26 @@ export async function POST(request: Request, { params }: Ctx) {
   }
 
   // 5. 入口探测
-  const entryMode = detectEntryMode(files);
-  if (entryMode.mode === "multi-html-candidates") {
-    return errorResponse(
-      "validation_error",
-      `multiple root HTML files without index.html: ${entryMode.candidates.join(", ")}`,
-    );
-  }
-  if (entryMode.mode === "no-html-entry") {
-    return errorResponse(
-      "validation_error",
-      "zip 根目录未发现 HTML 入口（请确认 index.html 在 zip 根目录）",
-    );
+  //    - default renderer：必须在 zip 根目录找到 HTML 入口（裸 HTML 直接预览）
+  //    - 自定义 renderer（pm-canvas / html-canvas 等）：有自己的 validateFiles，
+  //      画板入口由 renderer SPA shell 提供，不需要根目录 HTML；entryHtmlPath 落占位值
+  //      （preview 路由对 rendererName != null 走 SPA shell 分支，不依赖此路径取真实文件）
+  let entryHtmlPath = "index.html";
+  if (rendererInput === "default") {
+    const entryMode = detectEntryMode(files);
+    if (entryMode.mode === "multi-html-candidates") {
+      return errorResponse(
+        "validation_error",
+        `multiple root HTML files without index.html: ${entryMode.candidates.join(", ")}`,
+      );
+    }
+    if (entryMode.mode === "no-html-entry") {
+      return errorResponse(
+        "validation_error",
+        "zip 根目录未发现 HTML 入口（请确认 index.html 在 zip 根目录）",
+      );
+    }
+    entryHtmlPath = entryMode.entryHtml;
   }
 
   // 6. renderer 字段处理（D1 / upload-renderer-selector）
@@ -305,7 +313,6 @@ export async function POST(request: Request, { params }: Ctx) {
       .from(snapshots)
       .where(eq(snapshots.versionId, vid));
     const nextSeq = (maxSeqRow[0]?.maxSeq ?? 0) + 1;
-    const entryHtmlPath = entryMode.entryHtml;
 
     const snapshotRow = await insertReturning(tx, snapshots, {
       versionId: vid,

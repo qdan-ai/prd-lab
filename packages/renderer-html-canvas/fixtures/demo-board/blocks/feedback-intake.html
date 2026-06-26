@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>需求反馈收集（含主动内容样本）</title>
+    <!--
+      feedback-intake.html —— 故意含主动内容的样本块（设计 §1.1 / §1.7 / §2.2）。
+      模拟「外部工具导出、夹带脚本/内联事件/外链/表单」的页面原型。
+      验证目标：
+        ① sanitizeHtml 强制剥离 <script>（含 type）与内联 on* 事件 → 上报 removed 提示；
+        ② 块 shadowRoot 内原生 capture 监听：点击 <a href> 不导航、提交 <form> 被拦。
+      这些主动内容在需求画布里本无意义，剥除零损失。
+    -->
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #fff7ed;
+        color: #3a2a12;
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      }
+      .panel {
+        width: 480px;
+        padding: 24px;
+        background: #ffffff;
+        border: 1px solid #f3d6a6;
+        border-radius: 10px;
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 20px;
+      }
+      p {
+        margin: 0 0 16px;
+        color: #8a6a3a;
+        font-size: 14px;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      textarea {
+        width: 100%;
+        min-height: 84px;
+        padding: 10px;
+        border: 1px solid #e7c98f;
+        border-radius: 6px;
+        font: inherit;
+        box-sizing: border-box;
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 16px;
+      }
+      button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        background: #b4690e;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      a {
+        color: #b4690e;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 内联 onclick：sanitize 必须剥除 on* 属性 -->
+    <div class="panel" onclick="window.__hcTampered = true">
+      <h2 data-pm-id="fb-title">提交需求反馈</h2>
+      <p data-pm-id="fb-desc">
+        把对该需求的意见写在下面。这是页面原型——表单不应真的提交，外链不应真的跳走。
+      </p>
+      <!-- 表单：shadowRoot 内 submit 应被拦截，不触发导航/请求 -->
+      <form action="https://example.com/intake" method="post" data-pm-id="fb-form">
+        <label for="fb-body">反馈内容</label>
+        <textarea id="fb-body" name="body" placeholder="例如：第二步流程缺少回退入口"></textarea>
+        <div class="actions">
+          <button type="submit" data-pm-id="fb-submit">提交反馈</button>
+          <!-- 外链：点击应被拦截，不导航 -->
+          <a href="https://example.com/spec" data-pm-id="fb-link">查看完整规格</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- 主动脚本：sanitize 必须整体剥除，注入后不得执行 -->
+    <script>
+      window.__hcScriptRan = true
+      document.querySelector('.panel')?.setAttribute('data-script-ran', 'yes')
+    </script>
+    <script type="module">
+      window.__hcModuleRan = true
+    </script>
+  </body>
+</html>

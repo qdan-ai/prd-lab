@@ -1,0 +1,38 @@
+<!--
+  requirement-card.html —— 形态②无壳片段块（设计 §1.3 双形态标准）
+
+  无 <html>/<head>/<body> 外壳，原样通过 unwrap；样式来源有两处：
+    ① canvas.json 的 css: ["styles/demo-tokens.css"] 提供 --pm-* 变量与 .pm-card 基础排版（在前）
+    ② 本文件内联 <style> 仅做局部增量（压轴，验证叠加序：highlight 边框覆盖默认卡片样式）
+  产品语境：PM 需求画布中的一张「需求卡片」。
+-->
+<style>
+  .pm-card.highlight {
+    border-left: 4px solid var(--pm-brand);
+  }
+  .pm-meta {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+    color: var(--pm-muted);
+    font-size: 13px;
+  }
+  .pm-meta b {
+    color: var(--pm-ink);
+    font-weight: 600;
+  }
+</style>
+
+<article class="pm-card highlight" data-pm-id="req-card">
+  <p class="pm-kicker" data-pm-id="req-kicker">需求 / REQ-204</p>
+  <h2 data-pm-id="req-title">画布块支持共享样式令牌</h2>
+  <p data-pm-id="req-desc">
+    多个需求卡片复用同一套排版与配色：颜色、间距、圆角集中在 styles/demo-tokens.css，
+    单卡片只声明自身差异（如左侧强调边框），保证整块需求画布视觉一致、改一处全局生效。
+  </p>
+  <span class="pm-tag" data-pm-id="req-tag">设计评审中</span>
+  <div class="pm-meta">
+    <span>负责人 <b data-pm-id="req-owner">产品 / 林</b></span>
+    <span>目标版本 <b data-pm-id="req-milestone">v1.2</b></span>
+  </div>
+</article>

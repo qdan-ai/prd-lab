@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1045.0",
+    "@prd-lab/renderer-html-canvas": "workspace:*",
     "@prd-lab/renderer-pm-canvas": "workspace:*",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.45.0",

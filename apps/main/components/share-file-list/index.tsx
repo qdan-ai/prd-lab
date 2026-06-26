@@ -8,6 +8,7 @@ interface Props {
   shareId: string;
   snapshotId: string;
   entryHtmlPath: string;
+  rendererName?: string | null;
 }
 
 type FileRow = {
@@ -31,7 +32,7 @@ function isUnauthorized(err: unknown): boolean {
   return (err as ApiError | null)?.error_code === "unauthorized";
 }
 
-export function ShareFileList({ shareId, snapshotId, entryHtmlPath }: Props) {
+export function ShareFileList({ shareId, snapshotId, entryHtmlPath, rendererName }: Props) {
   const [files, setFiles] = useState<FileRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,6 +76,25 @@ export function ShareFileList({ shareId, snapshotId, entryHtmlPath }: Props) {
     }
   };
 
+  const onOpenRenderer = async () => {
+    try {
+      const { token } = await apiFetch<{ token: string; expiresIn: number }>(
+        `/share/${shareId}/api/preview-token`,
+        { method: "POST", body: JSON.stringify({ snapshotId }) },
+      );
+      const previewOrigin =
+        process.env.NEXT_PUBLIC_PREVIEW_ORIGIN ?? "http://preview.local";
+      const url = `${previewOrigin}/p/${snapshotId}/?token=${encodeURIComponent(token)}`;
+      window.open(url, "_blank", "noopener");
+    } catch (err) {
+      if (isUnauthorized(err)) {
+        window.location.assign(`/share/${shareId}/login`);
+        return;
+      }
+      // toast 已自动
+    }
+  };
+
   if (error) {
     return (
       <EmptyState>
@@ -100,6 +120,19 @@ export function ShareFileList({ shareId, snapshotId, entryHtmlPath }: Props) {
   return (
     <div className="flex-1 overflow-auto bg-ink-50/30" data-testid="share-file-list">
       <div className="max-w-[860px] mx-auto px-6 py-6">
+        {rendererName ? (
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={onOpenRenderer}
+              data-testid="open-renderer-button"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-ink-900 text-ink-50 text-[14px] font-medium rounded-[var(--radius-lg)] hover:bg-ink-800 transition-colors duration-[var(--duration-fast)] focus:outline-none focus:ring-2 focus:ring-ink-900 focus:ring-offset-2"
+            >
+              <ExternalLink size={16} strokeWidth={2.25} />
+              打开画板
+            </button>
+          </div>
+        ) : null}
         <div className="text-[12px] text-ink-500 mb-2">
           共 {files.length} 个文件 · 点击在新窗口打开
           {entryHtmlPath ? (

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>未打标便签</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      .note {
+        box-sizing: border-box;
+        width: 320px;
+        padding: 20px 22px;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: #1f2328;
+        background: #fffdf5;
+        border: 1px solid #ece3c8;
+        border-radius: 12px;
+        box-shadow: 0 6px 18px rgba(31, 35, 40, 0.08);
+      }
+      .note h3 {
+        margin: 0 0 8px;
+        font-size: 17px;
+      }
+      .note p {
+        margin: 0 0 12px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #57606a;
+      }
+      .note input {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 14px;
+        border: 1px solid #d0c8ad;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      时机③兜底专用块（设计 §1.8）：内容元素故意不带打标属性。
+      双击块内文字会触发写路径整文件补标，再重注入后自动进入编辑。
+    -->
+    <div class="note">
+      <h3>未打标的便签标题</h3>
+      <p>这段说明文字没有打标属性，编辑时应触发整文件自动补标。</p>
+      <input type="text" placeholder="在此输入备注" />
+    </div>
+  </body>
+</html>

@@ -1,0 +1,132 @@
+{
+  "title": "HTML Canvas v1 示例画板",
+  "format": "board/v1",
+  "elements": [
+    {
+      "id": "f1",
+      "type": "frame",
+      "name": "欢迎页与基础元素",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 920
+    },
+    {
+      "id": "b1",
+      "type": "html",
+      "file": "welcome.html",
+      "x": 92.73063640272174,
+      "y": 207.22632076767206,
+      "parent": "f1",
+      "measured": {
+        "w": 560,
+        "h": 411
+      }
+    },
+    {
+      "id": "s1",
+      "type": "shape",
+      "shape": "diamond",
+      "x": 760,
+      "y": 175.99999999999997,
+      "w": 180,
+      "h": 120,
+      "text": "内容确认",
+      "parent": "f1"
+    },
+    {
+      "id": "t1",
+      "type": "text",
+      "x": 760,
+      "y": 340,
+      "text": "六元素 schema 覆盖样例",
+      "fontSize": 28,
+      "parent": "f1"
+    },
+    {
+      "id": "i1",
+      "type": "image",
+      "src": "assets/demo-logo.svg",
+      "x": 1356.9773932993153,
+      "y": 277.7097152597694,
+      "w": 180,
+      "h": 180,
+      "parent": "f1"
+    },
+    {
+      "id": "a1",
+      "type": "arrow",
+      "x1": 670,
+      "y1": 229.99999999999997,
+      "x2": 760,
+      "y2": 229.99999999999997,
+      "label": "进入判断",
+      "from": null,
+      "to": null,
+      "parent": "f1"
+    },
+    {
+      "id": "f2",
+      "type": "frame",
+      "name": "块文件处理管线样例",
+      "x": 0,
+      "y": 1000,
+      "w": 1280,
+      "h": 760
+    },
+    {
+      "id": "b2",
+      "type": "html",
+      "file": "requirement-card.html",
+      "x": 72,
+      "y": 1080,
+      "css": [
+        "styles/demo-tokens.css"
+      ],
+      "parent": "f2",
+      "measured": {
+        "w": 581,
+        "h": 275
+      }
+    },
+    {
+      "id": "b3",
+      "type": "html",
+      "file": "feedback-intake.html",
+      "x": 680,
+      "y": 1080,
+      "parent": "f2",
+      "measured": {
+        "w": 578,
+        "h": 360
+      }
+    },
+    {
+      "id": "t2",
+      "type": "text",
+      "x": 72,
+      "y": 1024,
+      "text": "形态②共享样式块 vs 含主动内容块（剥离 + 拦截样例）",
+      "fontSize": 20,
+      "parent": "f2"
+    },
+    {
+      "id": "b4",
+      "type": "html",
+      "file": "unmarked-note.html",
+      "x": 1302,
+      "y": 1286,
+      "measured": {
+        "w": 320,
+        "h": 166
+      }
+    },
+    {
+      "id": "b5",
+      "type": "html",
+      "file": "no-measured-card.html",
+      "x": 1900,
+      "y": 300
+    }
+  ]
+}

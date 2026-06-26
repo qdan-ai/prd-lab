@@ -48,6 +48,7 @@ export default async function SharePage({ params, searchParams }: Props) {
       seqNo: snapshots.seqNo,
       versionLabel: snapshots.versionLabel,
       entryHtmlPath: snapshots.entryHtmlPath,
+      rendererName: snapshots.rendererName,
       createdAt: snapshots.createdAt,
       archivedAt: snapshots.archivedAt,
       uploaderName: users.name,
@@ -97,6 +98,7 @@ export default async function SharePage({ params, searchParams }: Props) {
           shareId={shareId}
           snapshotId={snap.id}
           entryHtmlPath={snap.entryHtmlPath}
+          rendererName={snap.rendererName}
         />
       </main>
     </div>

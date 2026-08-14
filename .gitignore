@@ -53,6 +53,9 @@ PROGRESS.md
 plan.md
 screenshots/
 *.zip
+# 部署机密（DEPLOYMENT.md 含服务器密码）与根目录脚本副本；真理源头是 scripts/deploy.sh
+部署脚本/
+/deploy.sh
 # 例外：受版本控制的测试 fixture（renderer-codex-followup sprint P0 修复，
 # 解决干净 clone 跑 pnpm test 因 fixture 缺失而挂的问题）
 !packages/core/src/__fixtures__/zips/*.zip

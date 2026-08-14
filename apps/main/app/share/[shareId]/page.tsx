@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db, shareLinks, snapshots, users } from "@prd-lab/core";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { db, shareLinks, snapshots, users, versions } from "@prd-lab/core";
 import { getShareSession } from "@/lib/share/share-session";
 import { ShareFileList } from "@/components/share-file-list";
+import { ShareSnapshotSwitcher } from "@/components/share-snapshot-switcher";
 
 type Props = {
   params: Promise<{ shareId: string }>;
@@ -10,23 +11,19 @@ type Props = {
 };
 
 /**
- * /share/[shareId] · S9：极简 chrome + 文件列表 + 点击新窗口预览。
+ * /share/[shareId] · S19 方案级分享：访客可查看方案下所有活跃版本并切换。
  *
  * SSR 分支：
- *   1. URL 含 ?snapshot=* → 308 redirect 到纯 share URL（不暴露内部 snapshot id）
- *   2. share 不存在 → "链接不存在"
- *   3. share 已 revoked → "已撤销"
- *   4. cookie 无 / pv 不匹配 / 过期 → /share/[shareId]/login
- *   5. snapshot archived → "链接已失效"
- *   6. 正常 → 渲染文件列表
+ *   1. share 不存在 → "链接不存在"
+ *   2. share 已 revoked → "已撤销"
+ *   3. cookie 无 / pv 不匹配 / 过期 → /share/[shareId]/login
+ *   4. 方案无活跃 snapshot → "还没有可查看的版本"
+ *   5. ?snapshot=v{seq} 非法 / 未命中活跃列表 → redirect 去 query（回默认最新）
+ *   6. 正常 → 渲染选中版本的文件列表 + 版本切换器
  */
 export default async function SharePage({ params, searchParams }: Props) {
   const { shareId } = await params;
   const search = await searchParams;
-
-  if (search.snapshot !== undefined) {
-    redirect(`/share/${shareId}`);
-  }
 
   const shareRows = await db
     .select({ id: shareLinks.id, revokedAt: shareLinks.revokedAt })
@@ -42,25 +39,52 @@ export default async function SharePage({ params, searchParams }: Props) {
     redirect(`/share/${shareId}/login`);
   }
 
-  const snapRows = await db
-    .select({
-      id: snapshots.id,
-      seqNo: snapshots.seqNo,
-      versionLabel: snapshots.versionLabel,
-      entryHtmlPath: snapshots.entryHtmlPath,
-      rendererName: snapshots.rendererName,
-      createdAt: snapshots.createdAt,
-      archivedAt: snapshots.archivedAt,
-      uploaderName: users.name,
-    })
-    .from(snapshots)
-    .innerJoin(users, eq(snapshots.uploaderId, users.id))
-    .where(eq(snapshots.id, session.snapshotId))
-    .limit(1);
-  const snap = snapRows[0];
-  if (!snap || snap.archivedAt !== null) {
-    return <ShareErrorPanel title="链接已失效" message="该版本已被删除，请联系项目方。" />;
+  const [versionRows, snapRows] = await Promise.all([
+    db
+      .select({ name: versions.name })
+      .from(versions)
+      .where(eq(versions.id, session.versionId))
+      .limit(1),
+    db
+      .select({
+        id: snapshots.id,
+        seqNo: snapshots.seqNo,
+        versionLabel: snapshots.versionLabel,
+        entryHtmlPath: snapshots.entryHtmlPath,
+        rendererName: snapshots.rendererName,
+        createdAt: snapshots.createdAt,
+        uploaderName: users.name,
+      })
+      .from(snapshots)
+      .innerJoin(users, eq(snapshots.uploaderId, users.id))
+      .where(and(eq(snapshots.versionId, session.versionId), isNull(snapshots.archivedAt)))
+      .orderBy(desc(snapshots.seqNo)),
+  ]);
+  const versionName = versionRows[0]?.name ?? "";
+
+  const latest = snapRows[0];
+  if (!latest) {
+    return (
+      <ShareErrorPanel title="还没有可查看的版本" message="该方案还没有上传任何版本，请联系项目方。" />
+    );
   }
+
+  // 解析 ?snapshot=v{seq}：非法 / 未命中活跃列表 → redirect 去 query（URL 永远反映真实状态）
+  let selected = latest;
+  const rawQuery = search.snapshot;
+  if (rawQuery !== undefined) {
+    const match = typeof rawQuery === "string" ? /^v(\d+)$/.exec(rawQuery) : null;
+    const target = match ? snapRows.find((s) => s.seqNo === Number(match[1])) : undefined;
+    if (!target) redirect(`/share/${shareId}`);
+    selected = target;
+  }
+
+  const switcherItems = snapRows.map((s) => ({
+    seqNo: s.seqNo,
+    versionLabel: s.versionLabel,
+    uploaderName: s.uploaderName,
+    createdAt: new Date(s.createdAt).toISOString(),
+  }));
 
   return (
     <div
@@ -82,11 +106,17 @@ export default async function SharePage({ params, searchParams }: Props) {
           className="flex items-center gap-2 text-[12px] text-ink-700 tabular-nums"
           data-testid="share-chrome-meta"
         >
-          <span className="font-medium">{snap.versionLabel ?? `v${snap.seqNo}`}</span>
+          <span className="font-medium">{versionName}</span>
           <span className="text-ink-300">·</span>
-          <span>{snap.uploaderName}</span>
+          <ShareSnapshotSwitcher
+            shareId={shareId}
+            items={switcherItems}
+            activeSeq={selected.seqNo}
+          />
           <span className="text-ink-300">·</span>
-          <span>{new Date(snap.createdAt).toLocaleString("zh-CN", { hour12: false })}</span>
+          <span>{selected.uploaderName}</span>
+          <span className="text-ink-300">·</span>
+          <span>{new Date(selected.createdAt).toLocaleString("zh-CN", { hour12: false })}</span>
         </div>
         <div className="flex-1" />
         <div className="text-[11px] text-ink-500" data-testid="share-chrome-visitor">
@@ -96,9 +126,9 @@ export default async function SharePage({ params, searchParams }: Props) {
       <main className="flex-1 flex flex-col relative overflow-hidden">
         <ShareFileList
           shareId={shareId}
-          snapshotId={snap.id}
-          entryHtmlPath={snap.entryHtmlPath}
-          rendererName={snap.rendererName}
+          snapshotId={selected.id}
+          entryHtmlPath={selected.entryHtmlPath}
+          rendererName={selected.rendererName}
         />
       </main>
     </div>

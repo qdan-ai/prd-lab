@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 import { RenameChangeNoteModal } from "@/components/rename-change-note-modal";
 import { RenameDialog } from "@/components/rename-dialog";
 import { DeleteSnapshotModal } from "@/components/delete-snapshot-modal";
-import { ShareDialog } from "@/components/share-dialog";
 
 interface Props {
   versionId: string;
@@ -24,9 +23,8 @@ interface Props {
 }
 
 /**
- * 全部版本列表（S8 改造）：
+ * 全部版本列表（S8 改造；S19 删行级"分享"菜单——分享已改方案级，入口收敛到顶 toolbar）：
  * - snapshot 平行化：删 "当前"/"草稿"/"预览态" chip + "设为当前" 菜单
- * - 加 "分享" 菜单（owner-only）
  * - 主标签：versionLabel ?? v{seq}
  * - 选中态：URL `?snapshot=v{seq}` 或无 query 时高亮最新（seq 最大）
  */
@@ -46,7 +44,6 @@ export function SnapshotList({ versionId, ownedByMe = true }: Props) {
   const [renameTarget, setRenameTarget] = useState<SnapshotRow | null>(null);
   const [renameLabelTarget, setRenameLabelTarget] = useState<SnapshotRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SnapshotRow | null>(null);
-  const [shareTarget, setShareTarget] = useState<SnapshotRow | null>(null);
 
   if (isLoading) {
     return (
@@ -154,12 +151,6 @@ export function SnapshotList({ versionId, ownedByMe = true }: Props) {
                           重命名版本号
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onSelect={() => setShareTarget(s)}
-                          data-testid={`menu-share-v${s.seqNo}`}
-                        >
-                          分享
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
                           onSelect={() => setDeleteTarget(s)}
                           data-testid={`menu-delete-v${s.seqNo}`}
                         >
@@ -226,11 +217,6 @@ export function SnapshotList({ versionId, ownedByMe = true }: Props) {
         target={deleteTarget}
         versionId={versionId}
         onClose={() => setDeleteTarget(null)}
-      />
-      <ShareDialog
-        open={shareTarget !== null}
-        snapshot={shareTarget}
-        onClose={() => setShareTarget(null)}
       />
     </>
   );

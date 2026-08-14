@@ -1,12 +1,5 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
-import {
-  db,
-  hashPassword,
-  projects,
-  shareLinks,
-  snapshots,
-  versions,
-} from "@prd-lab/core";
+import { db, hashPassword, projects, shareLinks, versions } from "@prd-lab/core";
 import { getSession, type Session } from "@/lib/api/auth-guard";
 import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
@@ -98,7 +91,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
 // ---- helpers ----
 
 type LoadResult =
-  | { kind: "ok"; snapshotId: string }
+  | { kind: "ok"; versionId: string }
   | { kind: "error"; code: "share_not_found" | "share_revoked" | "not_owner" };
 
 async function loadShareForOwner(
@@ -107,14 +100,13 @@ async function loadShareForOwner(
 ): Promise<LoadResult> {
   const rows = await db
     .select({
-      snapshotId: shareLinks.snapshotId,
+      versionId: shareLinks.versionId,
       revokedAt: shareLinks.revokedAt,
       ownerId: projects.ownerId,
       visibility: projects.visibility,
     })
     .from(shareLinks)
-    .innerJoin(snapshots, eq(shareLinks.snapshotId, snapshots.id))
-    .innerJoin(versions, eq(snapshots.versionId, versions.id))
+    .innerJoin(versions, eq(shareLinks.versionId, versions.id))
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(eq(shareLinks.id, shareId))
     .limit(1);
@@ -122,7 +114,7 @@ async function loadShareForOwner(
   if (!row) return { kind: "error", code: "share_not_found" };
   if (!canManageProject(row, session)) return { kind: "error", code: "not_owner" };
   if (row.revokedAt !== null) return { kind: "error", code: "share_revoked" };
-  return { kind: "ok", snapshotId: row.snapshotId };
+  return { kind: "ok", versionId: row.versionId };
 }
 
 function parsePatchBody(body: unknown):

@@ -249,38 +249,38 @@ export const renderersApi = {
 };
 
 /**
- * S5 分享链接 owner 侧 API。
+ * 分享链接 owner 侧 API（S19 起绑方案 version 级）。
  * onSuccess mutate：/api/v1/versions/${vid}/shares
  */
 export const sharesApi = {
-  getForSnapshot: (sid: string) =>
-    apiFetch<{ share: ShareRow | null }>(`/api/v1/snapshots/${sid}/shares`),
+  getForVersion: (vid: string) =>
+    apiFetch<{ share: ShareRow | null }>(`/api/v1/versions/${vid}/shares`),
 
-  create: async (sid: string, body: { password?: string }) => {
+  create: async (vid: string, body: { password?: string }) => {
     const result = await apiFetch<{ share: ShareRow }>(
-      `/api/v1/snapshots/${sid}/shares`,
+      `/api/v1/versions/${vid}/shares`,
       { method: "POST", body: JSON.stringify(body) },
     );
-    mutateKeys([`/api/v1/snapshots/${sid}/shares`]);
+    mutateKeys([`/api/v1/versions/${vid}/shares`]);
     return result;
   },
 
   update: async (
     shareId: string,
-    sid: string,
+    vid: string,
     body: { action: "set"; password: string } | { action: "remove" },
   ) => {
     const result = await apiFetch<{ share: ShareRow }>(
       `/api/v1/shares/${shareId}`,
       { method: "PATCH", body: JSON.stringify(body) },
     );
-    mutateKeys([`/api/v1/snapshots/${sid}/shares`]);
+    mutateKeys([`/api/v1/versions/${vid}/shares`]);
     return result;
   },
 
-  revoke: async (shareId: string, sid: string) => {
+  revoke: async (shareId: string, vid: string) => {
     await apiFetch<void>(`/api/v1/shares/${shareId}`, { method: "DELETE" });
-    mutateKeys([`/api/v1/snapshots/${sid}/shares`]);
+    mutateKeys([`/api/v1/versions/${vid}/shares`]);
   },
 };
 

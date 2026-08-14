@@ -1,22 +1,15 @@
 import { cookies } from "next/headers";
 import { and, eq, isNull } from "drizzle-orm";
-import {
-  db,
-  shareLinks,
-  verifyShareCookie,
-  snapshots,
-  versions,
-  projects,
-} from "@prd-lab/core";
+import { db, shareLinks, verifyShareCookie, versions, projects } from "@prd-lab/core";
 
 /**
- * S5 访客 session 校验（S8 改 snapshot 级）。
+ * S5 访客 session 校验（S19 改方案级：share 绑 version，访客可切换方案内所有活跃 snapshot）。
  *
  * cookie 名：`prd_share_${shareId}`（path=/share/${shareId}，HttpOnly，SameSite=Lax）
  *
  * 校验流程（每请求，顺序不可乱）：
  *   1. 查 DB share 行（含 passwordHash）
- *   2. 不存在 / snapshot/version/project archived → not_found
+ *   2. 不存在 / version/project archived → not_found
  *   3. revoked_at NOT NULL → revoked（先于无密码放行；撤销的无密码链接也要 410）
  *   4. passwordHash 为 null（无密码）→ ok（完全不读 cookie）
  *   5. 有密码：cookie 缺失 / hmac 不通 / 过期 → invalid
@@ -27,7 +20,7 @@ import {
 export type ShareSessionOk = {
   kind: "ok";
   shareId: string;
-  snapshotId: string;
+  versionId: string;
   pv: number;
 };
 
@@ -49,30 +42,27 @@ export async function getShareSession(shareId: string): Promise<ShareSessionResu
   const rows = await db
     .select({
       id: shareLinks.id,
-      snapshotId: shareLinks.snapshotId,
+      versionId: shareLinks.versionId,
       passwordHash: shareLinks.passwordHash,
       passwordVersion: shareLinks.passwordVersion,
       revokedAt: shareLinks.revokedAt,
-      snapshotArchivedAt: snapshots.archivedAt,
     })
     .from(shareLinks)
-    .innerJoin(snapshots, eq(shareLinks.snapshotId, snapshots.id))
-    .innerJoin(versions, eq(snapshots.versionId, versions.id))
+    .innerJoin(versions, eq(shareLinks.versionId, versions.id))
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(and(eq(shareLinks.id, shareId), isNull(versions.archivedAt), isNull(projects.archivedAt)))
     .limit(1);
   const row = rows[0];
 
-  // 2. 不存在 / snapshot archived → not_found
+  // 2. 不存在 / version/project archived → not_found
   if (!row) return { kind: "not_found" };
-  if (row.snapshotArchivedAt !== null) return { kind: "not_found" };
 
   // 3. 已撤销 → revoked（必须先于无密码放行，撤销的无密码链接也要拦）
   if (row.revokedAt !== null) return { kind: "revoked" };
 
   // 4. 无密码 → 直接放行，完全不读 cookie
   if (row.passwordHash === null) {
-    return { kind: "ok", shareId, snapshotId: row.snapshotId, pv: row.passwordVersion };
+    return { kind: "ok", shareId, versionId: row.versionId, pv: row.passwordVersion };
   }
 
   // 5. 有密码：读 cookie，无 / 签名失败 / 过期 → invalid
@@ -99,7 +89,7 @@ export async function getShareSession(shareId: string): Promise<ShareSessionResu
   return {
     kind: "ok",
     shareId,
-    snapshotId: row.snapshotId,
+    versionId: row.versionId,
     pv: row.passwordVersion,
   };
 }

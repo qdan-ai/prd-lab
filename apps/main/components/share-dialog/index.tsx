@@ -11,7 +11,7 @@ import { apiFetch, sharesApi, type ShareRow } from "@/lib/api-client";
 
 interface Props {
   open: boolean;
-  snapshot: { id: string; seqNo: number; versionLabel: string | null } | null;
+  version: { id: string; name: string } | null;
   onClose: () => void;
 }
 
@@ -20,18 +20,14 @@ type View = "main" | "set_password" | "revoke_confirm";
 const NO_PASSWORD_HINT = "任何拿到链接的人都能查看，请勿公开转发。";
 
 /**
- * 分享对话框。绑 snapshot 而非 version。密码可选（默认无）：
+ * 分享对话框。S19：绑方案（version）级——访客可查看方案下所有版本并切换。密码可选（默认无）：
  *   - 创建态：开关式，默认无密码，打开「设置访问密码」开关才填密码。
  *   - 已存在态：按 share.hasPassword 分支为「无密码 / 有密码」两套管理操作。
- * `snapshot` 为 null 时 dialog 不渲染。
+ * `version` 为 null 时 dialog 不渲染。
  */
-export function ShareDialog({ open, snapshot, onClose }: Props) {
-  const sid = snapshot?.id ?? "";
-  const label = snapshot
-    ? snapshot.versionLabel
-      ? `${snapshot.versionLabel}（v${snapshot.seqNo}）`
-      : `v${snapshot.seqNo}`
-    : "";
+export function ShareDialog({ open, version, onClose }: Props) {
+  const vid = version?.id ?? "";
+  const label = version?.name ?? "";
   const [view, setView] = useState<View>("main");
   const [withPassword, setWithPassword] = useState(false);
   const [createPassword, setCreatePassword] = useState("");
@@ -43,7 +39,7 @@ export function ShareDialog({ open, snapshot, onClose }: Props) {
   const [sessionPassword, setSessionPassword] = useState("");
 
   const { data, isLoading, mutate } = useSWR<{ share: ShareRow | null }>(
-    open && sid ? `/api/v1/snapshots/${sid}/shares` : null,
+    open && vid ? `/api/v1/versions/${vid}/shares` : null,
     (url: string) => apiFetch<{ share: ShareRow | null }>(url, undefined, { silent: true }),
     { dedupingInterval: 30_000 },
   );
@@ -72,7 +68,7 @@ export function ShareDialog({ open, snapshot, onClose }: Props) {
     }
     setBusy(true);
     try {
-      await sharesApi.create(sid, withPassword ? { password: createPassword } : {});
+      await sharesApi.create(vid, withPassword ? { password: createPassword } : {});
       setSessionPassword(withPassword ? createPassword : "");
       toast.success("已创建分享链接");
     } catch {
@@ -91,7 +87,7 @@ export function ShareDialog({ open, snapshot, onClose }: Props) {
     }
     setBusy(true);
     try {
-      const { share: updated } = await sharesApi.update(share.shareId, sid, {
+      const { share: updated } = await sharesApi.update(share.shareId, vid, {
         action: "set",
         password: newPassword,
       });
@@ -115,7 +111,7 @@ export function ShareDialog({ open, snapshot, onClose }: Props) {
     if (!share) return;
     setBusy(true);
     try {
-      const { share: updated } = await sharesApi.update(share.shareId, sid, { action: "remove" });
+      const { share: updated } = await sharesApi.update(share.shareId, vid, { action: "remove" });
       // 对称：用权威 share 同步置 hasPassword=false，并清空 sessionPassword（明文已失效，复制只带链接）。
       void mutate({ share: updated }, { revalidate: false });
       setSessionPassword("");
@@ -131,7 +127,7 @@ export function ShareDialog({ open, snapshot, onClose }: Props) {
     if (!share) return;
     setBusy(true);
     try {
-      await sharesApi.revoke(share.shareId, sid);
+      await sharesApi.revoke(share.shareId, vid);
       toast.success("分享已撤销");
       setView("main");
     } catch {
@@ -163,7 +159,7 @@ export function ShareDialog({ open, snapshot, onClose }: Props) {
         : "设置后访客需先输入密码才能查看该链接"
       : view === "revoke_confirm"
         ? "撤销后旧 URL 永久失效，新建分享会生成新 URL"
-        : "外部访客访问该链接时只能看到这个版本";
+        : "外部访客可查看该方案的所有版本，之后上传的新版本也自动可见";
 
   const dialogTitle =
     view === "set_password"

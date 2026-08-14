@@ -25,15 +25,18 @@
 **Claude**：
 ```
 [运行 prd push --json --change-note "调整顶栏布局 + 加暗色模式"]
-解析结果：snapshot.id = 7f3a..., seqNo = 4
-[运行 prd share create 7f3a... --rotate --json]
+解析结果：versionId = 5e2c..., snapshot.seqNo = 4
+[运行 prd share list 5e2c... --json]
+解析结果：share = null（该方案还没建过分享）
+[运行 prd share create 5e2c... --json]
 解析结果：shareUrl = {{ENDPOINT}}/share/abc..., password = null（无密码）
 
 ✓ 已推送到 PRD-Lab！
 
   链接：{{ENDPOINT}}/share/abc123
 
-（任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
+（链接对应整个方案：之后再推新版本，老板刷新同一链接就能看到，还能切换历史版本。
+  任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
 ```
 
 ---
@@ -127,33 +130,26 @@
 
 ---
 
-## 样例 6：撞车 + 强制新建
+## 样例 6：再推一版（方案已有分享链接）
 
 **用户**：再发一版给老板
 
 **Claude**：
 ```
-[运行 prd push --json --change-note "...复用上次"]
-解析结果：duplicateOfActive = true, 命中现有快照 v3
+[运行 prd push --json --change-note "补充风控页交互"]
+解析结果：versionId = 5e2c..., snapshot.seqNo = 4
+[运行 prd share list 5e2c... --json]
+解析结果：share 已存在（无密码），shareUrl = {{ENDPOINT}}/share/abc123
 
-这次内容跟上次（v3）一模一样没有改动。你是想：
-  A) 给现有 v3 创建新的分享链接
-  B) 强制新建一个 v4（即使内容相同）
+✓ 新版本 v4 已推送！
 
-通常选 A 就够了。要 B 的话告诉我。
+老板之前拿到的链接不用换：刷新 {{ENDPOINT}}/share/abc123 就能看到 v4，
+还可以在页面里切回历史版本对比。需要换新链接或加密码再告诉我。
 ```
 
-**用户**：A
-
-**Claude**：
-```
-[运行 prd share create <v3.snapshot.id> --rotate --json]
-✓ 已为现有 v3 创建新的分享链接：
-
-  链接：{{ENDPOINT}}/share/def456
-
-（任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
-```
+> 分享链接是**方案级**的：一个方案一条链接，之后每次 push 的新版本自动出现在同一链接里。
+> 遇到 `duplicateOfActive = true`（内容与上次完全相同）也一样——链接不受影响，告知用户即可，
+> 除非用户明确要 `--force-new` 强制新建版本。
 
 ---
 
@@ -164,8 +160,8 @@
 **Claude**：
 ```
 [运行 prd push --json --change-note "..."]
-解析结果：snapshot.id = 9c1b..., seqNo = 5
-[运行 prd share create 9c1b... --random --rotate --json]
+解析结果：versionId = 5e2c..., snapshot.seqNo = 5
+[运行 prd share create 5e2c... --random --rotate --json]
 解析结果：shareUrl = {{ENDPOINT}}/share/ghi789, password = 458912
 
 ✓ 已推送到 PRD-Lab（带密码）！

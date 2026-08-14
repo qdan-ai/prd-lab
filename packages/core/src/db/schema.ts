@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import {
   bigint,
-  boolean,
   char,
   datetime,
   index,
@@ -41,6 +40,9 @@ import {
  *   upload-renderer-selector：声明渠道从 zip 内 manifest 迁至 multipart `renderer` form 字段
  *        - 上传时由 multipart form 字段 `renderer` 声明；`default` / 未传 = NULL
  *        - schema 列定义保持不变，落库逻辑不变，仅数据来源变更（D7 / D11）
+ *   S19：share_links 绑定改回 version（方案级分享，访客可切换方案内所有版本）
+ *        - snapshot_id → version_id；生成列/唯一索引同步改名
+ *        - 删除从未消费的 allow_external_api / external_api_allowlist
  */
 
 const uuidPk = () =>
@@ -193,32 +195,28 @@ export type IdempotencyKey = typeof idempotencyKeys.$inferSelect;
 export type NewIdempotencyKey = typeof idempotencyKeys.$inferInsert;
 
 // ---- share_links ----
-// 单一 active link per snapshot：用生成列 snapshotIdActive 在 revoked_at IS NULL 时取 snapshot_id
+// S19 起分享绑定 version（方案）：访客可查看方案下所有活跃 snapshot 并切换。
+// 单一 active link per version：用生成列 versionIdActive 在 revoked_at IS NULL 时取 version_id
 export const shareLinks = mysqlTable(
   "share_links",
   {
     id: varchar("id", { length: 32 }).primaryKey(),
-    snapshotId: varchar("snapshot_id", { length: 36 })
+    versionId: varchar("version_id", { length: 36 })
       .notNull()
-      .references(() => snapshots.id, { onDelete: "cascade" }),
+      .references(() => versions.id, { onDelete: "cascade" }),
     // NULL = 无密码分享（点开直接看）；非 NULL = bcrypt hash。密码为可选项，默认无。
     passwordHash: varchar("password_hash", { length: 255 }),
     passwordVersion: int("password_version").notNull().default(1),
-    allowExternalApi: boolean("allow_external_api").notNull().default(false),
-    externalApiAllowlist: json("external_api_allowlist")
-      .notNull()
-      .$type<string[]>()
-      .$defaultFn(() => []),
     createdBy: varchar("created_by", { length: 36 })
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
     revokedAt: datetimeFsp("revoked_at"),
-    snapshotIdActive: varchar("snapshot_id_active", { length: 36 }).generatedAlwaysAs(
-      sql`(CASE WHEN \`revoked_at\` IS NULL THEN \`snapshot_id\` END)`,
+    versionIdActive: varchar("version_id_active", { length: 36 }).generatedAlwaysAs(
+      sql`(CASE WHEN \`revoked_at\` IS NULL THEN \`version_id\` END)`,
     ),
   },
-  (t) => [uniqueIndex("share_links_snapshot_active_unique").on(t.snapshotIdActive)],
+  (t) => [uniqueIndex("share_links_version_active_unique").on(t.versionIdActive)],
 );
 
 export type ShareLink = typeof shareLinks.$inferSelect;

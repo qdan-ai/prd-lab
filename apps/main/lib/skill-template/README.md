@@ -75,6 +75,7 @@ unzip -o prd-publish-skill.zip -d ~/.claude/skills/
 ## 已知限制
 
 - 仅支持 Claude Code（Cursor / Cline 不支持 Skill，但可以让 AI 直接用 bash 调 `prd` 命令，效果差不多）
+- 分享链接是**方案级**的：一条链接对应一个方案，访客可查看并切换方案下所有版本，之后推的新版本自动可见（不用重发链接）
 - 分享链接默认无密码，任何拿到链接的人都能查看；需要保护时让 AI 加 `--random`（6 位数字密码）或 `--password "<自定义>"`（6-200 字符）
 
 ## 反馈

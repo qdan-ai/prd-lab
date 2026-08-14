@@ -15,8 +15,7 @@ interface Props {
   versionName: string;
   versionId: string;
   viewingSnapshotSeq: number | null;
-  viewingSnapshotVersionLabel: string | null;
-  /** 当前正在预览的 snapshot id（null 时禁用导出/分享） */
+  /** 当前正在预览的 snapshot id（null 时禁用导出） */
   snapshotId: string | null;
   /** 是否项目 owner，仅 owner 才显示分享按钮 */
   ownedByMe: boolean;
@@ -27,16 +26,15 @@ interface Props {
 }
 
 /**
- * 顶 toolbar 44px（S9 R4 增量：补 version 级"分享"按钮，复用 ShareDialog）：
- * - 分享按钮仅 owner 可见，绑当前 viewingSnapshot
- * - 与左抽屉 ⋯ 菜单的"分享"等价，UI 提供两条入口（菜单 + 顶 toolbar）
+ * 顶 toolbar 44px（S19：分享改方案级，绑当前 version）：
+ * - 分享按钮仅 owner 可见，恒可用（空方案也能建分享，访客见空态）
+ * - 分享的唯一 UI 入口（左抽屉快照行菜单的"分享"已随方案级改造移除）
  */
 export function TopToolbar({
   projectName,
   versionName,
   versionId,
   viewingSnapshotSeq,
-  viewingSnapshotVersionLabel,
   snapshotId,
   ownedByMe,
   userName,
@@ -49,11 +47,6 @@ export function TopToolbar({
   const leftOpen = useSidebarStore((s) => s.leftOpen);
   const openSwitcher = useSwitcherStore((s) => s.setOpen);
   const [shareOpen, setShareOpen] = useState(false);
-
-  const shareTarget =
-    snapshotId !== null && viewingSnapshotSeq !== null
-      ? { id: snapshotId, seqNo: viewingSnapshotSeq, versionLabel: viewingSnapshotVersionLabel }
-      : null;
 
   return (
     <header
@@ -113,9 +106,8 @@ export function TopToolbar({
           variant="ghost"
           size="icon"
           aria-label="分享"
-          title="分享当前版本"
+          title="分享方案"
           onClick={() => setShareOpen(true)}
-          disabled={shareTarget === null}
           data-testid="toolbar-share-button"
         >
           <Share2 size={14} strokeWidth={2.25} />
@@ -141,7 +133,7 @@ export function TopToolbar({
 
       <ShareDialog
         open={shareOpen}
-        snapshot={shareTarget}
+        version={{ id: versionId, name: versionName }}
         onClose={() => setShareOpen(false)}
       />
     </header>

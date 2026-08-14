@@ -3,6 +3,8 @@ import { API } from "../lib/api-paths";
 import { readClientOrExit } from "../lib/client";
 import { outputError, outputResult, type OutputOptions } from "../lib/output";
 import { generateSharePassword } from "../lib/share-password";
+import { readProjectRc } from "../lib/rc";
+import { resolveProjectVersion } from "../lib/upload";
 import type { ApiClient } from "../lib/api-client";
 
 interface ActiveShare {
@@ -26,25 +28,65 @@ function buildShareUrl(endpoint: string, shareId: string): string {
   return `${endpoint.replace(/\/$/, "")}/share/${shareId}`;
 }
 
-async function fetchActiveShare(client: ApiClient, sid: string): Promise<ActiveShare | null> {
-  const res = await client.get<GetShareResponse>(API.snapshotShares(sid));
+async function fetchActiveShare(client: ApiClient, vid: string): Promise<ActiveShare | null> {
+  const res = await client.get<GetShareResponse>(API.versionShares(vid));
   if (res.status !== 200 || !res.data) return null;
   return res.data.share;
 }
 
+/**
+ * S19：share 绑方案（version）级。vid 位置参数可省略——省略时读工作目录
+ * .prdrc.json 的 projectName/versionName 解析（不 autoCreate，找不到直接报错）。
+ */
+async function resolveVid(
+  client: ApiClient,
+  vidArg: string | undefined,
+  opts: OutputOptions,
+): Promise<string> {
+  if (vidArg) return vidArg;
+  const rc = readProjectRc(process.cwd());
+  if (!rc?.projectName || !rc?.versionName) {
+    outputError(
+      {
+        status: 400,
+        error_code: "validation_error",
+        message: "缺少方案 id：请传 <vid>，或在含 .prdrc.json 的项目目录内执行",
+      },
+      opts,
+    );
+  }
+  try {
+    const resolved = await resolveProjectVersion(client, rc!.projectName, rc!.versionName);
+    return resolved.versionId;
+  } catch (e) {
+    outputError(
+      {
+        status: 400,
+        error_code: "validation_error",
+        message: `按 .prdrc.json 解析方案失败：${e instanceof Error ? e.message : String(e)}`,
+      },
+      opts,
+    );
+  }
+}
+
 export function registerShareCommands(cli: CAC): void {
   cli
-    .command("share create <sid>", "为某快照创建分享链接（默认无密码，任何拿到链接的人都能查看）")
+    .command(
+      "share create [vid]",
+      "为方案创建分享链接（访客可看方案下所有版本，新上传自动可见；默认无密码）",
+    )
     .option("--password <pw>", "显式指定访问密码（6-200 字符）")
     .option("--random", "由 CLI 用 crypto.randomInt 生成 6 位数访问密码")
     .option("--rotate", "若已有 active share，先 revoke 旧的再创建新的")
     .option("--json", "输出单行 JSON")
     .action(
       async (
-        sid: string,
+        vidArg: string | undefined,
         opts: OutputOptions & { password?: string; random?: boolean; rotate?: boolean },
       ) => {
         const client = readClientOrExit();
+        const vid = await resolveVid(client, vidArg, opts);
 
         // 密码可选：--password 显式设密码 > --random 随机生成 > 默认无密码。
         let password: string | null;
@@ -65,7 +107,7 @@ export function registerShareCommands(cli: CAC): void {
 
         // --rotate：先看有没有 active，有就 revoke
         if (opts.rotate) {
-          const existing = await fetchActiveShare(client, sid);
+          const existing = await fetchActiveShare(client, vid);
           if (existing) {
             const del = await client.delete(API.share(existing.shareId));
             if (del.status !== 204) {
@@ -76,7 +118,7 @@ export function registerShareCommands(cli: CAC): void {
 
         // 无密码时不传 password 字段；后端将其视为无密码链接。
         const res = await client.postJson<CreatedShareResponse>(
-          API.snapshotShares(sid),
+          API.versionShares(vid),
           password === null ? {} : { password },
         );
         if (res.status !== 201 || !res.data) {
@@ -96,23 +138,26 @@ export function registerShareCommands(cli: CAC): void {
             ? [
                 `[prd] ✓ 已创建分享链接（无密码）`,
                 `      链接: ${d.shareUrl}`,
+                `      访客可查看该方案的所有版本，之后 push 的新版本自动可见`,
                 `      任何拿到链接的人都能查看，请勿公开转发`,
               ].join("\n")
             : [
                 `[prd] ✓ 已创建分享链接`,
                 `      链接: ${d.shareUrl}`,
                 `      密码: ${d.password}  (只显示一次，请保存)`,
+                `      访客可查看该方案的所有版本，之后 push 的新版本自动可见`,
               ].join("\n"),
         );
       },
     );
 
   cli
-    .command("share list <sid>", "查询某快照的活跃分享链接（不含密码）")
+    .command("share list [vid]", "查询某方案的活跃分享链接（不含密码）")
     .option("--json", "输出单行 JSON")
-    .action(async (sid: string, opts: OutputOptions) => {
+    .action(async (vidArg: string | undefined, opts: OutputOptions) => {
       const client = readClientOrExit();
-      const res = await client.get<GetShareResponse>(API.snapshotShares(sid));
+      const vid = await resolveVid(client, vidArg, opts);
+      const res = await client.get<GetShareResponse>(API.versionShares(vid));
       if (res.status !== 200 || !res.data) {
         outputError({ status: res.status, ...res.error }, opts);
       }

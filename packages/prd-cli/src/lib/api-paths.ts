@@ -12,6 +12,6 @@ export const API = {
   version: (vid: string) => `/api/v1/versions/${vid}`,
   versionSnapshots: (vid: string) => `/api/v1/versions/${vid}/snapshots`,
   snapshot: (sid: string) => `/api/v1/snapshots/${sid}`,
-  snapshotShares: (sid: string) => `/api/v1/snapshots/${sid}/shares`,
+  versionShares: (vid: string) => `/api/v1/versions/${vid}/shares`,
   share: (shareId: string) => `/api/v1/shares/${shareId}`,
 } as const;

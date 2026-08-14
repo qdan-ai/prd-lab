@@ -127,7 +127,6 @@ export default async function VersionPage({
         projectName={row.project.name}
         versionName={row.version.name}
         viewingSnapshotSeq={viewingSnapshot?.seqNo ?? null}
-        viewingSnapshotVersionLabel={viewingSnapshot?.versionLabel ?? null}
         versionId={vid}
         snapshotId={viewingSnapshot?.id ?? null}
         ownedByMe={canManage}

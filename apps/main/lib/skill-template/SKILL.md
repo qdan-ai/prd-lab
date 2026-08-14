@@ -101,16 +101,18 @@ push 成功会把 projectName / versionName 写入 `.prdrc.json`（renderer 不�
 ```
 
 - **核对 `snapshot.rendererName` 是你判别的那个值**（不是 null、不是意外的 default）；不符说明 renderer 没生效，带正确 `--renderer` 重发
-- 把 `snapshot.id` 记下来（步骤 4 需要）
-- 如果 `duplicateOfActive: true` → 内容跟上次完全一样，告诉用户"内容未变，命中现有快照 v{seqNo}"，可继续走步骤 4 给现有快照创建分享，或问用户要不要 `--force-new` 强制新建
+- 把顶层 `versionId` 记下来（步骤 4 需要；分享是方案级的，不是快照级）
+- 如果 `duplicateOfActive: true` → 内容跟上次完全一样，告诉用户"内容未变，命中现有快照 v{seqNo}"；分享链接是方案级的，不受影响，可继续走步骤 4，或问用户要不要 `--force-new` 强制新建
 
 **步骤 4 · 创建分享链接（默认无密码）**
 
 ```bash
-prd share create <snapshot.id> --rotate --json
+prd share create <versionId> --rotate --json
 ```
 
-`--rotate` 让 CLI 自动处理"该快照已有 active 分享"的 409：先 revoke 旧的再建新的。
+在含 `.prdrc.json` 的项目目录里可以省略 `<versionId>`（CLI 会按 projectName/versionName 自动解析）。
+
+`--rotate` 让 CLI 自动处理"该方案已有 active 分享"的 409：先 revoke 旧的再建新的。**注意**：如果之前已经给老板发过这个方案的链接，且只是推新版本，**不需要重新建分享**——老板刷新原链接就能看到新版本；跳过步骤 4 直接告诉用户即可。只有首次分享或用户要求换链接/换密码时才执行本步骤。
 
 默认创建**无密码**链接，任何拿到链接的人都能直接打开查看。如果用户要求加密码，追加 `--password "<自定义>"`（6-200 字符）或 `--random`（CLI 生成 6 位数密码）。
 
@@ -136,7 +138,8 @@ prd share create <snapshot.id> --rotate --json
 
   链接：<shareUrl>
 
-（任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
+（链接对应整个方案：之后再推新版本，老板刷新同一链接就能看到，还能切换历史版本。
+  任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
 ```
 
 如果加了密码（`password` 非 null），把链接 + 密码一起给用户，并强调密码只显示一次：
@@ -289,7 +292,7 @@ CLI 失败时 stdout/stderr 里会有 `HTTP <status> <error_code>` 字样。按�
 | `name_conflict` | 409 | "这个名字已被占用。要换个名字吗？你给个新名字我重试。" |
 | `version_label_conflict` | 409 | "这个版本标签已被同方案的其他活跃快照占用。换个标签？" |
 | `content_duplicate` | 409 | "内容跟现有快照完全一样。要不要强制新建？我可以加 `--force-new`。" |
-| `share_already_exists` | 409 | "该快照已有活跃分享。我直接 `--rotate` 撤销旧的再建新的，会换成一条新链接（若带密码则密码也会变）。" |
+| `share_already_exists` | 409 | "该方案已有活跃分享。通常直接复用旧链接即可（`prd share list` 可查）；用户明确要换链接时再 `--rotate` 撤销旧的建新的（新 URL，若带密码则密码也会变）。" |
 | `snapshot_archived` | 410 | "这个快照已归档。请挑一个未归档的版本操作。" |
 | `validation_error` | 400 | 提取 `message` 字段告诉用户哪个字段不合规。 |
 | 命令不存在 / `prd: command not found` | — | **停下**。告诉用户："看起来 `prd` 命令没装到 PATH。请回 PRD-Lab 主站的"接入 AI 工具"页面按 Step 1 重新装一遍。" |

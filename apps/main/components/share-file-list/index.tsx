@@ -38,7 +38,12 @@ export function ShareFileList({ shareId, snapshotId, entryHtmlPath, rendererName
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch<{ files: FileRow[] }>(`/share/${shareId}/api/files`, undefined, { silent: true })
+    setFiles(null);
+    apiFetch<{ files: FileRow[] }>(
+      `/share/${shareId}/api/files?sid=${encodeURIComponent(snapshotId)}`,
+      undefined,
+      { silent: true },
+    )
       .then((data) => {
         if (!cancelled) setFiles(data.files);
       })
@@ -53,7 +58,7 @@ export function ShareFileList({ shareId, snapshotId, entryHtmlPath, rendererName
     return () => {
       cancelled = true;
     };
-  }, [shareId]);
+  }, [shareId, snapshotId]);
 
   const onOpen = async (relPath: string) => {
     try {

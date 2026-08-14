@@ -15,6 +15,7 @@
 #   R18 -- NEXT_PUBLIC_* 是 build time inline，必须等 build 阶段才能注入
 #   R19 -- 部署后旧浏览器持有失效的 server action ID 会让 login 500，必须通知硬刷新
 #   R20 -- compose 与 .env 不在同目录时必须 --env-file 显式传，否则 ${VAR:-default} 静默 fallback
+#   R21 -- tar 覆盖解压不清理已删除文件，解压前先 rm -rf 源码目录（保留 repo/.env）
 #
 # 用法:
 #   ./scripts/deploy.sh                 # 标准部署
@@ -153,6 +154,10 @@ cd "$REMOTE_ROOT"
 
 echo "▸ 解压覆盖 repo/"
 mkdir -p repo
+# R21 -- tar 覆盖解压不会清理上一版已删除的源码文件，幽灵文件会破坏 next build typecheck
+#        （S19 首次删除路由文件时踩中）。先清源码目录再解压；repo/.env 等运行时文件不在
+#        清理范围内，保留。
+rm -rf repo/apps repo/packages repo/docker repo/scripts
 tar -xzf prd-lab-deploy.tar.gz -C repo
 rm prd-lab-deploy.tar.gz
 

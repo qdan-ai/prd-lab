@@ -9,6 +9,7 @@ import {
 } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
 import { errorResponse } from "@/lib/api/errors";
+import { requestOrigin } from "@/lib/api/request-origin";
 
 /**
  * POST /api/v1/snapshots/:sid/preview-token
@@ -39,7 +40,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sid
   if (row.archivedAt !== null) return errorResponse("snapshot_archived");
 
   const token = issueToken(
-    { snapshotId: sid, sessionUserId: session.userId, origin: new URL(request.url).origin },
+    { snapshotId: sid, sessionUserId: session.userId, origin: requestOrigin(request) },
     PREVIEW_HANDOFF_TTL_SECONDS,
   );
   return Response.json({ token, expiresIn: PREVIEW_HANDOFF_TTL_SECONDS });

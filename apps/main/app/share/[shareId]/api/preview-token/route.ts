@@ -8,6 +8,7 @@ import {
 } from "@prd-lab/core";
 import { errorResponse } from "@/lib/api/errors";
 import { getShareSession } from "@/lib/share/share-session";
+import { requestOrigin } from "@/lib/api/request-origin";
 
 type Ctx = { params: Promise<{ shareId: string }> };
 
@@ -59,7 +60,7 @@ export async function POST(request: Request, { params }: Ctx) {
     {
       snapshotId: sid,
       shareSessionId: shareSessionId(shareId, session.pv),
-      origin: new URL(request.url).origin,
+      origin: requestOrigin(request),
     },
     PREVIEW_HANDOFF_TTL_SECONDS,
   );

@@ -7,6 +7,7 @@ import {
   PREVIEW_HANDOFF_TTL_SECONDS,
 } from "@prd-lab/core";
 import { getShareSession } from "@/lib/share/share-session";
+import { requestOrigin } from "@/lib/api/request-origin";
 import { sanitizeNextPath } from "@/lib/preview/sanitize-next";
 
 type Ctx = { params: Promise<{ shareId: string }> };
@@ -51,7 +52,7 @@ export async function GET(request: Request, { params }: Ctx) {
     {
       snapshotId: sid,
       shareSessionId: shareSessionId(shareId, session.pv),
-      origin: url.origin,
+      origin: requestOrigin(request),
     },
     PREVIEW_HANDOFF_TTL_SECONDS,
   );

@@ -9,6 +9,7 @@ import {
 } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
 import { sanitizeNextPath } from "@/lib/preview/sanitize-next";
+import { requestOrigin } from "@/lib/api/request-origin";
 
 /**
  * GET /api/v1/snapshots/:sid/preview-refresh?next=/p/:sid/xxx.html
@@ -24,7 +25,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ sid:
   const url = new URL(request.url);
   const session = await getSession();
   if (!session) {
-    return redirect(new URL(`/login?callbackUrl=${encodeURIComponent(url.href)}`, url).toString());
+    // callbackUrl 用浏览器视角 origin 重组（standalone 下 url.href 是 0.0.0.0:3000 内部地址）
+    const publicHref = `${requestOrigin(request)}${url.pathname}${url.search}`;
+    return redirect(`${requestOrigin(request)}/login?callbackUrl=${encodeURIComponent(publicHref)}`);
   }
 
   // 可读性校验：口径与同目录 preview-token POST 完全一致
@@ -47,7 +50,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ sid:
 
   const next = sanitizeNextPath(url.searchParams.get("next"), sid);
   const token = issueToken(
-    { snapshotId: sid, sessionUserId: session.userId, origin: url.origin },
+    { snapshotId: sid, sessionUserId: session.userId, origin: requestOrigin(request) },
     PREVIEW_HANDOFF_TTL_SECONDS,
   );
   const previewOrigin = process.env.NEXT_PUBLIC_PREVIEW_ORIGIN ?? "http://preview.local";

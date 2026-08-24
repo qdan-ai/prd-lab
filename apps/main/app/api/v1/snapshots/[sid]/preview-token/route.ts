@@ -1,13 +1,21 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { db, issueToken, projects, snapshots, versions } from "@prd-lab/core";
+import {
+  db,
+  issueToken,
+  projects,
+  snapshots,
+  versions,
+  PREVIEW_HANDOFF_TTL_SECONDS,
+} from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
 import { errorResponse } from "@/lib/api/errors";
 
 /**
  * POST /api/v1/snapshots/:sid/preview-token
- * 父窗口周期续签（每 4 分钟）。返回新 token + 过期秒数。
+ * 签发 300s 查询串交接 token（主站点文件 → window.open 预览站）。
+ * S20：payload 带 origin，供预览站会话过期后 302 回 preview-refresh 自动重签。
  */
-export async function POST(_: Request, { params }: { params: Promise<{ sid: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ sid: string }> }) {
   const session = await getSession();
   if (!session) return errorResponse("unauthorized");
   const { sid } = await params;
@@ -30,6 +38,9 @@ export async function POST(_: Request, { params }: { params: Promise<{ sid: stri
   if (!canRead) return errorResponse("not_found");
   if (row.archivedAt !== null) return errorResponse("snapshot_archived");
 
-  const token = issueToken({ snapshotId: sid, sessionUserId: session.userId }, 300);
-  return Response.json({ token, expiresIn: 300 });
+  const token = issueToken(
+    { snapshotId: sid, sessionUserId: session.userId, origin: new URL(request.url).origin },
+    PREVIEW_HANDOFF_TTL_SECONDS,
+  );
+  return Response.json({ token, expiresIn: PREVIEW_HANDOFF_TTL_SECONDS });
 }

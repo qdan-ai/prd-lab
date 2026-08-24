@@ -1,5 +1,11 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { db, issueShareToken, shareSessionId, snapshots } from "@prd-lab/core";
+import {
+  db,
+  issueShareToken,
+  shareSessionId,
+  snapshots,
+  PREVIEW_HANDOFF_TTL_SECONDS,
+} from "@prd-lab/core";
 import { errorResponse } from "@/lib/api/errors";
 import { getShareSession } from "@/lib/share/share-session";
 
@@ -10,7 +16,9 @@ type Ctx = { params: Promise<{ shareId: string }> };
  *
  * S19 方案级：snapshotId 必须属于 share 绑定的 version 且未归档（归属校验替代 S8 的恒等比较）。
  * 不属于 / 已归档一律 not_found（防枚举；单版本归档 ≠ 分享失效）。
- * sub = `${shareId}:${pv}`，密码重置后 pv 改变 → 旧 token sub 失效。父窗口 4min 周期续签。
+ * sub = `${shareId}:${pv}`，密码重置后 pv 改变 → 旧 token sub 失效。
+ * S20：签发 300s 交接 token 且 payload 带 origin，供预览站会话过期后 302 回
+ * `/share/{shareId}/preview-refresh` 自动重签。
  */
 export async function POST(request: Request, { params }: Ctx) {
   const { shareId } = await params;
@@ -51,8 +59,9 @@ export async function POST(request: Request, { params }: Ctx) {
     {
       snapshotId: sid,
       shareSessionId: shareSessionId(shareId, session.pv),
+      origin: new URL(request.url).origin,
     },
-    300,
+    PREVIEW_HANDOFF_TTL_SECONDS,
   );
-  return Response.json({ token, expiresIn: 300 });
+  return Response.json({ token, expiresIn: PREVIEW_HANDOFF_TTL_SECONDS });
 }

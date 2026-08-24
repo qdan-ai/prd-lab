@@ -13,7 +13,11 @@ export {
 export {
   issueToken,
   issueShareToken,
+  reissueToken,
   verifyToken,
+  PREVIEW_HANDOFF_TTL_SECONDS,
+  PREVIEW_SESSION_TTL_SECONDS,
+  PREVIEW_COOKIE_MAX_AGE_SECONDS,
   type TokenKind,
   type TokenPayload,
   type VerifyResult,

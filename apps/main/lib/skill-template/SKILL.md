@@ -67,23 +67,28 @@ doctor 通过后，按用户原话路由：
 
 | 目录特征 | 该传的 renderer | 解析效果 |
 |---|---|---|
-| 根目录有 `canvas.json`（通常还配 `rows/`、`docs/anchors.json`）——pm-canvas skill 生成的平铺画板 | `pm-canvas` | 解析画板布局 + 锚点 + `docs/` 备注文档 |
-| 普通单页 / 多页 HTML demo、原型，无 canvas.json | `default` | 直接打开入口 HTML |
+| 根目录有 `canvas.json` 且其中 `"format": "board/v1"`（通常还配 `blocks/`、`assets/`、`docs/`）——html_canvas 画板 | `html-canvas` | 解析无限画布布局 + `docs/` 文档面板（md / excalidraw / drawio） |
+| 根目录有 `index.html` + `canvas.json`，`canvas.json` 里没有 `format` 字段（通常还配 `rows/`、`docs/anchors.json`）——pm-canvas 平铺画板 | `pm-canvas` | 解析画板布局 + 锚点 + `docs/` 备注文档 |
+| 普通单页 / 多页 HTML demo、原型，根目录有入口 HTML，无 canvas.json | `default` | 直接打开入口 HTML |
 
-pm-canvas 画板若用 `default` 上传，`docs/` 备注和 `anchors.json` 不会被解析进画板（文件仍在包里，只是不渲染）。
+两种画板都有 `canvas.json`，打开看 `format` 字段区分：值为 `"board/v1"` 是 html_canvas 画板，没有这个字段是 pm-canvas 画板。
+
+画板漏传或误传 `default` 的后果：
+- html_canvas 画板根目录通常没有入口 HTML，会被拒（`zip 根目录未发现 HTML 入口`）；即使根目录恰好有 HTML，也只会当普通页面打开，画布布局和 `docs/` 文档面板都不会被解析
+- pm-canvas 画板会当普通页面打开，`docs/` 备注和 `anchors.json` 不会被解析进画板（文件仍在包里，只是不渲染）
 
 > 拿不准当前支持哪些值，先 `prd push --help` 看 `--renderer` 那行列出的可选项——renderer 会陆续新增，按当下 help 为准。
 
 如果步骤 1 看到 `.prdrc.json` 存在：
 
 ```bash
-prd push --json --change-note "<改动说明>" --renderer <default|pm-canvas>
+prd push --json --change-note "<改动说明>" --renderer <html-canvas|pm-canvas|default>
 ```
 
 如果步骤 1 是用户从 list 里选的项目+方案（无 .prdrc.json）：
 
 ```bash
-prd push --json --change-note "<改动说明>" --renderer <default|pm-canvas> --project "<projectName>" --version "<versionName>"
+prd push --json --change-note "<改动说明>" --renderer <html-canvas|pm-canvas|default> --project "<projectName>" --version "<versionName>"
 ```
 
 push 成功会把 projectName / versionName 写入 `.prdrc.json`（renderer 不写入，下次仍要显式传），下次同目录推送就不用再带 `--project --version`。
@@ -92,57 +97,93 @@ push 成功会把 projectName / versionName 写入 `.prdrc.json`（renderer 不�
 
 ```json
 {
-  "snapshot": { "id": "...", "seqNo": 3, "rendererName": "pm-canvas", ... },
+  "snapshot": {
+    "id": "...", "seqNo": 3, "rendererName": "html-canvas",
+    "rendererMetadata": { "__computed": { "docs": [...], "elementCount": 102, ... } },
+    ...
+  },
   "projectName": "...",
+  "versionId": "...",
   "versionName": "...",
   "duplicateOfActive": false,
   ...
 }
 ```
 
-- **核对 `snapshot.rendererName` 是你判别的那个值**（不是 null、不是意外的 default）；不符说明 renderer 没生效，带正确 `--renderer` 重发
-- 把顶层 `versionId` 记下来（步骤 4 需要；分享是方案级的，不是快照级）
-- 如果 `duplicateOfActive: true` → 内容跟上次完全一样，告诉用户"内容未变，命中现有快照 v{seqNo}"；分享链接是方案级的，不受影响，可继续走步骤 4，或问用户要不要 `--force-new` 强制新建
+- **核对 `snapshot.rendererName`**：传 `html-canvas` / `pm-canvas` 时应为同名字符串，传 `default` 时为 `null`；不符说明 renderer 没生效，带正确 `--renderer` 重发
+- 画板顺带核对 `__computed.docs` 列出的文档与本地 `docs/` 一致；pm-canvas 画板另看 `__computed.hasAnchors` 与本地是否有 `docs/anchors.json` 一致
+- 把顶层 `versionId`（方案 ID）记下来，步骤 4 用它；分享链接挂在方案上，不用 `snapshot.id`
+- 如果 `duplicateOfActive: true` → 内容跟上次完全一样，告诉用户"内容未变，命中现有快照 v{seqNo}"；分享链接不受影响，照常走步骤 4，或问用户要不要 `--force-new` 强制新建
 
-**步骤 4 · 创建分享链接（默认无密码）**
+**步骤 4 · 拿分享链接（先查后建）**
+
+分享链接是**方案级**的：一个方案一条链接，访客在同一链接里能看到方案下所有版本，之后每次 push 的新版本自动出现。所以先查这个方案有没有活跃链接：
 
 ```bash
-prd share create <versionId> --rotate --json
+prd share list <versionId> --json
 ```
 
-在含 `.prdrc.json` 的项目目录里可以省略 `<versionId>`（CLI 会按 projectName/versionName 自动解析）。
+在含 `.prdrc.json` 的目录里可以省略 `<versionId>`（CLI 按 projectName/versionName 自动解析）。
 
-`--rotate` 让 CLI 自动处理"该方案已有 active 分享"的 409：先 revoke 旧的再建新的。**注意**：如果之前已经给老板发过这个方案的链接，且只是推新版本，**不需要重新建分享**——老板刷新原链接就能看到新版本；跳过步骤 4 直接告诉用户即可。只有首次分享或用户要求换链接/换密码时才执行本步骤。
+按输出分三种情况：
 
-默认创建**无密码**链接，任何拿到链接的人都能直接打开查看。如果用户要求加密码，追加 `--password "<自定义>"`（6-200 字符）或 `--random`（CLI 生成 6 位数密码）。
+1. **已有链接**（输出含 `shareUrl`、`hasPassword`）→ 直接复用这条链接，不再创建。之前拿到链接的人刷新就能看到新版本
+2. **没有链接**（输出 `{"share":null}`）→ 首次分享，创建一条（默认无密码）：
 
-解析 stdout JSON：
+   ```bash
+   prd share create <versionId> --json
+   ```
+
+   用户要求加密码时追加 `--password "<自定义>"`（6-200 字符）或 `--random`（CLI 生成 6 位数密码）
+
+3. **用户明确要换链接 / 加密码 / 改密码**，且方案已有链接 → 先复述"旧链接会失效，之前发出去的人要重新拿新链接"，用户确认后：
+
+   ```bash
+   prd share create <versionId> --rotate --json [--password "<自定义>" | --random]
+   ```
+
+   `--rotate` 先撤销该方案的旧链接再建新的
+
+`share create` 的 stdout JSON：
 
 ```json
 {
   "shareId": "...",
-  "shareUrl": "https://.../share/<shareId>",
+  "shareUrl": "http://.../share/<shareId>",
   "password": null,
   ...
 }
 ```
 
-`password` 为 `null` 表示无密码链接；带密码时是明文密码（只在创建时返回一次）。
+`password` 为 `null` 表示无密码链接；带密码时是明文密码（只在创建时返回一次）。复用已有链接时拿不到密码：`hasPassword: true` 表示沿用之前设的密码，平台不存明文，用户找不回就只能走情况 3 换新链接。
 
 **步骤 5 · 回复用户**
 
-默认无密码时，只给链接 + 一句轻提示：
+复用已有链接时：
+
+```
+✓ 已推送到 PRD-Lab，新版本 v{seqNo}。
+
+  链接：<shareUrl>
+
+（还是之前那条链接，拿到的人刷新就能看到新版本，也能切回历史版本。
+  任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
+```
+
+复用的链接带密码（`hasPassword: true`）时，把最后一句换成"链接带密码，沿用之前设的那个"。
+
+新建无密码链接时：
 
 ```
 ✓ 已推送到 PRD-Lab！
 
   链接：<shareUrl>
 
-（链接对应整个方案：之后再推新版本，老板刷新同一链接就能看到，还能切换历史版本。
+（链接对应整个方案：之后再推新版本，刷新同一链接就能看到，还能切换历史版本。
   任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
 ```
 
-如果加了密码（`password` 非 null），把链接 + 密码一起给用户，并强调密码只显示一次：
+新建带密码链接（`password` 非 null）时，把链接 + 密码一起给用户，并强调密码只显示一次：
 
 ```
 ✓ 已推送到 PRD-Lab！
@@ -292,9 +333,13 @@ CLI 失败时 stdout/stderr 里会有 `HTTP <status> <error_code>` 字样。按�
 | `name_conflict` | 409 | "这个名字已被占用。要换个名字吗？你给个新名字我重试。" |
 | `version_label_conflict` | 409 | "这个版本标签已被同方案的其他活跃快照占用。换个标签？" |
 | `content_duplicate` | 409 | "内容跟现有快照完全一样。要不要强制新建？我可以加 `--force-new`。" |
-| `share_already_exists` | 409 | "该方案已有活跃分享。通常直接复用旧链接即可（`prd share list` 可查）；用户明确要换链接时再 `--rotate` 撤销旧的建新的（新 URL，若带密码则密码也会变）。" |
+| `share_already_exists` | 409 | 该方案已有活跃链接。跑 `prd share list <versionId> --json` 取出复用；只有用户明确要换链接并确认后才 `--rotate`。 |
+| `not_found`（share 命令） | 404 | 传入的不是有效的方案 ID。`share list / create` 要的是 push 输出顶层的 `versionId`，不是 `snapshot.id`；换成 `versionId` 重试。 |
 | `snapshot_archived` | 410 | "这个快照已归档。请挑一个未归档的版本操作。" |
-| `validation_error` | 400 | 提取 `message` 字段告诉用户哪个字段不合规。 |
+| `validation_error`，message 为 `unknown_renderer` | 400 | `--renderer` 值平台不认识，返回体的 `supported` 列出可选值。按步骤 3 的判别表重选后重发。 |
+| `validation_error`，message 为 `renderer_requirements_unmet` | 400 | 目录结构不符合所选 renderer，返回体的 `reason` 说明缺什么（如 html-canvas 要求 `canvas.json` 含 `"format": "board/v1"`；pm-canvas 要求根目录有 `index.html`，且 `docs/` 下没有子目录）。把原因转述给用户，确认目录选对了再重发。 |
+| `validation_error`，message 含 `zip 根目录未发现 HTML 入口` | 400 | 用 `default` 上传了没有根目录入口 HTML 的目录。若目录有 `canvas.json`，按步骤 3 的判别表改传画板 renderer 重发；否则让用户确认入口 HTML 位置。 |
+| `validation_error`（其他） | 400 | 提取 `message` 字段告诉用户哪个字段不合规。 |
 | 命令不存在 / `prd: command not found` | — | **停下**。告诉用户："看起来 `prd` 命令没装到 PATH。请回 PRD-Lab 主站的"接入 AI 工具"页面按 Step 1 重新装一遍。" |
 
 ## 绝对禁忌
@@ -305,4 +350,5 @@ CLI 失败时 stdout/stderr 里会有 `HTTP <status> <error_code>` 字样。按�
 4. **不要直接 `curl` 调 API**。所有动作走 `prd` CLI，方便统一鉴权 / 错误处理 / 未来升级。
 5. **不要让用户跑 `npm i -g @prd-lab/prd-cli` 或类似 npm/yarn 安装命令**——PRD-Lab CLI 不在 npm registry 上。如果 `prd` 命令缺失，直接让用户回主站设置页看 Step 1 的 build + 软链命令。
 6. **不要跑 `prd push` 而不确认 `.prdrc.json` 存在 / 显式传 `--project --version`**——push 会进交互 readline 模式让你卡死。
-7. **不要漏选 renderer**。push 前按目录特征判别该传 `default` 还是 `pm-canvas` 并显式 `--renderer`；漏传落到 `default`，pm-canvas 画板的锚点与 docs 备注不会被解析。
+7. **不要漏选 renderer**。push 前按目录特征判别该传 `html-canvas`、`pm-canvas` 还是 `default` 并显式 `--renderer`；漏传落到 `default`，画板会上传失败或只当普通页面打开，布局、锚点与 docs 文档都不会被解析。
+8. **不要为了拿链接随手 `--rotate`**。`--rotate` 会作废方案已有的链接，已经发出去的人会打不开。拿链接一律先 `prd share list`；只有用户明确要换链接 / 换密码，并在你复述"旧链接会失效"后确认，才用 `--rotate`。

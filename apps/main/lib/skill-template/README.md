@@ -61,7 +61,7 @@ unzip -o prd-publish-skill.zip -d ~/.claude/skills/
 
 | 你说 | Claude 自动跑 |
 |---|---|
-| "把这个 demo 推到 PRD-Lab" | 列项目让你选 → 上传 → 生成无密码分享链接（需要可加密码） |
+| "把这个 demo 推到 PRD-Lab" | 列项目让你选 → 按目录识别预览方式（html_canvas 画板 / pm-canvas 画板 / 普通 HTML）→ 上传 → 复用方案已有的分享链接，没有才新建（默认无密码，需要可加密码） |
 | "上次那个项目改了什么" | 列方案的版本时间轴 + 改动说明 |
 | "建一个 PRD-Lab 项目叫 X" | 直接跑 `prd project create` |
 | "把试验场项目归档" | 二次确认后 archive |

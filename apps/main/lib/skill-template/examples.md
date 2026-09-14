@@ -1,6 +1,6 @@
 # 对话样例
 
-下面是 7 个真实场景的对话样例（含发版三连、未登录引导、查询、新建项目、归档确认、撞车强制、加密码），演示 Claude 在这个 Skill 加载后会怎么回应。
+下面是 7 个真实场景的对话样例（含首次发版、未登录引导、查询、新建项目、归档确认、画板再发一版复用链接、给已有链接加密码），演示 Claude 在这个 Skill 加载后会怎么回应。
 
 > 除样例 2 外，所有样例都假设本会话已跑过 `prd doctor` 且通过。每个新会话首次触发本 skill 时，Claude 都会先跑一次 doctor（详见 SKILL.md "前置假设"段）。为简洁起见，示例只在样例 4 演示了 doctor，其他样例省略了重复的 doctor 步骤。
 
@@ -24,18 +24,19 @@
 
 **Claude**：
 ```
-[运行 prd push --json --change-note "调整顶栏布局 + 加暗色模式"]
-解析结果：versionId = 5e2c..., snapshot.seqNo = 4
+[目录根上只有 index.html，无 canvas.json → renderer 选 default]
+[运行 prd push --json --change-note "调整顶栏布局 + 加暗色模式" --renderer default]
+解析结果：versionId = 5e2c..., snapshot.seqNo = 1, rendererName = null
 [运行 prd share list 5e2c... --json]
 解析结果：share = null（该方案还没建过分享）
 [运行 prd share create 5e2c... --json]
-解析结果：shareUrl = {{ENDPOINT}}/share/abc..., password = null（无密码）
+解析结果：shareUrl = {{ENDPOINT}}/share/abc123, password = null（无密码）
 
 ✓ 已推送到 PRD-Lab！
 
   链接：{{ENDPOINT}}/share/abc123
 
-（链接对应整个方案：之后再推新版本，老板刷新同一链接就能看到，还能切换历史版本。
+（链接对应整个方案：之后再推新版本，刷新同一链接就能看到，还能切换历史版本。
   任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
 ```
 
@@ -130,46 +131,60 @@
 
 ---
 
-## 样例 6：再推一版（方案已有分享链接）
+## 样例 6：再推一版画板（方案已有分享链接）
 
-**用户**：再发一版给老板
+**用户**：把最新的画板再发给老板
 
 **Claude**：
 ```
-[运行 prd push --json --change-note "补充风控页交互"]
-解析结果：versionId = 5e2c..., snapshot.seqNo = 4
+[运行 prd doctor] → .prdrc.json (project=AI投顾 version=产品规格画板)
+[根目录 canvas.json 含 "format": "board/v1"，配 blocks/ docs/ → renderer 选 html-canvas]
+[运行 prd push --json --change-note "补充风控页交互" --renderer html-canvas]
+解析结果：versionId = 5e2c..., snapshot.seqNo = 4, rendererName = "html-canvas",
+          __computed.docs 与本地 docs/ 一致
 [运行 prd share list 5e2c... --json]
-解析结果：share 已存在（无密码），shareUrl = {{ENDPOINT}}/share/abc123
+解析结果：已有链接（无密码），shareUrl = {{ENDPOINT}}/share/abc123
 
-✓ 新版本 v4 已推送！
+✓ 已推送到 PRD-Lab，新版本 v4。
 
-老板之前拿到的链接不用换：刷新 {{ENDPOINT}}/share/abc123 就能看到 v4，
-还可以在页面里切回历史版本对比。需要换新链接或加密码再告诉我。
+  链接：{{ENDPOINT}}/share/abc123
+
+（还是之前那条链接，拿到的人刷新就能看到新版本，也能切回历史版本。
+  任何拿到链接的人都能查看，请勿公开转发；建议私聊老板。需要加密码可以告诉我。）
 ```
 
-> 分享链接是**方案级**的：一个方案一条链接，之后每次 push 的新版本自动出现在同一链接里。
+> 方案已有链接时直接复用，不跑 `share create`，也不加 `--rotate`。
 > 遇到 `duplicateOfActive = true`（内容与上次完全相同）也一样——链接不受影响，告知用户即可，
 > 除非用户明确要 `--force-new` 强制新建版本。
 
 ---
 
-## 样例 7：给链接加密码
+## 样例 7：给已有链接加密码
 
-**用户**：刚才那个 demo 再发一版，这次加个密码
+**用户**：这个画板的链接加个密码
 
 **Claude**：
 ```
-[运行 prd push --json --change-note "..."]
-解析结果：versionId = 5e2c..., snapshot.seqNo = 5
-[运行 prd share create 5e2c... --random --rotate --json]
+[运行 prd share list 5e2c... --json]
+解析结果：已有链接（无密码），shareUrl = {{ENDPOINT}}/share/abc123
+
+加密码需要换一条新链接：旧链接 .../share/abc123 会立即失效，
+之前发出去的人要重新拿新链接。确认换吗？
+```
+
+**用户**：确认
+
+**Claude**：
+```
+[运行 prd share create 5e2c... --rotate --random --json]
 解析结果：shareUrl = {{ENDPOINT}}/share/ghi789, password = 458912
 
-✓ 已推送到 PRD-Lab（带密码）！
+✓ 已换成带密码的新链接！
 
   链接：{{ENDPOINT}}/share/ghi789
   密码：458912
 
-（密码只显示这一次，请保存好；建议私聊老板不要群发。）
+（密码只显示这一次，请保存好；旧链接已失效。建议私聊老板不要群发。）
 ```
 
 > 想用自定义密码而非随机的，把 `--random` 换成 `--password "<你的密码>"`（6-200 字符）。
@@ -178,6 +193,7 @@
 
 ## 注意事项
 
-- 这些示例里 ID 都是占位（`7f3a...` / `p_xyz789` 等），实际跑时 Claude 会用真实 ID
+- 这些示例里 ID 都是占位（`5e2c...` / `p_xyz789` 等），实际跑时 Claude 会用真实 ID
 - 进度信息（`[运行 ...]`、`解析结果：...`）是为了让你看明白 Claude 内部在跑什么，实际对话里 Claude 通常直接给结果
-- 带密码的链接密码丢了只能 `prd share create --random --rotate` 重置（后端不存明文）；无密码链接没有密码可丢
+- 分享命令（`share list / create`）用的是方案 `versionId`，不是快照 `snapshot.id`
+- 带密码的链接密码丢了只能 `prd share create <versionId> --rotate --random` 换新链接（后端不存明文，旧链接随之失效）；无密码链接没有密码可丢

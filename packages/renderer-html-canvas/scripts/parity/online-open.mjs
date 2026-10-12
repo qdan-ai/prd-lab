@@ -26,7 +26,10 @@ const browser = await chromium.launch()
 try {
   const ctx = await browser.newContext({ viewport: { width: vw, height: vh } })
   const page = await ctx.newPage()
-  page.on('pageerror', (e) => flow.consoleErrors.push(String(e)))
+  ctx.on('page', (p) => {
+    p.on('pageerror', (e) => flow.consoleErrors.push(String(e)))
+    p.on('console', (m) => m.type() === 'error' && flow.consoleErrors.push(m.text().replace(/token=[^&\s#]+/gi, 'token=<TOKEN>')))
+  })
   await page.goto(args.share, { waitUntil: 'networkidle' })
   flow.steps.push({ step: '打开分享页', url: mask(page.url()), title: await page.title() })
   await page.screenshot({ path: path.join(args.out, 'share.png'), fullPage: true })
@@ -40,6 +43,15 @@ try {
   await board.waitForLoadState('load').catch(() => {})
   await board.waitForTimeout(8000)
   flow.steps.push({ step: '预览页', url: mask(board.url()), title: await board.title() })
+  flow.fonts = await board.evaluate(async () => {
+    await document.fonts.ready
+    const faces = [...document.fonts].map((f) => `${f.family}:${f.status}`)
+    return { faces, geistLoaded: document.fonts.check('16px Geist') }
+  })
+  flow.docsPanelText = await board.evaluate(() => {
+    const el = [...document.querySelectorAll('body *')].find((e) => /验收说明\.md/.test(e.textContent ?? '') && e.children.length === 0)
+    return el ? (el.closest('body').innerText.includes('覆盖范围') ? '验收说明.md 标签在，正文含「覆盖范围」' : '标签在，正文未见') : '未见验收说明.md'
+  })
   flow.hasStage = (await board.locator('.hc-stage').count()) > 0
   await board.screenshot({ path: path.join(args.out, 'board.png') })
   // 带 token 的真实地址只用于本次进程内导出，不落盘
@@ -48,7 +60,7 @@ try {
   await browser.close()
   const ex = spawnSync(
     'node',
-    [path.join(path.dirname(new URL(import.meta.url).pathname), 'extract.mjs'), '--url', real, '--out', path.join(args.out, 'online.json'), ...(args.expect ? ['--expect', args.expect] : [])],
+    [path.join(path.dirname(new URL(import.meta.url).pathname), 'extract.mjs'), '--url', real, '--out', path.join(args.out, 'online.json'), '--shots', path.join(args.out, 'shots'), ...(args.expect ? ['--expect', args.expect] : [])],
     { encoding: 'utf8', timeout: 120000 },
   )
   flow.extract = { exit: ex.status, output: (ex.stdout + ex.stderr).replace(/token=[^&\s#]+/gi, 'token=<TOKEN>').slice(-800) }

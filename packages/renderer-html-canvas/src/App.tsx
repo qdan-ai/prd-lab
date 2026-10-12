@@ -6,7 +6,8 @@
  *   │  Canvas（无限画布）     │  DocsPanel  │
  *   └────────────────────────┴─────────────┘
  *
- * 数据流：fetch canvas.json → 旧格式兼容转换（legacy-board）→ G-canvas validateCanvasDoc 诊断（只告警不拦截）→ 交 Canvas 渲染。
+ * 数据流：fetch canvas.json → 旧格式兼容转换（legacy-board）→ G-canvas validateCanvasDoc 诊断（只告警不拦截）
+ *   → 等画布字体就绪（canvas-fonts，与取 canvas.json 并行，最多 3 秒）→ 交 Canvas 渲染。
  */
 import { useEffect, useState } from "react";
 import type { RendererConfig, BoardData } from "./types";
@@ -15,6 +16,7 @@ import { DocsPanel } from "./DocsPanel";
 import { fetchJson, FetchError } from "./api";
 import { validateCanvasDoc } from "./gcanvas/engine/schema";
 import { migrateLegacyBoard } from "./legacy-board";
+import { waitForCanvasFonts } from "./canvas-fonts";
 
 type Props = {
   config: RendererConfig;
@@ -33,8 +35,10 @@ export function App({ config }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    // 与取 canvas.json 并行等字体：画布须在字体就绪后挂载，文本首渲量到的才是真实宽度
+    const fontsReady = waitForCanvasFonts();
     fetchJson<BoardData>(config.dataBaseUrl, "canvas.json")
-      .then((raw) => {
+      .then(async (raw) => {
         if (cancelled) return;
         if (!Array.isArray(raw?.elements)) {
           setState({ status: "error", message: "canvas.json 缺少 elements 数组" });
@@ -46,6 +50,8 @@ export function App({ config }: Props) {
         if (!diagnosis.ok) {
           console.warn("[html-canvas] canvas.json 未通过 G-canvas 校验（仍按能识别的部分渲染）：\n" + diagnosis.errors.join("\n"));
         }
+        await fontsReady;
+        if (cancelled) return;
         setState({ status: "ready", board });
       })
       .catch((err) => {

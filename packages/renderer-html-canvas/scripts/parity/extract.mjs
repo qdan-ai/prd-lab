@@ -241,6 +241,8 @@ async function waitStable(page, expect, timeoutMs = 45000) {
   let last = ''
   let same = 0
   while (Date.now() - start < timeoutMs) {
+    // 字体：先等已发起的字体加载完成（自动宽文本的宽度取决于最终字体，远程字体晚到会让宽度变化）
+    await page.evaluate(() => document.fonts.ready)
     const snap = await page.evaluate(pageSnapshot)
     if (snap) {
       const els = Object.values(snap.elements)
@@ -380,7 +382,7 @@ async function main() {
     await page.waitForSelector('.hc-stage .hc-world', { state: 'attached', timeout: 30000 })
     const snap = await waitStable(page, expect)
     const out = {
-      meta: { source: args.gcanvas ? 'gcanvas' : 'url', url: url.replace(/#.*/, ''), viewport: { w: vw, h: vh }, expect, consoleErrors },
+      meta: { source: args.gcanvas ? 'gcanvas' : 'url', url: url.replace(/#.*/, '').replace(/(token=)[^&]+/gi, '$1<TOKEN>'), viewport: { w: vw, h: vh }, expect, consoleErrors },
       camera: snap.camera,
       order: snap.order,
       elements: snap.elements,

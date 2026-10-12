@@ -1,0 +1,526 @@
+/* 画布层：Stage / ElementLayer / 六渲染器 + 交互层（手势视觉）。 */
+
+/* ===========================================================================
+ * 画布层（Stage / ElementLayer / 六渲染器）
+ * 渲染纪律：
+ * - .hc-world 是唯一承接 camera transform 的容器（平移缩放只改它）
+ * - .hc-el wrapper 白名单：仅 position/left/top（及 display）；禁 z-index/opacity/transform/filter
+ * =========================================================================== */
+
+.hc-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* 冷白点阵台面（§3.6）：冷白 --canvas 底 + 极淡点阵网格，点 rgba(0,0,0,.07) 1px、点距 22px。
+   * 禁暖纸渐变、禁噪点纹理——干净冷白点阵，工具感来自规整点阵。 */
+  background-color: var(--canvas);
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.07) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+  touch-action: none; /* 双指手势交给 wheel/pointer 处理，不触发浏览器默认平移缩放 */
+  /* 画布元素是图形操作对象：单击选中元素、拖动移动元素，原生选字会干扰拖拽手势
+   * （拖动时框选满屏文字）。禁用整层选字（含块内 shadow 文本，user-select 跨 host 继承）；
+   * 就地编辑输入框 Portal 到 body、不在本层，编辑文本不受影响。 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* —— 画布区屏幕坐标浮层裁剪层（hover 高亮 / 评论钉 / 评论框）——
+ * 与 .hc-stage 同覆盖画布区（absolute inset:0）、同 overflow:hidden：把这些屏幕坐标浮层裁在画布区内，
+ * 靠近左边缘时像其它画布内容一样被裁掉、不画到左侧 AI 面板上。容器不拦事件（画布命中穿透），
+ * 内部可交互子件（评论框/钉）各自 pointer-events:auto。 */
+.hc-screen-overlays {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hc-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* transform 在 Stage 内联设置；transform-origin 固定左上角 */
+  transform-origin: 0 0;
+  /* 尺寸为 0，子元素全靠绝对定位散落（世界坐标无界） */
+  width: 0;
+  height: 0;
+}
+
+/* —— 空画布招牌 mesh 渐变 band（§3.6）——
+ * 画布无样片时居中显示，落入任一样片即从 DOM 移除。屏幕坐标层（不随 camera 缩放）、不拦事件。
+ * mesh 渐变全局仅此一处：--mesh-1/2/3（蓝→粉→红）多点径向渐变柔和融合做招牌底，
+ * 上叠引导标题（无衬线）+ 操作提示（等宽 kicker）。 */
+.hc-empty-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  width: 440px;
+  max-width: calc(100% - 2 * var(--sp-8));
+  padding: var(--sp-8) var(--sp-7);
+  border-radius: var(--r-float);
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  /* 多点径向渐变招牌：三对 mesh 色在 band 内柔融，外缘渐隐进冷白点阵台面 */
+  background-color: var(--mesh-1);
+  background-image:
+    radial-gradient(at 18% 22%, var(--mesh-1) 0px, transparent 55%),
+    radial-gradient(at 82% 18%, var(--mesh-2) 0px, transparent 52%),
+    radial-gradient(at 28% 88%, var(--mesh-3) 0px, transparent 50%),
+    radial-gradient(at 78% 82%, var(--mesh-2) 0px, transparent 48%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 16px -4px rgba(0, 0, 0, 0.06),
+    0 24px 32px -8px rgba(0, 0, 0, 0.08);
+}
+
+.hc-empty-banner-title {
+  font-family: var(--font-ui);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: #ffffff;
+}
+
+.hc-empty-banner-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+/* 元素 wrapper：白名单仅 position + left/top（display 留剔除用，本 sprint 不切） */
+.hc-el {
+  /* position/left/top 由内联 style 设置；此处不得加 z-index/opacity/transform/filter */
+}
+
+/* —— Shape —— */
+.hc-shape {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 8px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--ink-mid);
+  overflow: hidden;
+}
+
+.hc-shape-rect {
+  border-radius: 8px;
+}
+
+.hc-shape-diamond {
+  /* clip-path 由内联设置；菱形内文字居中、边框靠 clip 视觉呈现 */
+  border-radius: 0;
+}
+
+.hc-shape-text {
+  font-size: 13px;
+  color: var(--ink);
+  text-align: center;
+  line-height: 1.3;
+  /* 溢出收缩：长文不撑破形状 */
+  overflow: hidden;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* —— Text —— */
+.hc-text {
+  color: var(--ink);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  /* 自然排版 = 内容最大宽（含显式换行）。.hc-world 故意零宽，绝对定位 wrapper 的
+   * shrink-to-fit 在负可用宽下会塌缩成 min-content（竖排折行）——必须显式 max-content */
+  width: max-content;
+}
+
+/* —— Image —— */
+.hc-image {
+  display: block;
+  user-select: none;
+}
+
+/* —— Frame —— */
+/* 容器（§2.1）：中性冷盘——极淡表面填充 + hairline 实线边，不抢内容、不铺彩色。 */
+.hc-frame {
+  box-sizing: border-box;
+  background: var(--surface-strong);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+}
+
+/* 拖入落点高亮（设计 D8）：边框加重为交互蓝 + 极淡蓝底强调落点；border-width 由内联随 zoom 补偿 */
+.hc-frame.is-drop-target {
+  border-style: solid;
+  border-color: var(--blue);
+  background: var(--blue-bg);
+}
+
+/* frame 常驻标题 = 标题热区（M1 / D3）：点/拖 = 选中并拖动 frame、双击 = 改名。
+   max-width 由 FrameView 内联随 zoom 反向补偿（屏幕恒定 ~240px）。 */
+.hc-frame-title {
+  position: absolute;
+  /* 标题在框外左上（Figma 惯例）：推到 frame 顶边之上 */
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 2px;
+  color: var(--ink-soft);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: move;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+/* —— Arrow —— */
+/* 标签底片是衬在画布点阵上的可读性外壳（非画布内容默认值），按外壳冷处理：
+ * 冷白半透明表面 + 发丝环描清边界，不用暖纸底。 */
+.hc-arrow-label {
+  font-size: 12px;
+  color: var(--ink-mid);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--ring);
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* —— HtmlBlock 占位 / 错误态 —— */
+.hc-html-host {
+  display: block;
+  /* 同 .hc-text：零宽世界容器下防 min-content 塌缩，块按 shadow 内容自然宽呈现
+   * （块内有显式宽度时即该宽度；无则取内容 max-content） */
+  width: max-content;
+  /* 样片冷灰堆叠投影 + 发丝环（§3.6）：像"浮在工程台上"，冷黑 rgba(0,0,0,*)，不用暖棕。 */
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.05),
+    0 12px 24px -6px rgba(0, 0, 0, 0.08);
+}
+
+.hc-html-placeholder {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  background: var(--surface-2);
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+  color: var(--hc-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* 错误态（§2.1 语义危险）：冷红 --danger 边 + 极淡 --danger-bg 底，不用暖红。 */
+.hc-html-placeholder.is-error {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.hc-html-placeholder-title {
+  font-weight: 600;
+}
+
+.hc-html-placeholder-file {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.hc-html-placeholder-reason {
+  font-size: 12px;
+  word-break: break-word;
+}
+
+/* ===========================================================================
+ * 交互层（工具栏 / 选中态 overlay / 手柄 / marquee / 放置幻影）
+ * 屏幕坐标层：画在 .hc-world 之外，不随 camera 缩放（设计 §2.1）
+ * =========================================================================== */
+
+/* —— 悬浮置底横排工具栏（Figma 底栏位，设计 §2.7 / M4·D6）——
+ * z-index 1500：低于覆盖侧栏（1650），低于弹窗类（2100+）——宽抽屉盖住居中工具栏的撤销/重做
+ * （用户已确认接受此取舍：抽屉优先级高于底栏工具栏）。
+ * 保留 .hc-toolbar 类名：InteractiveStage pointerdown chrome 守卫依赖它放行工具栏自身交互。 */
+.hc-toolbar {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 1500;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  /* §3.3 材质：冷白台面 --surface + 1px --line hairline + 柔阴影，浮层圆角 --r-float */
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-float);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 图形入口：合并矩形/菱形，点开向上展开 popover 选具体形状（预留扩展位，D6） */
+.hc-toolbar-shape {
+  position: relative;
+  display: inline-flex;
+}
+
+.hc-toolbar-shape-menu {
+  position: absolute;
+  /* 向上展开（底栏在画布底部，菜单往上弹） */
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  box-shadow: var(--shadow-sm);
+}
+
+.hc-toolbar-shape-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-mid);
+  cursor: pointer;
+}
+
+.hc-toolbar-shape-item:hover {
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+
+/* 激活态中性灰（§3.3）：--surface-strong 底 + --ink 图标，不铺彩色 */
+.hc-toolbar-shape-item.is-active {
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+
+.hc-tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-ctrl);
+  background: transparent;
+  color: var(--ink-mid);
+  cursor: pointer;
+}
+
+.hc-tool:hover:not(:disabled) {
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+
+/* 激活态中性灰（§3.3）：--surface-strong 底 + --ink 图标 + --ring 发丝环，不铺彩色 */
+.hc-tool.is-active {
+  background: var(--surface-strong);
+  color: var(--ink);
+  box-shadow: var(--ring);
+}
+
+/* AI提意见是常开持续态工具（点亮后连续提意见）：激活态给蓝色反馈（区别于其它工具的中性灰），
+   让用户明确「我还在 AI 模式」。蓝 = 引用/选中/协作语义（颜色纪律）。 */
+.hc-tool.is-active[data-tool='ai-comment'] {
+  background: var(--blue-bg);
+  color: var(--blue);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 24%, transparent);
+}
+
+.hc-tool:disabled {
+  color: var(--line-strong);
+  cursor: default;
+}
+
+/* 上传按钮是 label 包隐藏 input */
+.hc-tool-upload {
+  position: relative;
+  overflow: hidden;
+}
+
+.hc-tool-file {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+/* 横排工具栏的竖向发丝分隔（§3.3/§3.7：1×15px --line-strong 发丝） */
+.hc-toolbar-divider {
+  width: 1px;
+  height: 15px;
+  align-self: center;
+  margin: 0 4px;
+  background: var(--line-strong);
+  border-radius: 1px;
+}
+
+/* —— 选中态 overlay（屏幕坐标层）—— */
+.hc-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* overlay 容器不拦事件；手柄子元素单独开启 */
+  z-index: 40;
+}
+
+.hc-overlay-outline {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid var(--hc-accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* 选中元素标题（图层名）标签（描边左上角外侧） */
+.hc-overlay-label {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 2px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--hc-accent);
+  color: var(--surface-2);
+  font-size: 11px;
+  line-height: 1.4;
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* 标题热区（M1 / D3）：单选时可点/拖 = 选中并移动元素，双击 = 重命名。
+   开 pointer-events 让 pointerdown 守卫放行后进入拖动/双击分发；max-width + 省略号防超长名撑爆。 */
+.hc-overlay-title {
+  pointer-events: auto;
+  cursor: move;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.hc-overlay-group {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed var(--hc-accent);
+  pointer-events: none;
+}
+
+/* —— 缩放/端点手柄 —— */
+.hc-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px; /* 以坐标点为中心 */
+  padding: 0;
+  background: var(--surface-2);
+  border: 1.5px solid var(--hc-accent);
+  border-radius: 2px;
+  pointer-events: auto; /* 手柄要可拖 */
+  box-sizing: border-box;
+}
+
+.hc-handle-endpoint {
+  border-radius: 50%;
+}
+
+/* 中间拐点手柄：小圆点，选中态实心高亮（可 Delete 删该点） */
+.hc-handle-waypoint {
+  border-radius: 50%;
+}
+.hc-handle-waypoint.is-selected {
+  background: var(--hc-accent);
+  border-color: var(--hc-accent);
+}
+
+/* 加拐点手柄（段中点）：默认小而半透明（不喧宾夺主），悬停放大加实，提示「在此加拐点」。 */
+.hc-handle-insert {
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  border-style: dashed;
+  opacity: 0.45;
+  transition: opacity 0.1s ease, transform 0.1s ease;
+}
+.hc-handle-insert:hover {
+  opacity: 1;
+  transform: scale(1.35);
+  border-style: solid;
+}
+
+/* —— marquee 框选 —— */
+/* 选区框（§2.1 交互蓝）：蓝实线边 + 半透明蓝底，叠在画布内容上仍透出底下样片。 */
+.hc-marquee {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid var(--hc-accent);
+  background: rgba(0, 114, 245, 0.1);
+  pointer-events: none;
+  z-index: 45;
+}
+
+/* —— 工具放置幻影 —— */
+/* 放置预览（§2.1 交互蓝）：蓝虚线边 + 半透明蓝底，提示落点。 */
+.hc-placement-ghost {
+  box-sizing: border-box;
+  border: 1.5px dashed var(--hc-accent);
+  background: rgba(0, 114, 245, 0.1);
+  border-radius: 2px;
+  z-index: 45;
+}
+
+svg.hc-placement-ghost {
+  border: none;
+  background: transparent;
+}
+
+/* —— 拖箭头端点时的可绑候选高亮 —— */
+/* 落点命中元素感应带（§阶段2 §A）：蓝实线描 bbox + 半透明蓝底 + 蓝辉光，提示「松手即绑这个」。
+   屏幕坐标层、不拦事件（视觉提示，画布命中照常）。 */
+.hc-binding-candidate {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--hc-accent);
+  background: rgba(0, 114, 245, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 114, 245, 0.18);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 46; /* 略高于 marquee/ghost(45)、低于手柄，落点提示压在内容上 */
+}
+

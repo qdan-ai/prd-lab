@@ -1,0 +1,33 @@
+/* app-tokens.css —— 验收画板共享样式：App 原型屏的色彩令牌与基础组件 */
+:root {
+  --ap-bg: #f6f7fb;
+  --ap-card: #ffffff;
+  --ap-ink: #1c2333;
+  --ap-muted: #7a8499;
+  --ap-line: #e5e8f0;
+  --ap-brand: #2f6bff;
+  --ap-brand-soft: #e8efff;
+  --ap-up: #e5484d;
+  --ap-down: #12a594;
+  --ap-radius: 12px;
+}
+body {
+  margin: 0;
+  background: var(--ap-bg);
+  color: var(--ap-ink);
+  font-family: system-ui, -apple-system, "PingFang SC", "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+.ap-screen { width: 375px; box-sizing: border-box; padding: 0 20px 28px; background: var(--ap-bg); }
+.ap-nav { height: 44px; display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 17px; }
+.ap-card { background: var(--ap-card); border: 1px solid var(--ap-line); border-radius: var(--ap-radius); padding: 16px; margin-top: 14px; }
+.ap-label { font-size: 12px; color: var(--ap-muted); margin-bottom: 6px; }
+.ap-input { height: 44px; border: 1px solid var(--ap-line); border-radius: 8px; background: #fff; display: flex; align-items: center; padding: 0 12px; font-size: 15px; color: var(--ap-ink); }
+.ap-input.muted { color: var(--ap-muted); }
+.ap-btn { margin-top: 20px; height: 48px; border-radius: 24px; background: var(--ap-brand); color: #fff; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.ap-btn.ghost { background: transparent; color: var(--ap-brand); border: 1px solid var(--ap-brand); }
+.ap-tip { margin-top: 14px; font-size: 12px; color: var(--ap-muted); text-align: center; }
+.ap-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--ap-line); font-size: 14px; }
+.ap-row:last-child { border-bottom: 0; }
+.ap-up { color: var(--ap-up); font-weight: 600; }
+.ap-down { color: var(--ap-down); font-weight: 600; }

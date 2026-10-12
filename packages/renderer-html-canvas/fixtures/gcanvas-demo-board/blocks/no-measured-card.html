@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>无 measured 卡片</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      .card {
+        box-sizing: border-box;
+        width: 300px;
+        padding: 18px 20px;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: #1f2328;
+        background: #f4f8ff;
+        border: 1px solid #cfe0fb;
+        border-radius: 12px;
+      }
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+      /* 图无 width/height 属性、height:auto：HTTP 加载未完成前渲染高度塌成极小，
+         加载 + 解码后才按宽高比把卡片撑开（图占内容宽 100%，方图按比例约 260px 高）——
+         首测（紧跟 innerHTML，图尚未加载）此时卡片偏矮，唯有图沉降后的补测才得真实盒。 */
+      .card img {
+        display: block;
+        width: 100%;
+        height: auto;
+        margin-top: 10px;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h3>无 measured 卡片</h3>
+      <img src="assets/no-measured-photo.png" alt="示意图" />
+    </div>
+  </body>
+</html>

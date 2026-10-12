@@ -3,7 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "files": ["dist", "dist-node", "node", "package.json", "README.md"],
+  "files": [
+    "dist",
+    "dist-node",
+    "node",
+    "package.json",
+    "README.md"
+  ],
   "exports": {
     "./package.json": "./package.json",
     "./node": {
@@ -18,7 +24,9 @@
     "build:spa": "vite build",
     "dev": "vite",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
-    "test": "vitest"
+    "test": "vitest",
+    "gcanvas:sync": "node scripts/gcanvas-sync.mjs sync",
+    "gcanvas:check": "node scripts/gcanvas-sync.mjs check"
   },
   "dependencies": {
     "@prd-lab/core": "workspace:*",
@@ -26,17 +34,20 @@
   },
   "devDependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
-    "@tiptap/extension-image": "^3.23.6",
-    "@tiptap/extension-list": "^3.23.6",
-    "@tiptap/extension-table": "^3.23.6",
-    "@tiptap/markdown": "^3.23.6",
-    "@tiptap/pm": "^3.23.6",
-    "@tiptap/react": "^3.23.6",
-    "@tiptap/starter-kit": "^3.23.6",
+    "@tiptap/core": "^3.26.0",
+    "@tiptap/extension-highlight": "^3.26.0",
+    "@tiptap/extension-image": "^3.26.0",
+    "@tiptap/extension-list": "^3.26.0",
+    "@tiptap/extension-table": "^3.26.0",
+    "@tiptap/markdown": "^3.26.0",
+    "@tiptap/pm": "^3.26.0",
+    "@tiptap/react": "^3.26.0",
+    "@tiptap/starter-kit": "^3.26.0",
     "@types/pako": "^2.0.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^27.0.1",
     "pako": "^2.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

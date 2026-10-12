@@ -22,7 +22,8 @@
 #   ./scripts/deploy.sh --migrate       # 部署 + 跑 schema migration
 #   ./scripts/deploy.sh --force         # 允许带 unstaged 改动
 #   ./scripts/deploy.sh --skip-prune    # 跳过 docker prune（紧急部署用）
-#   ./scripts/deploy.sh --dry-run       # 只打印将要执行的步骤、不真的执行
+#   ./scripts/deploy.sh --dry-run       # 只打印将要执行的步骤、不真的执行（前置检查照常跑）
+#   ./scripts/deploy.sh --allow-gcanvas-drift  # 画板查看器落后于 G-canvas 时仍继续（确认本次发布与查看器无关）
 #
 # 环境变量（DEPLOY_PASS 必须由调用方提供，不在脚本中硬编码 -- R7 守约）:
 #   DEPLOY_HOST   默认 101.96.194.178（试用环境）
@@ -30,6 +31,7 @@
 #   DEPLOY_PASS   必填，从 ai/DEPLOYMENT.md 查或 shell 内 export 后调用
 #                 推荐: source <(grep '^DEPLOY_PASS=' ~/.prdlab.env) && ./scripts/deploy.sh
 #   REMOTE_ROOT   默认 /opt/prd-lab
+#   GCANVAS_REPO  G-canvas 仓库路径，默认与 prd-lab 同级的 ../html_canvas（找不到则跳过查看器同步检查）
 
 set -euo pipefail
 
@@ -47,14 +49,16 @@ WITH_MIGRATE=0
 FORCE=0
 SKIP_PRUNE=0
 DRY_RUN=0
+ALLOW_GCANVAS_DRIFT=0
 for arg in "$@"; do
   case "$arg" in
     --migrate)    WITH_MIGRATE=1 ;;
     --force)      FORCE=1 ;;
     --skip-prune) SKIP_PRUNE=1 ;;
     --dry-run)    DRY_RUN=1 ;;
+    --allow-gcanvas-drift) ALLOW_GCANVAS_DRIFT=1 ;;
     -h|--help)
-      sed -n '2,30p' "$0"
+      sed -n '2,34p' "$0"
       exit 0
       ;;
     *)
@@ -120,6 +124,28 @@ if [[ -z "$DEPLOY_PASS" && "$DRY_RUN" -eq 0 ]]; then
   err "  DEPLOY_PASS='<服务器密码>' ./scripts/deploy.sh"
   err "  或者本地建 ~/.prdlab.env 含 DEPLOY_PASS=xxx 然后 source 后调用"
   exit 1
+fi
+
+# 画板查看器与 G-canvas 同步检查（packages/renderer-html-canvas 逐字复制 G-canvas 渲染代码，见其 README）
+# 只读：比对上游仓库已提交内容；找不到上游仓库时脚本自行打印跳过说明并返回 0
+GCANVAS_SYNC="packages/renderer-html-canvas/scripts/gcanvas-sync.mjs"
+if ! command -v node >/dev/null 2>&1; then
+  warn "缺少 node，跳过画板查看器同步检查"
+else
+  GCANVAS_RC=0
+  GCANVAS_OUT="$(node "$GCANVAS_SYNC" check 2>&1)" || GCANVAS_RC=$?
+  if [[ "$GCANVAS_RC" -eq 0 ]]; then
+    printf "%s\n" "$GCANVAS_OUT"
+  elif [[ "$ALLOW_GCANVAS_DRIFT" -eq 1 ]]; then
+    printf "%s\n" "$GCANVAS_OUT" >&2
+    warn "画板查看器同步检查未通过（退出码 ${GCANVAS_RC}：1=与 G-canvas 不一致，2=检查本身出错），--allow-gcanvas-drift 已指定，继续"
+  else
+    printf "%s\n" "$GCANVAS_OUT" >&2
+    err "画板查看器同步检查未通过（退出码 ${GCANVAS_RC}：1=与 G-canvas 不一致，2=检查本身出错），终止部署"
+    err "  先同步（见 packages/renderer-html-canvas/README.md「与 G-canvas 同步」），"
+    err "  或确认本次发布与画板查看器无关后加 --allow-gcanvas-drift 重跑"
+    exit 1
+  fi
 fi
 
 ok "前置检查通过（host=$DEPLOY_HOST, root=$REMOTE_ROOT, migrate=$WITH_MIGRATE, prune=$([ $SKIP_PRUNE -eq 0 ] && echo on || echo off)）"

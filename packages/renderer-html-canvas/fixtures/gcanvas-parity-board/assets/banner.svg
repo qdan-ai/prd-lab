@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="686" height="280" viewBox="0 0 686 280">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2f6bff"/><stop offset="1" stop-color="#7a4dff"/></linearGradient></defs>
+  <rect width="686" height="280" rx="24" fill="url(#g)"/>
+  <circle cx="560" cy="70" r="90" fill="#ffffff" fill-opacity="0.12"/>
+  <text x="40" y="120" font-family="sans-serif" font-size="44" font-weight="700" fill="#fff">新春理财节</text>
+  <text x="40" y="180" font-family="sans-serif" font-size="26" fill="#dfe6ff">申购立享费率 1 折</text>
+</svg>

@@ -6,13 +6,15 @@
  *   │  Canvas（无限画布）     │  DocsPanel  │
  *   └────────────────────────┴─────────────┘
  *
- * 数据流：fetch canvas.json → 解析为 BoardData → 交 Canvas 渲染六元素。
+ * 数据流：fetch canvas.json → 旧格式兼容转换（legacy-board）→ G-canvas validateCanvasDoc 诊断（只告警不拦截）→ 交 Canvas 渲染。
  */
 import { useEffect, useState } from "react";
 import type { RendererConfig, BoardData } from "./types";
 import { Canvas } from "./Canvas";
 import { DocsPanel } from "./DocsPanel";
 import { fetchJson, FetchError } from "./api";
+import { validateCanvasDoc } from "./gcanvas/engine/schema";
+import { migrateLegacyBoard } from "./legacy-board";
 
 type Props = {
   config: RendererConfig;
@@ -32,8 +34,18 @@ export function App({ config }: Props) {
   useEffect(() => {
     let cancelled = false;
     fetchJson<BoardData>(config.dataBaseUrl, "canvas.json")
-      .then((board) => {
+      .then((raw) => {
         if (cancelled) return;
+        if (!Array.isArray(raw?.elements)) {
+          setState({ status: "error", message: "canvas.json 缺少 elements 数组" });
+          return;
+        }
+        const board = migrateLegacyBoard(raw);
+        // 校验不通过照常渲染：画板可能来自更新的 G-canvas（含查看器尚未接入的字段 / 元素类型）
+        const diagnosis = validateCanvasDoc(board);
+        if (!diagnosis.ok) {
+          console.warn("[html-canvas] canvas.json 未通过 G-canvas 校验（仍按能识别的部分渲染）：\n" + diagnosis.errors.join("\n"));
+        }
         setState({ status: "ready", board });
       })
       .catch((err) => {
@@ -69,7 +81,7 @@ export function App({ config }: Props) {
             </div>
           )}
           {state.status === "ready" && (
-            <Canvas board={state.board} baseUrl={config.dataBaseUrl} />
+            <Canvas board={state.board} baseUrl={config.dataBaseUrl} boardId={config.snapshotId} />
           )}
         </div>
         {docs.length > 0 && (

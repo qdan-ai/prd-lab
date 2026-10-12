@@ -1,18 +1,18 @@
 /**
- * useCamera —— 相机状态 + 导航手势（只读渲染简化版）
+ * useCamera —— 相机状态 + 导航手势（查看器自有，对应上游 ui/canvas/interactions/use-camera.ts）
  *
- * 从 html_canvas 的 use-camera.ts 简化而来，保留完整导航交互：
- * - 滚轮缩放（Cmd+滚轮 zoom、裸滚平移）
- * - 空格拖拽平移
- * - 键盘快捷键（Cmd+0 fitAll、Cmd+= 放大、Cmd+- 缩小）
+ * 导航交互与上游一致：
+ * - 裸滚轮 / 触控板双指滑动 = 平移；Cmd/Ctrl + 滚轮、触控板捏合（浏览器以 ctrlKey 滚轮事件上报）= 以指针为锚缩放
+ * - 空格 + 拖动 = 平移
+ * - Cmd+0 框选全部、Cmd+= 放大、Cmd+- 缩小（以视口中心为锚，步长 1.2）
+ * - 首屏在容器有尺寸后 fitToContent 一次，此后视角交给用户
+ * 坐标数学（panBy / zoomAt / fitToContent、缩放上下限）全部取自逐字件 gcanvas/engine/camera.ts。
  *
- * 去掉的部分：
- * - editingMode 门控（只读渲染无编辑态）
- * - active 标签切换逻辑（单画板场景）
- * - focusOn 聚焦单元素（只读渲染不需要）
+ * 只读裁剪：无编辑态 / 多标签 active / 单元素聚焦 / 截图模式门控。
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { type Camera, panBy, zoomAt, fitToContent, type Rect } from './camera'
+import { type Camera, panBy, zoomAt, fitToContent } from './gcanvas/engine/camera'
+import type { Rect } from './gcanvas/engine/viewport'
 
 const STEP_ZOOM_IN = 1.2
 const STEP_ZOOM_OUT = 1 / 1.2

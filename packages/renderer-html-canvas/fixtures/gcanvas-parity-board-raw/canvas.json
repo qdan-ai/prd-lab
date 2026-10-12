@@ -1,0 +1,369 @@
+{
+  "title": "G-canvas 全元素验收画板",
+  "format": "board/v1",
+  "elements": [
+    {
+      "id": "f1",
+      "type": "frame",
+      "name": "登录与首页",
+      "x": 0,
+      "y": 0,
+      "w": 1700,
+      "h": 960
+    },
+    {
+      "id": "f2",
+      "type": "frame",
+      "name": "申购结算",
+      "x": 0,
+      "y": 1040,
+      "w": 1700,
+      "h": 960
+    },
+    {
+      "id": "t1",
+      "type": "text",
+      "x": 60,
+      "y": 28,
+      "text": "登录 → 首页 流程",
+      "fontSize": 22,
+      "parent": "f1"
+    },
+    {
+      "id": "b1",
+      "type": "html",
+      "file": "login.html",
+      "css": [
+        "styles/app-tokens.css"
+      ],
+      "x": 60,
+      "y": 100,
+      "parent": "f1",
+      "name": "登录屏"
+    },
+    {
+      "id": "b2",
+      "type": "html",
+      "file": "home.html",
+      "x": 660,
+      "y": 220,
+      "parent": "f1",
+      "name": "首页"
+    },
+    {
+      "id": "s1",
+      "type": "shape",
+      "shape": "diamond",
+      "x": 1180,
+      "y": 120,
+      "w": 220,
+      "h": 140,
+      "text": "新用户?",
+      "parent": "f1"
+    },
+    {
+      "id": "s2",
+      "type": "shape",
+      "shape": "rect",
+      "x": 1180,
+      "y": 560,
+      "w": 220,
+      "h": 80,
+      "text": "进入申购",
+      "parent": "f1"
+    },
+    {
+      "id": "i1",
+      "type": "image",
+      "src": "assets/product-photo.png",
+      "x": 1420,
+      "y": 720,
+      "w": 240,
+      "h": 160,
+      "parent": "f1",
+      "name": "产品图"
+    },
+    {
+      "id": "b3",
+      "type": "html",
+      "file": "checkout.html",
+      "css": [
+        "styles/app-tokens.css"
+      ],
+      "x": 60,
+      "y": 1140,
+      "parent": "f2",
+      "name": "确认订单"
+    },
+    {
+      "id": "b4",
+      "type": "html",
+      "file": "result.html",
+      "x": 660,
+      "y": 1480,
+      "parent": "f2",
+      "name": "支付结果"
+    },
+    {
+      "id": "t2",
+      "type": "text",
+      "x": 1080,
+      "y": 1120,
+      "text": "**申购须知**\n\n这是**加粗**、*斜体*、~~删除线~~ 与 ==高亮== 的混排。  \n这一行由硬换行产生。\n\n1. 有序项一\n2. 有序项二，这是一个比较长的条目，用来验证固定宽度下的自动换行效果\n\n- 无序项 A\n- 无序项 B",
+      "fontSize": 16,
+      "width": 360,
+      "parent": "f2"
+    },
+    {
+      "id": "t3",
+      "type": "text",
+      "x": 1080,
+      "y": 1560,
+      "text": "整框外观：居中、行高 1.9、下划线、衬线字体、红色。这段文字用于核对整框级样式字段。",
+      "fontSize": 18,
+      "width": 300,
+      "color": "#c0392b",
+      "textAlign": "center",
+      "lineHeight": 1.9,
+      "underline": true,
+      "fontFamily": "Georgia, serif",
+      "parent": "f2"
+    },
+    {
+      "id": "a1",
+      "type": "arrow",
+      "points": [
+        {
+          "x": 435,
+          "y": 440
+        },
+        {
+          "x": 660,
+          "y": 530
+        }
+      ],
+      "routing": "auto",
+      "startBinding": {
+        "elementId": "b1",
+        "fixedPoint": [
+          0.5,
+          0.5
+        ],
+        "mode": "floating"
+      },
+      "endBinding": {
+        "elementId": "b2",
+        "fixedPoint": [
+          0.5,
+          0.5
+        ],
+        "mode": "floating"
+      },
+      "label": "登录成功",
+      "parent": "f1"
+    },
+    {
+      "id": "a2",
+      "type": "arrow",
+      "points": [
+        {
+          "x": 1470,
+          "y": 400
+        },
+        {
+          "x": 1600,
+          "y": 400
+        },
+        {
+          "x": 1600,
+          "y": 560
+        },
+        {
+          "x": 1480,
+          "y": 560
+        },
+        {
+          "x": 1480,
+          "y": 690
+        }
+      ],
+      "routing": "manual",
+      "strokeColor": "#e5484d",
+      "strokeWidth": 3,
+      "startArrowhead": "arrow",
+      "endArrowhead": "triangle",
+      "label": "5 点折线",
+      "parent": "f1"
+    },
+    {
+      "id": "a8",
+      "type": "arrow",
+      "points": [
+        {
+          "x": 1290,
+          "y": 644
+        },
+        {
+          "x": 1290,
+          "y": 800
+        },
+        {
+          "x": 1420,
+          "y": 800
+        }
+      ],
+      "routing": "manual",
+      "strokeColor": "#ff7a45",
+      "strokeWidth": 2,
+      "startBinding": {
+        "elementId": "s2",
+        "fixedPoint": [
+          0.5,
+          0.5
+        ],
+        "mode": "floating"
+      },
+      "endBinding": {
+        "elementId": "i1",
+        "fixedPoint": [
+          0.5,
+          0.5
+        ],
+        "mode": "floating"
+      },
+      "label": "手动+绑定",
+      "parent": "f1"
+    },
+    {
+      "id": "a3",
+      "type": "arrow",
+      "points": [
+        {
+          "x": 1040,
+          "y": 560
+        },
+        {
+          "x": 1100,
+          "y": 470
+        },
+        {
+          "x": 1110,
+          "y": 660
+        },
+        {
+          "x": 1170,
+          "y": 600
+        }
+      ],
+      "routing": "manual",
+      "curved": true,
+      "strokeStyle": "dashed",
+      "strokeColor": "#3a5bd9",
+      "startArrowhead": "none",
+      "endArrowhead": "arrow",
+      "parent": "f1"
+    },
+    {
+      "id": "a4",
+      "type": "arrow",
+      "points": [
+        {
+          "x": 1290,
+          "y": 190
+        },
+        {
+          "x": 1560,
+          "y": 330
+        }
+      ],
+      "routing": "auto",
+      "strokeStyle": "dotted",
+      "strokeWidth": 2,
+      "strokeColor": "#7a4dff",
+      "endArrowhead": "arrow",
+      "startBinding": {
+        "elementId": "s1",
+        "fixedPoint": [
+          0.5,
+          0.5
+        ],
+        "mode": "floating"
+      },
+      "label": "新用户",
+      "parent": "f1"
+    },
+    {
+      "id": "a5",
+      "type": "arrow",
+      "points": [
+        {
+          "x": 435,
+          "y": 1400
+        },
+        {
+          "x": 660,
+          "y": 1600
+        }
+      ],
+      "routing": "auto",
+      "strokeStyle": "dashed",
+      "strokeColor": "#12a594",
+      "strokeWidth": 2.5,
+      "startArrowhead": "triangle",
+      "endArrowhead": "none",
+      "startBinding": {
+        "elementId": "b3",
+        "fixedPoint": [
+          0.5,
+          0.5
+        ],
+        "mode": "floating"
+      },
+      "endBinding": {
+        "elementId": "b4",
+        "fixedPoint": [
+          0.5,
+          0.5
+        ],
+        "mode": "floating"
+      },
+      "label": "提交订单",
+      "parent": "f2"
+    },
+    {
+      "id": "a6",
+      "type": "arrow",
+      "points": [
+        {
+          "x": 980,
+          "y": 1600
+        },
+        {
+          "x": 1080,
+          "y": 1620
+        }
+      ],
+      "routing": "auto",
+      "startBinding": {
+        "elementId": "b4",
+        "fixedPoint": [
+          1,
+          0.5
+        ],
+        "mode": "fixed"
+      },
+      "endBinding": {
+        "elementId": "t3",
+        "fixedPoint": [
+          0.5,
+          0.5
+        ],
+        "mode": "floating"
+      },
+      "startArrowhead": "arrow",
+      "endArrowhead": "arrow",
+      "strokeWidth": 1.5,
+      "parent": "f2"
+    }
+  ]
+}

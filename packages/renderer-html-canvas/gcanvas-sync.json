@@ -1,0 +1,287 @@
+{
+  "$comment": "G-canvas（html_canvas 仓库 viewer/src/）渲染件的逐字复制清单，由 scripts/gcanvas-sync.mjs 维护。verbatim：sync 覆盖写入、禁止手改，upstream.commit 是它们同步到的 commit。adapted/shim：PRD-Lab 自有代码，upstreamSha256 与 reconciledCommit 记录已人工对照到的上游版本，只在 sync --accept 时推进。watch：上游目录的已知文件集合。deps：比对逐字件引用的 npm 包声明版本（只提示）。用法见包内 README。",
+  "upstream": {
+    "repo": "html_canvas",
+    "commit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+  },
+  "files": [
+    {
+      "upstream": "viewer/src/engine/schema.ts",
+      "local": "src/gcanvas/engine/schema.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "7e34678848779a24a51c34f09b0cefdefd0f4edca628643ee0aef100f7b7470c"
+    },
+    {
+      "upstream": "viewer/src/engine/viewport.ts",
+      "local": "src/gcanvas/engine/viewport.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "96e5d1fa561574799d41a9a8734ae3a78eeb0adb9c78ea8953b1234c14d4fe14"
+    },
+    {
+      "upstream": "viewer/src/engine/element-geometry.ts",
+      "local": "src/gcanvas/engine/element-geometry.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "3ff3c3976a33974d2d6eb4c46567608826e4d53e2071947d32c40e0e6d86fd29"
+    },
+    {
+      "upstream": "viewer/src/engine/arrow-routing.ts",
+      "local": "src/gcanvas/engine/arrow-routing.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "446d9a6c21a32241d8789f2cfc1d20846b2f9b85f60422949cb2c7d6bd53ebf2"
+    },
+    {
+      "upstream": "viewer/src/engine/arrow-geometry.ts",
+      "local": "src/gcanvas/engine/arrow-geometry.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "ab7bc0da2184eaf271f27fa855936cb45ccf602f20327fb883de2f297c3b256d"
+    },
+    {
+      "upstream": "viewer/src/engine/camera.ts",
+      "local": "src/gcanvas/engine/camera.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "ce0d1e47866ffbedc3fc95d1788807f91881d053a85e3f1ae3c033786038912a"
+    },
+    {
+      "upstream": "viewer/src/engine/sanitize.ts",
+      "local": "src/gcanvas/engine/sanitize.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "8a9193b5a21443e0c541d922ff56e29c50d8177a60a1649ac6b93cadd9a8a497"
+    },
+    {
+      "upstream": "viewer/src/engine/unwrap.ts",
+      "local": "src/gcanvas/engine/unwrap.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "5a869157c53fd1e26ae55b8b0b9959d2f95fc380590f17d063281aa2c4f9d312"
+    },
+    {
+      "upstream": "viewer/src/engine/store.ts",
+      "local": "src/gcanvas/engine/store.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "7f955beabf9db7e5fe70e087310c1fc043c1b3812568fa71de9d65beca20126a"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/bounds.ts",
+      "local": "src/gcanvas/ui/canvas/bounds.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "2104b074c4665f87a6bd4d92f7094054c2ebfefd8ccf004466d0100d098b8b65"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/renderers/ArrowView.tsx",
+      "local": "src/gcanvas/ui/canvas/renderers/ArrowView.tsx",
+      "kind": "verbatim",
+      "upstreamSha256": "05b25f343e9ffef4220c4e08c61b60e5413f7732b7b71ec1faed7d0cd6d0b6c8"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/renderers/FrameView.tsx",
+      "local": "src/gcanvas/ui/canvas/renderers/FrameView.tsx",
+      "kind": "verbatim",
+      "upstreamSha256": "fc4597ad1a555780fd0b6ccde61afd8914bbb134fd599d9ced3fc2d14cdcbd21"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/renderers/HtmlBlockView.tsx",
+      "local": "src/gcanvas/ui/canvas/renderers/HtmlBlockView.tsx",
+      "kind": "verbatim",
+      "upstreamSha256": "92f7b02ea426e97f9d528bb8ebbc26cad5ec26ebcefc3cb3dde0c3c5d6ec01b6"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/renderers/ImageView.tsx",
+      "local": "src/gcanvas/ui/canvas/renderers/ImageView.tsx",
+      "kind": "verbatim",
+      "upstreamSha256": "668d24b52ebe70b0081859518f692204d2bbbddef80fe4d0f890fb576c2b1faf"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/renderers/ShapeView.tsx",
+      "local": "src/gcanvas/ui/canvas/renderers/ShapeView.tsx",
+      "kind": "verbatim",
+      "upstreamSha256": "8403a2f593a46a984ccf3275d155fde15a5a79bb5bf43bbc135b324ee0b7d151"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/renderers/TextView.tsx",
+      "local": "src/gcanvas/ui/canvas/renderers/TextView.tsx",
+      "kind": "verbatim",
+      "upstreamSha256": "3474957d71bb63e662170a1ba14efcecec794a08da72289c9aa8cb0580b2645e"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/renderers/arrow-path.ts",
+      "local": "src/gcanvas/ui/canvas/renderers/arrow-path.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "6393dc2c5b3ff03d8557ef88c78b9eff5cb996eef6c89ca25dc7d991e2a90ff0"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/renderers/text-style.ts",
+      "local": "src/gcanvas/ui/canvas/renderers/text-style.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "485e9588094fd96bfe175a4104c321663923dcf49e4159c4d55fd97200fc3d04"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/static-render.ts",
+      "local": "src/gcanvas/ui/editor-kernel/static-render.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "b339e1f820ce4d3a87f185d2df362fd6348b1613a10525dca918eb2a095bba14"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/extensions.ts",
+      "local": "src/gcanvas/ui/editor-kernel/extensions.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "eaf52f317ca7c3d38d2e901ba04745db33a7567dd1af48301486e574b995b43d"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/markdown.ts",
+      "local": "src/gcanvas/ui/editor-kernel/markdown.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "799b831a413605bfc6bb61d5d6de11f9b10e0e9dc2ab81ecafb28898a9022000"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/literal-fallback.ts",
+      "local": "src/gcanvas/ui/editor-kernel/literal-fallback.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "454f71460b43018c78846ac46161bec216effac09c3c1ec43028d64bc5642785"
+    },
+    {
+      "upstream": "viewer/src/ui/styles/canvas-engine.css",
+      "local": "src/gcanvas/ui/styles/canvas-engine.css",
+      "kind": "verbatim",
+      "upstreamSha256": "5409e25bb03e5505c4f8de790a546cdb59a7cd34cb2e6a5ac21ba87f35b4fc7b"
+    },
+    {
+      "upstream": "viewer/src/ui/styles/rich-text.css",
+      "local": "src/gcanvas/ui/styles/rich-text.css",
+      "kind": "verbatim",
+      "upstreamSha256": "7cd610974dc04f5dc278a6d220f7fb76e98b207e06fd033e5b569a86f4a29552"
+    },
+    {
+      "upstream": "viewer/src/ui/fonts/Geist-Variable.woff2",
+      "local": "src/gcanvas/ui/fonts/Geist-Variable.woff2",
+      "kind": "verbatim",
+      "upstreamSha256": "a369fcf5628ea2aa4e1b9e2ec6a5b3624e365bda588e1f0f2f12b564f728fbb8",
+      "note": "Geist（Vercel），SIL OFL 1.1，许可见同目录 LICENSE.txt；允许随软件再分发"
+    },
+    {
+      "upstream": "viewer/src/ui/fonts/GeistMono-Variable.woff2",
+      "local": "src/gcanvas/ui/fonts/GeistMono-Variable.woff2",
+      "kind": "verbatim",
+      "upstreamSha256": "fba8f577f38a2bbcbe818efa6348dd58f36303a10b8737c42fefad275be563ab",
+      "note": "Geist Mono（Vercel），SIL OFL 1.1，许可见同目录 LICENSE.txt；允许随软件再分发"
+    },
+    {
+      "upstream": "viewer/src/ui/fonts/LICENSE.txt",
+      "local": "src/gcanvas/ui/fonts/LICENSE.txt",
+      "kind": "verbatim",
+      "upstreamSha256": "930853ee1daa68554d9e35c8a9175affb74f699fad9a5da6ee5ebe76379d9137",
+      "note": "Geist 字体的 OFL 许可证原文，随字体一并分发"
+    },
+    {
+      "upstream": "viewer/src/ui/styles/base.css",
+      "local": "src/gcanvas/ui/styles/base.css",
+      "kind": "adapted",
+      "upstreamSha256": "4636c96993c1d7bb97f892d9007373afa7a275292aec4806ea50dddd049ee9d4",
+      "note": "上游把设计令牌挂在 :root、并写 * / body / .hc-app 全局规则，会改查看器外壳（字体、底色、.hc-app 布局）。改写件只保留 @font-face，令牌与 reset 收进 .hc-stage 作用域",
+      "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/ElementLayer.tsx",
+      "local": "src/gcanvas/ui/canvas/ElementLayer.tsx",
+      "kind": "adapted",
+      "upstreamSha256": "2553b8eb0b69c5d6703ec828897b22d2e8bb9662c108c5d3bdb06c1c81f3d37d",
+      "note": "只读子集：去掉拖动/编辑/样式预览/就地编辑/落点高亮；DOM 结构、class、data-hc-id/data-hc-type、wrapper 白名单、箭头自定位、数组序=图层序与上游一致；加未知元素类型占位分支",
+      "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/interactions/use-camera.ts",
+      "local": "src/use-camera.ts",
+      "kind": "adapted",
+      "upstreamSha256": "4a9024f7313d5b23f9b7550053ee809b489d89546ef9a023a58abda44f9b85eb",
+      "note": "查看器自有的相机交互（滚轮/空格拖/Cmd+0/Cmd+=/Cmd+-），数学取自逐字件 engine/camera.ts；去掉编辑态/多标签/聚焦/截图模式门控",
+      "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/canvas-context.ts",
+      "local": "src/gcanvas/ui/canvas/canvas-context.ts",
+      "kind": "shim",
+      "upstreamSha256": "402655e78460f04101b398a77b5f104a03a4dbacedf720f83ad11987f2f80bf4",
+      "note": "顶替上游渲染上下文：adapter 只含 loadBlock/loadStyle/assetUrl（按 dataBaseUrl 取画板文件），blockCache/blockResourceReady 可选且查看器不提供",
+      "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/index.ts",
+      "local": "src/gcanvas/ui/editor-kernel/index.ts",
+      "kind": "shim",
+      "upstreamSha256": "58e5b34fd51f9e50ed47e8cf687bd8a99269af6d327246a8bab0f28c144e6299",
+      "note": "只导出静态渲染 renderStaticMarkdown（上游 index 还导出编辑器组件、工具栏、controller，查看器不需要）",
+      "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+    }
+  ],
+  "deps": {
+    "upstreamPackageJson": "viewer/package.json"
+  },
+  "watch": [
+    {
+      "dir": "viewer/src/ui/canvas/renderers",
+      "exclude": "\\.test\\.",
+      "hint": "新渲染器通常意味着新元素类型：加进清单 files（逐字）跑 sync，再在 ElementLayer 改写件与 src/known-elements.ts 接入分派并补测试",
+      "files": [
+        "viewer/src/ui/canvas/renderers/ArrowView.tsx",
+        "viewer/src/ui/canvas/renderers/FrameView.tsx",
+        "viewer/src/ui/canvas/renderers/HtmlBlockView.tsx",
+        "viewer/src/ui/canvas/renderers/ImageView.tsx",
+        "viewer/src/ui/canvas/renderers/ShapeView.tsx",
+        "viewer/src/ui/canvas/renderers/TextView.tsx",
+        "viewer/src/ui/canvas/renderers/arrow-path.ts",
+        "viewer/src/ui/canvas/renderers/text-style.ts"
+      ]
+    },
+    {
+      "dir": "viewer/src/engine",
+      "include": "^(arrow-|element-|viewport|camera|schema|sanitize|unwrap|store)",
+      "exclude": "\\.test\\.",
+      "files": [
+        "viewer/src/engine/arrow-binding.ts",
+        "viewer/src/engine/arrow-geometry.ts",
+        "viewer/src/engine/arrow-routing.ts",
+        "viewer/src/engine/camera.ts",
+        "viewer/src/engine/element-geometry.ts",
+        "viewer/src/engine/sanitize.ts",
+        "viewer/src/engine/schema.ts",
+        "viewer/src/engine/store.ts",
+        "viewer/src/engine/unwrap.ts",
+        "viewer/src/engine/viewport.ts"
+      ]
+    },
+    {
+      "dir": "viewer/src/ui/editor-kernel",
+      "exclude": "\\.test\\.",
+      "files": [
+        "viewer/src/ui/editor-kernel/EditorKernel.tsx",
+        "viewer/src/ui/editor-kernel/Toolbar.tsx",
+        "viewer/src/ui/editor-kernel/controllers.ts",
+        "viewer/src/ui/editor-kernel/extensions.ts",
+        "viewer/src/ui/editor-kernel/index.ts",
+        "viewer/src/ui/editor-kernel/literal-fallback.ts",
+        "viewer/src/ui/editor-kernel/markdown.ts",
+        "viewer/src/ui/editor-kernel/static-render.ts"
+      ]
+    },
+    {
+      "dir": "viewer/src/ui/styles",
+      "files": [
+        "viewer/src/ui/styles/ai-target.css",
+        "viewer/src/ui/styles/base.css",
+        "viewer/src/ui/styles/canvas-engine.css",
+        "viewer/src/ui/styles/components.css",
+        "viewer/src/ui/styles/layout.css",
+        "viewer/src/ui/styles/light-tokens.css",
+        "viewer/src/ui/styles/overlays.css",
+        "viewer/src/ui/styles/panels.css",
+        "viewer/src/ui/styles/rich-text.css"
+      ]
+    },
+    {
+      "dir": "viewer/src/ui/fonts",
+      "files": [
+        "viewer/src/ui/fonts/Geist-Variable.woff2",
+        "viewer/src/ui/fonts/GeistMono-Variable.woff2",
+        "viewer/src/ui/fonts/LICENSE.txt"
+      ]
+    }
+  ]
+}

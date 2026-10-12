@@ -1,6 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+// 画布样式取自 G-canvas（base 为作用域收进 .hc-stage 的改写件，其余逐字）；外壳样式 styles.css 压轴
+import "./gcanvas/ui/styles/base.css";
+import "./gcanvas/ui/styles/canvas-engine.css";
+import "./gcanvas/ui/styles/rich-text.css";
 import "./styles.css";
 
 /**

@@ -1,36 +1,39 @@
 /**
- * Canvas —— 无限画布容器（只读渲染）
+ * Canvas —— 无限画布（只读），按 G-canvas Stage 的方式组装：
  *
- * 渲染策略（对齐 html_canvas ElementLayer，**非** spec §3.2 示例的 frame 嵌套）：
- *   所有元素一律平铺，按 elements 数组序渲染（DOM 序 = 图层序，不用 z-index）。
- *   子元素坐标恒为世界坐标，parent 仅组织归属——Frame 是半透明背景矩形，子元素因世界
- *   坐标落在 frame 区域内、且数组序在 frame 之后，视觉上才"在 frame 里"。
- *   绝不把子元素嵌进 frame 的定位容器（否则世界坐标被 frame 的 left/top 二次偏移）。
+ *   div.hc-stage（视口：平移缩放手势、裁剪）
+ *     └ div.hc-world（唯一承接 camera transform：translate(tx,ty) scale(zoom)，origin 0 0）
+ *         └ ElementLayer（数组序 = 图层序）
  *
- * 交互（决策 D6 完整交互）：滚轮缩放 + 空格拖拽 + 键盘快捷键（Cmd+0/=/-），由 useCamera 提供。
- * 初始 fitToContent 由 useCamera 首屏门控完成。
- *
- * camera 形态：{ tx, ty, zoom }，CSS = translate(tx,ty) scale(zoom)，transformOrigin 0 0。
+ * 文档放进 G-canvas 的内存 store（逐字件 engine/store.ts）：html / text 首渲实测尺寸经
+ * setMeasured 写回（同尺寸 no-op、同帧合并通知），绑定到 HTML 块的箭头在块渲染出真实尺寸后
+ * 按上游同一逻辑重算贴边。查看器只读，measured 只在内存，不落盘。
  */
-import { useMemo } from 'react'
-import { HtmlBlock } from './elements/HtmlBlock'
-import { Shape } from './elements/Shape'
-import { Text } from './elements/Text'
-import { Image } from './elements/Image'
-import { Arrow } from './elements/Arrow'
-import { Frame } from './elements/Frame'
+import { useCallback, useMemo, useSyncExternalStore } from 'react'
+import { createDocStore } from './gcanvas/engine/store'
+import type { MeasuredSize } from './gcanvas/engine/schema'
+import { CanvasContextProvider, type CanvasContextValue } from './gcanvas/ui/canvas/canvas-context'
+import { ElementLayer } from './gcanvas/ui/canvas/ElementLayer'
+import { createCanvasAdapter } from './api'
+import { collectViewerBounds, renderedDoc } from './known-elements'
 import { useCamera } from './use-camera'
-import { collectBounds } from './bounds'
-import type { BoardData, CanvasElement } from './types'
+import type { BoardData } from './types'
 
 type Props = {
   board: BoardData
+  /** 画板文件 URL 前缀（结尾带斜杠） */
   baseUrl: string
+  /** 画板标识，透传给渲染器（仅作标识） */
+  boardId: string
 }
 
-export function Canvas({ board, baseUrl }: Props) {
-  // 包围盒只依赖元素数组，记忆化避免每渲染重算
-  const bounds = useMemo(() => collectBounds(board.elements), [board.elements])
+export function Canvas({ board, baseUrl, boardId }: Props) {
+  const store = useMemo(() => createDocStore(board), [board])
+  const doc = useSyncExternalStore(store.subscribe, store.getDoc)
+
+  // 逐字件只接收 schema 内的类型；未接入类型由 ElementLayer 渲染占位卡、由 collectViewerBounds 计入框选
+  const knownDoc = useMemo(() => renderedDoc(doc), [doc])
+  const bounds = useMemo(() => collectViewerBounds(doc), [doc])
   const {
     camera,
     spaceDown,
@@ -41,69 +44,41 @@ export function Canvas({ board, baseUrl }: Props) {
     onPanPointerUp,
   } = useCamera(bounds)
 
-  // CSS transform 手动组装（camera.ts 无 applyCamera 函数，P0-2）
-  const transform = `translate(${camera.tx}px, ${camera.ty}px) scale(${camera.zoom})`
+  const setMeasured = useCallback(
+    (id: string, size: MeasuredSize) => {
+      store.setMeasured(id, size)
+    },
+    [store],
+  )
+  const adapter = useMemo(() => createCanvasAdapter(baseUrl), [baseUrl])
+  const ctx = useMemo<CanvasContextValue>(
+    () => ({ adapter, boardId, zoom: camera.zoom, setMeasured, resourceEpoch: 0 }),
+    [adapter, boardId, camera.zoom, setMeasured],
+  )
 
-  // 光标：空格按住 = grab，拖动中 = grabbing，否则默认
   const cursor = panning ? 'grabbing' : spaceDown ? 'grab' : 'default'
 
   return (
-    <div
-      ref={viewportRef}
-      onPointerDown={onPanPointerDown}
-      onPointerMove={onPanPointerMove}
-      onPointerUp={onPanPointerUp}
-      style={{
-        width: '100%',
-        height: '100%',
-        overflow: 'hidden',
-        position: 'relative',
-        background: '#f5f5f5',
-        cursor,
-      }}
-    >
+    <CanvasContextProvider value={ctx}>
       <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          transformOrigin: '0 0',
-          transform,
-        }}
+        ref={viewportRef}
+        className="hc-stage"
+        style={{ cursor }}
+        onPointerDown={onPanPointerDown}
+        onPointerMove={onPanPointerMove}
+        onPointerUp={onPanPointerUp}
+        onPointerCancel={onPanPointerUp}
       >
-        {board.elements.map((el) => renderElement(el, baseUrl))}
+        <div
+          className="hc-world"
+          style={{
+            transform: `translate(${camera.tx}px, ${camera.ty}px) scale(${camera.zoom})`,
+            transformOrigin: '0 0',
+          }}
+        >
+          <ElementLayer elements={doc.elements} doc={knownDoc} />
+        </div>
       </div>
-    </div>
+    </CanvasContextProvider>
   )
-}
-
-/** 单元素渲染：arrow 自定位（端点坐标非 x/y），其余五类套 left/top wrapper */
-function renderElement(el: CanvasElement, baseUrl: string) {
-  if (el.type === 'arrow') {
-    return <Arrow key={el.id} element={el} />
-  }
-  return (
-    <div
-      key={el.id}
-      style={{ position: 'absolute', left: el.x, top: el.y }}
-    >
-      {renderBody(el, baseUrl)}
-    </div>
-  )
-}
-
-/** 按 type 分派到具体渲染器（arrow 已在上层单独处理） */
-function renderBody(el: Exclude<CanvasElement, { type: 'arrow' }>, baseUrl: string) {
-  switch (el.type) {
-    case 'html':
-      return <HtmlBlock element={el} baseUrl={baseUrl} />
-    case 'shape':
-      return <Shape element={el} />
-    case 'text':
-      return <Text element={el} />
-    case 'image':
-      return <Image element={el} baseUrl={baseUrl} />
-    case 'frame':
-      return <Frame element={el} />
-  }
 }

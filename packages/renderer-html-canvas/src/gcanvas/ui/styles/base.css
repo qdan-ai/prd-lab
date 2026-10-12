@@ -1,0 +1,126 @@
+/* G-canvas base.css 改写件（PRD-Lab 自有，对应上游 viewer/src/ui/styles/base.css）。
+ *
+ * 上游把设计令牌挂在 :root，并写 `*` / body / .hc-app 等全局规则；查看器的外壳（顶栏、docs 面板）
+ * 与画布共处一页，原样引入会改外壳字体、底色与 .hc-app 布局。这里：
+ * - @font-face 逐字保留（字体文件为逐字件，见 ../fonts/）；
+ * - 令牌、字体栈、文字色与 box-sizing reset 收进 .hc-stage 作用域——画布内所有元素都是它的后代，
+ *   取值与上游一致；上游的外壳工具类（.hc-app / .hc-hint / .hc-error 等）不引入。
+ * 上游 base.css 变动时 gcanvas-sync check 会报红：对照 diff 把令牌 / 字体改动搬过来。 */
+
+/* —— 自带字体 Geist / Geist Mono（Vercel，SIL OFL 1.1，许可见 ../fonts/LICENSE.txt）——
+ * 仅打包拉丁字形的可变字重 woff2 单文件（各覆盖字重 100–900，约 70KB/个）；中文字符不打包，
+ * 逐字 fallback 到系统苹方/微软雅黑/思源黑体（见 :root --font-ui / --font-mono fallback 链）。
+ * woff2 由 Vite 从此处 import 进 dist/assets/ 并加 hash，运行时随 dist 静态托管。 */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../fonts/Geist-Variable.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../fonts/GeistMono-Variable.woff2') format('woff2');
+}
+
+.hc-stage {
+  /* —— 字体（DESIGN §2.2）—— UI / 画布 / 文档正文统一无衬线；--font-doc 为语义别名指向 --font-ui
+   * Geist/Geist Mono 仅含拉丁字形：西文/数字/代码命中 Geist，中文字符逐字 fallback 到苹方/微软雅黑/思源黑体 */
+  --font-ui: 'Geist', 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans SC', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-doc: var(--font-ui);
+  --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, 'PingFang SC', 'Microsoft YaHei', monospace;
+
+  /* —— 颜色（DESIGN §2.1，Vercel 工程极客盘）—— */
+  /* 底色 */
+  --mat: #EBEBEB; /* 最外层桌垫底 */
+  --canvas: #FAFAFA; /* 画布舞台底色 */
+  --surface: #FFFFFF; /* 面板 / 工具栏 / 顶栏主表面 */
+  --surface-2: #FFFFFF; /* 浮起元素表面（激活 tab / 输入框 / 卡片） */
+  --surface-strong: #F5F5F5; /* 更强表面（次级填充 / hover 底） */
+
+  /* 边界（hairline 实线） */
+  --line: #EBEBEB; /* 极淡描边 */
+  --line-soft: #F2F2F2; /* 更淡描边 */
+  --line-strong: #D4D4D4; /* 较强描边（输入框默认边 / 虚线邀请位） */
+
+  /* 文字 */
+  --ink: #171717; /* 主文字 */
+  --ink-mid: #4D4D4D; /* 次文字 / 图标默认色 */
+  --ink-soft: #666666; /* 弱文字 / 占位 / 提示 */
+  --ink-faint: #8F8F8F; /* 极弱文字 / 辅助说明 */
+
+  /* 强调（黑为主） */
+  --accent: #171717; /* 主强调（主按钮 / 强调文字） */
+  --accent-deep: #000000; /* 最深强调 */
+
+  /* 交互蓝 */
+  --blue: #0072F5; /* 选中 / 链接 / 交互蓝 */
+  --blue-deep: #0761D1; /* 交互蓝深（hover / active） */
+  --blue-bg: #EBF5FF; /* 交互蓝极淡底 */
+
+  /* 语义 */
+  --success: #1F8A65; /* 语义成功 */
+  --success-bg: rgba(31, 138, 101, 0.1); /* 成功极淡底 */
+  --danger: #EE0000; /* 语义危险 */
+  --danger-bg: rgba(238, 0, 0, 0.07); /* 危险极淡底 */
+
+  /* 代码语法高亮（console 三色） */
+  --code-kw: #7928CA; /* 关键字 / 类型（console purple） */
+  --code-str: #0070F3; /* 字符串 / URL（console blue） */
+  --code-fn: #EB367F; /* 函数 / 标签（console pink） */
+  --code-comment: #8F8F8F; /* 注释 */
+
+  /* 招牌 mesh 渐变三对色（仅空状态） */
+  --mesh-1: #0A72EF; /* develop 蓝 */
+  --mesh-2: #DE1D8D; /* preview 粉 */
+  --mesh-3: #FF5B4F; /* ship 红 */
+
+  /* —— 间距（DESIGN §2.3）—— */
+  --sp-1: 3px;
+  --sp-2: 6px;
+  --sp-3: 9px;
+  --sp-4: 13px;
+  --sp-5: 16px;
+  --sp-6: 22px;
+  --sp-7: 30px;
+  --sp-8: 46px;
+
+  /* —— 圆角（DESIGN §2.4）—— */
+  --r-ctrl: 6px; /* 按钮 / 输入 / 小图标钮 */
+  --r-panel: 8px; /* 面板 / 卡片 / toast / 菜单 */
+  --r-float: 12px; /* 浮层（弹框 / 工具坞 / 工具栏） */
+  --r-window: 16px; /* app 窗口外框 */
+  --r-pill: 9999px; /* chip 胶囊（全圆角） */
+
+  /* —— 阴影（DESIGN §2.5）极淡冷灰堆叠 + inset 发丝环；投影色 rgba(0,0,0,*) —— */
+  --ring: inset 0 0 0 1px rgba(0, 0, 0, 0.07);
+  --shadow-card: inset 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-sm: inset 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+  --shadow-float: inset 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 16px -4px rgba(0, 0, 0, 0.06), 0 24px 32px -8px rgba(0, 0, 0, 0.08);
+
+  /* —— 动效（DESIGN §2.6）柔、慢一档、无弹跳—— */
+  --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-fast: 0.15s;
+  --dur-base: 0.2s;
+  --dur-slow: 0.22s;
+
+  /* —— 兼容别名：旧 --hc-* 名映射到新 Vercel 盘 ——
+   * 历史样式以 var(--hc-*) 取色；统一指向新 token，皮肤一处切换、调用点无需逐个改。 */
+  --hc-bg: var(--canvas);
+  --hc-fg: var(--ink);
+  --hc-muted: var(--ink-soft);
+  --hc-border: var(--line);
+  --hc-accent: var(--blue); /* 画布选中态交互色（选中框/handle/marquee/落点态/就地编辑框）；主按钮等已改用 var(--accent) 黑 */
+  --hc-error: var(--danger);
+
+  font-family: var(--font-ui);
+  color: var(--hc-fg);
+}
+
+.hc-stage,
+.hc-stage * {
+  box-sizing: border-box;
+}

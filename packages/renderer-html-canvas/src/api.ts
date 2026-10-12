@@ -42,3 +42,20 @@ export class FetchError extends Error {
     this.name = "FetchError";
   }
 }
+
+/**
+ * 渲染器取画板文件的 adapter。G-canvas 渲染上下文垫片的 CanvasAdapter 类型直接取自本函数返回值，
+ * 渲染器需要新的取文件方法（如 loadNote）时只在这里加一行。
+ * 画板目录结构与 G-canvas 一致：块在 blocks/（元素只记文件名），共享样式与资源按画板根视角路径
+ * （styles/…、assets/…）。boardId 由渲染器透传；查看器一次只看一块画板，文件位置只由 baseUrl 决定。
+ */
+export function createCanvasAdapter(baseUrl: string) {
+  return {
+    /** blocks/ 下块文件原文 */
+    loadBlock: (_boardId: string, file: string) => fetchText(baseUrl, `blocks/${file}`),
+    /** 共享 css 原文（画板根视角路径） */
+    loadStyle: (_boardId: string, relPath: string) => fetchText(baseUrl, relPath),
+    /** 资源 URL（<img src> / css url() 重写直用；画板根视角路径） */
+    assetUrl: (_boardId: string, relPath: string) => resolveUrl(baseUrl, relPath),
+  };
+}

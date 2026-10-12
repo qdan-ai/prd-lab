@@ -9,7 +9,7 @@
  */
 
 import type { HtmlCanvasComputedMetadata } from "../node";
-import type { CanvasDoc, CanvasElement } from "./schema";
+import type { CanvasDoc, CanvasElement } from "./gcanvas/engine/schema";
 
 export type RendererConfig = {
   /** 与 RENDERERS["html-canvas"].configVersion 一致；不匹配时 SPA 拒绝挂载并显示错误 */

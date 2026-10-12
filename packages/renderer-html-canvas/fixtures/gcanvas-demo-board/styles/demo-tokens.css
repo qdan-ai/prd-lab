@@ -1,0 +1,70 @@
+/*
+ * demo-tokens.css —— 形态②共享样式块（设计 §3 / §1.7 叠加序验证用）
+ *
+ * 由 canvas.json 中 html 元素经 css: ["styles/demo-tokens.css"] 引入，
+ * 与块内 <style> 叠加（数组在前、块内压轴）。验证 viewer 的共享样式注入与
+ * 选择器翻译：:root / body 在拆壳后统一指向 .hc-block-body 替身层，CSS 变量
+ * 落在替身层仍被子树继承。
+ */
+
+:root {
+  --pm-bg: #ffffff;
+  --pm-surface: #f5f7fb;
+  --pm-ink: #1f2733;
+  --pm-muted: #6b7787;
+  --pm-line: #e2e8f1;
+  --pm-brand: #3a5bd9;
+  --pm-brand-soft: #eaeffc;
+  --pm-warn: #b4690e;
+  --pm-radius: 10px;
+  --pm-gap: 16px;
+  --pm-font:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--pm-bg);
+  color: var(--pm-ink);
+  font-family: var(--pm-font);
+  line-height: 1.55;
+}
+
+.pm-card {
+  width: 520px;
+  padding: 28px;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-line);
+  border-radius: var(--pm-radius);
+}
+
+.pm-kicker {
+  margin: 0 0 8px;
+  color: var(--pm-brand);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pm-card h2 {
+  margin: 0 0 12px;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.pm-card p {
+  margin: 0 0 var(--pm-gap);
+  color: var(--pm-muted);
+  font-size: 15px;
+}
+
+.pm-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--pm-brand-soft);
+  color: var(--pm-brand);
+  font-size: 12px;
+  font-weight: 600;
+}

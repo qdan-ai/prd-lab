@@ -32,6 +32,14 @@ function mirrorEditor(tier: EditorTier): TiptapEditor {
   return ed
 }
 
+/**
+ * 本模块加载时把销毁函数登记到全局钩子，供测试 setup 在文件结束时统一收尾。
+ * 走登记而不是 setup 直接 import 本模块：没用到静态渲染的文件不必为收尾去加载 Tiptap。
+ */
+const DISPOSERS_KEY = Symbol.for('hcanvas.disposeStaticRenderers')
+const registry = globalThis as unknown as Record<symbol, Set<() => void> | undefined>
+;(registry[DISPOSERS_KEY] ??= new Set()).add(() => disposeStaticRenderers())
+
 /** 渲染结果缓存（同文档多文本框/重渲常见重复内容；上限防无界增长） */
 const cache = new Map<string, string>()
 const CACHE_MAX = 500
@@ -63,4 +71,22 @@ export function renderStaticMarkdown(tier: EditorTier, md: string): string {
   if (cache.size >= CACHE_MAX) cache.clear()
   cache.set(key, html)
   return html
+}
+
+/**
+ * 销毁各档镜像编辑器并清空渲染缓存；之后再调 renderStaticMarkdown 会按需重建，结果不变。
+ * 镜像编辑器内的 DOM 观察器带延迟回调，宿主 DOM 环境（如 jsdom）先于回调拆除时会抛
+ * 「document is not defined」。测试环境由 vitest.setup.ts 在每个文件结束时经全局钩子调用本函数。
+ */
+export function disposeStaticRenderers(): void {
+  for (const ed of mirrors.values()) {
+    if (!ed.isDestroyed) ed.destroy()
+  }
+  mirrors.clear()
+  cache.clear()
+}
+
+/** 当前存活的镜像编辑器（只读探针，供测试断言销毁状态） */
+export function liveStaticMirrors(): readonly TiptapEditor[] {
+  return [...mirrors.values()].filter((ed) => !ed.isDestroyed)
 }

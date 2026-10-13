@@ -70,3 +70,62 @@ export function deriveNoteFileName(title: string, fallbackId: string): string {
   s = Array.from(s).slice(0, DERIVE_TITLE_MAX).join('')
   return s === '' ? `${fallbackId}${NOTE_EXT}` : `${s}${NOTE_EXT}`
 }
+
+const FENCE_LINE = /^(```|~~~)/
+const HR_LINE = /^([-*_])(\s*\1){2,}$/
+const TABLE_SEPARATOR_LINE = /^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$/
+
+/** 去掉行首块级标记（标题、引用、列表、待办），可叠加 */
+function stripBlockPrefix(line: string): string {
+  let s = line
+  for (;;) {
+    const next = s
+      .replace(/^#{1,6}\s+/, '')
+      .replace(/^>\s?/, '')
+      .replace(/^[-*+]\s+(\[[ xX]\]\s+)?/, '')
+      .replace(/^\d+[.)]\s+/, '')
+      .trimStart()
+    if (next === s) return s
+    s = next
+  }
+}
+
+/** 去掉行内标记，只留文字 */
+function stripInlineMarks(text: string): string {
+  return text
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/?[a-zA-Z][^>]*>/g, '')
+    .replace(/\*\*|__|~~|==|`/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * 正文首行的纯文字（给 ls、引用芯片、文件名派生用）：跳过空行与代码围栏行，去掉行首标记
+ * （# 标题、> 引用、- * + 1. 列表、- [ ] / - [x] 待办、| 表格竖线），去掉行内标记
+ * （**、__、~~、==、`、<span …> 与 </span>、<br>、[文字](链接) 取文字），连续空白并一个，按 code point 截到 max。
+ * 全文没有可显示文字 → ''。
+ *
+ * 只求「人一眼认得出是哪条」，不求还原所有语法；表格行取各格文字用「 / 」连起来；分隔线当空行跳过。
+ */
+export function noteFirstLine(markdown: string, max = 40): string {
+  for (const raw of markdown.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (line === '' || FENCE_LINE.test(line) || HR_LINE.test(line)) continue
+    let text: string
+    if (line.startsWith('|')) {
+      if (TABLE_SEPARATOR_LINE.test(line)) continue
+      text = line
+        .split('|')
+        .map((cell) => stripInlineMarks(cell))
+        .filter((cell) => cell !== '')
+        .join(' / ')
+    } else {
+      text = stripInlineMarks(stripBlockPrefix(line))
+    }
+    if (text === '') continue
+    return Array.from(text).slice(0, max).join('')
+  }
+  return ''
+}

@@ -33,6 +33,7 @@ import { TextColor } from './text-color'
 import { tableExtensions } from './table-markdown'
 import { MarkdownPaste } from './markdown-paste'
 import { markedWithBlankLines } from './blank-lines'
+import { LinkOpenOnModifierClick } from './link-open'
 
 /** 编辑档位：light=画布文本框（片段能力做小），full=docs（含表格等结构）。 */
 export type EditorTier = 'light' | 'full'
@@ -63,8 +64,9 @@ export function buildExtensions(tier: EditorTier): AnyExtension[] {
       code: isFull ? {} : false,
       codeBlock: isFull ? {} : false,
       horizontalRule: isFull ? {} : false,
-      // 链接：light 不接管（画布标注无链接交互，字面量直通保内容）；full 启用（md 原生往返）
-      link: isFull ? {} : false,
+      // 链接：light 不接管（字面量直通保内容）；full 启用（md 原生往返）。
+      // 编辑中单击放光标、⌘ / Ctrl 单击才打开：关掉扩展自带的单击即开，打开交 LinkOpenOnModifierClick
+      link: isFull ? { openOnClick: false } : false,
     }),
     // `==高亮==`：两档共有；扩展自带 markdown parse/render 往返（== 进 == 出）
     Highlight,
@@ -90,7 +92,7 @@ export function buildExtensions(tier: EditorTier): AnyExtension[] {
   if (isFull) {
     // 表格：docs 用；格子单段、格内换行存 `<br>`、不可拖列宽（见 table-markdown.ts）。
     // 锚点节点（AnchorMarkerNode）批4 在此处追加
-    extensions.push(...tableExtensions(), TableRow)
+    extensions.push(...tableExtensions(), TableRow, LinkOpenOnModifierClick)
   }
 
   return extensions

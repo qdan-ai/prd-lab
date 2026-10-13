@@ -16,6 +16,7 @@ import { collectViewerBounds } from "./known-elements";
  *   5. 同一路径只请求一次
  *   6. 包围盒取显示高 max(h, 实测高)
  *   7. 数据不合 G-canvas 格式（如未知颜色）→ 红色占位卡，不悄悄画错
+ *   8. 链接：普通单击不打开；⌘ / Ctrl 单击打开 http(s)（noopener）；中键、javascript:、相对地址不打开
  */
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -43,6 +44,16 @@ const EVIL_MD = [
   '<span style="color: red; background: url(https://example.com/x)">t</span>',
 ].join("\n");
 
+const LINKS_MD = [
+  "[外链](https://example.com/a?b=1)",
+  "",
+  "[脚本](javascript:alert(1))",
+  "",
+  "[相对](/some/page)",
+  "",
+  "[锚点](#top)",
+].join("\n");
+
 let host: HTMLDivElement;
 let root: Root;
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -50,6 +61,7 @@ let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   fetchMock = vi.fn(async (url: string) => {
     if (url.endsWith("notes/ok.md")) return new Response(OK_MD, { status: 200 });
+    if (url.endsWith("notes/links.md")) return new Response(LINKS_MD, { status: 200 });
     if (url.endsWith("notes/evil.md")) return new Response(EVIL_MD, { status: 200 });
     if (url.endsWith("notes/missing.md")) return new Response("nf", { status: 404 });
     if (url.endsWith("notes/broken.md")) return new Response("err", { status: 500 });
@@ -172,5 +184,59 @@ describe("标注块渲染", () => {
     expect(card).not.toBeNull();
     expect(card.textContent).toContain("color 取值非法");
     expect(host.querySelector(".hc-note")).toBeNull();
+  });
+});
+
+describe("标注内链接", () => {
+  let openSpy: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    openSpy = vi.fn();
+    vi.stubGlobal("open", openSpy);
+    window.open = openSpy as unknown as typeof window.open;
+  });
+
+  const linkByText = (text: string) =>
+    [...host.querySelectorAll<HTMLAnchorElement>(".hc-note-body a")].find((a) => a.textContent === text)!;
+
+  const fire = (target: Element, type: string, init: MouseEventInit = {}) => {
+    const ev = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init });
+    act(() => {
+      target.dispatchEvent(ev);
+    });
+    return ev;
+  };
+
+  it("普通单击：不打开、默认跳转被阻止", async () => {
+    await render(board([note({ file: "notes/links.md" })]));
+    const ev = fire(linkByText("外链"), "click");
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(ev.defaultPrevented).toBe(true);
+  });
+
+  it("⌘ 单击与 Ctrl 单击：打开 http(s) 链接，新窗口且带 noopener", async () => {
+    await render(board([note({ file: "notes/links.md" })]));
+    fire(linkByText("外链"), "click", { metaKey: true });
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenLastCalledWith("https://example.com/a?b=1", "_blank", "noopener,noreferrer");
+    fire(linkByText("外链"), "click", { ctrlKey: true });
+    expect(openSpy).toHaveBeenCalledTimes(2);
+    expect(openSpy.mock.calls[1]![2]).toContain("noopener");
+  });
+
+  it("中键：不打开，浏览器默认的新标签打开被阻止", async () => {
+    await render(board([note({ file: "notes/links.md" })]));
+    const ev = fire(linkByText("外链"), "auxclick", { button: 1, metaKey: true });
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(ev.defaultPrevented).toBe(true);
+  });
+
+  it("javascript: 与相对地址：⌘ 单击也不打开", async () => {
+    await render(board([note({ file: "notes/links.md" })]));
+    for (const text of ["脚本", "相对", "锚点"]) {
+      const a = linkByText(text);
+      if (!a) continue; // 被清洗掉的链接没有 <a>，同样打不开
+      fire(a, "click", { metaKey: true });
+    }
+    expect(openSpy).not.toHaveBeenCalled();
   });
 });

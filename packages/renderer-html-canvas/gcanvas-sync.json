@@ -2,7 +2,7 @@
   "$comment": "G-canvas（html_canvas 仓库 viewer/src/）渲染件的逐字复制清单，由 scripts/gcanvas-sync.mjs 维护。verbatim：sync 覆盖写入、禁止手改，upstream.commit 是它们同步到的 commit。adapted/shim：PRD-Lab 自有代码，upstreamSha256 与 reconciledCommit 记录已人工对照到的上游版本，只在 sync --accept 时推进。watch：上游目录的已知文件集合。deps：比对逐字件引用的 npm 包声明版本（只提示）。用法见包内 README。",
   "upstream": {
     "repo": "html_canvas",
-    "commit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
+    "commit": "7a5cbf0563a5d13f2be9c1ceb945743617ee1442"
   },
   "files": [
     {
@@ -117,13 +117,13 @@
       "upstream": "viewer/src/ui/editor-kernel/static-render.ts",
       "local": "src/gcanvas/ui/editor-kernel/static-render.ts",
       "kind": "verbatim",
-      "upstreamSha256": "3bd3950eb31690150c759816903a2256e6839ed3aff8d296ebaefcb0a1750e61"
+      "upstreamSha256": "a98ee382162d3dc5afef52ee80b61334a153043c322519c7ac93e38820b85094"
     },
     {
       "upstream": "viewer/src/ui/editor-kernel/extensions.ts",
       "local": "src/gcanvas/ui/editor-kernel/extensions.ts",
       "kind": "verbatim",
-      "upstreamSha256": "ffd12b916c73a47ee533b69c74549883f9b3c10e1642d09fad7c117ed3bacf2b"
+      "upstreamSha256": "49b83d473ec8d2b89ae713754d22b3be0d366ab53084535e11c9e419f232991f"
     },
     {
       "upstream": "viewer/src/ui/editor-kernel/markdown.ts",
@@ -176,7 +176,7 @@
       "kind": "adapted",
       "upstreamSha256": "4636c96993c1d7bb97f892d9007373afa7a275292aec4806ea50dddd049ee9d4",
       "note": "上游把设计令牌挂在 :root、并写 * / body / .hc-app 全局规则，会改查看器外壳（字体、底色、.hc-app 布局）。改写件只保留 @font-face，令牌与 reset 收进 .hc-stage 作用域",
-      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
+      "reconciledCommit": "7a5cbf0563a5d13f2be9c1ceb945743617ee1442"
     },
     {
       "upstream": "viewer/src/ui/canvas/ElementLayer.tsx",
@@ -184,7 +184,7 @@
       "kind": "adapted",
       "upstreamSha256": "0718687370a0b8de7a1e1604824af16e172ee954e350b5e11c4641fa0c83da04",
       "note": "只读子集：去掉拖动/编辑/样式预览/就地编辑/落点高亮；DOM 结构、class、data-hc-id/data-hc-type、wrapper 白名单、箭头自定位、数组序=图层序与上游一致；加未知元素类型占位分支",
-      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
+      "reconciledCommit": "7a5cbf0563a5d13f2be9c1ceb945743617ee1442"
     },
     {
       "upstream": "viewer/src/ui/canvas/interactions/use-camera.ts",
@@ -192,7 +192,7 @@
       "kind": "adapted",
       "upstreamSha256": "4a9024f7313d5b23f9b7550053ee809b489d89546ef9a023a58abda44f9b85eb",
       "note": "查看器自有的相机交互（滚轮/空格拖/Cmd+0/Cmd+=/Cmd+-），数学取自逐字件 engine/camera.ts；去掉编辑态/多标签/聚焦/截图模式门控",
-      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
+      "reconciledCommit": "7a5cbf0563a5d13f2be9c1ceb945743617ee1442"
     },
     {
       "upstream": "viewer/src/ui/canvas/canvas-context.ts",
@@ -200,7 +200,7 @@
       "kind": "shim",
       "upstreamSha256": "339de20959e7c9fe9c9c372e8272ed3196044b5272b5989e41d08de08709a221",
       "note": "顶替上游渲染上下文：adapter 只含 loadBlock/loadStyle/assetUrl（按 dataBaseUrl 取画板文件），blockCache/blockResourceReady 可选且查看器不提供",
-      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
+      "reconciledCommit": "7a5cbf0563a5d13f2be9c1ceb945743617ee1442"
     },
     {
       "upstream": "viewer/src/ui/editor-kernel/index.ts",
@@ -208,13 +208,13 @@
       "kind": "shim",
       "upstreamSha256": "adc9a806de455a60282d38dcf04d065e9686a709a0d627942d7a02032dd5256c",
       "note": "只导出静态渲染 renderStaticMarkdown（上游 index 还导出编辑器组件、工具栏、controller，查看器不需要）",
-      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
+      "reconciledCommit": "7a5cbf0563a5d13f2be9c1ceb945743617ee1442"
     },
     {
       "upstream": "viewer/src/engine/note-model.ts",
       "local": "src/gcanvas/engine/note-model.ts",
       "kind": "verbatim",
-      "upstreamSha256": "082231e79c4c93d62f58f78d8c02928ce4c09cf2561e7f184324aa77906052b3"
+      "upstreamSha256": "0455ae4a87c2b3f409fca663db9429554b08fcfe7e94c5f6dea234a3409bc08b"
     },
     {
       "upstream": "viewer/src/engine/note-content-cache.ts",
@@ -226,7 +226,7 @@
       "upstream": "viewer/src/ui/canvas/renderers/NoteView.tsx",
       "local": "src/gcanvas/ui/canvas/renderers/NoteView.tsx",
       "kind": "verbatim",
-      "upstreamSha256": "9c4693c06340fab6eebc83478b459a4bfefb4b53e8369b15325f76924afc9829"
+      "upstreamSha256": "32201ef80d8cd1bd9c32b7a16ea8065c0473c6a82b567f453989d1b1ff2b54a3"
     },
     {
       "upstream": "viewer/src/ui/editor-kernel/text-color.ts",
@@ -264,7 +264,7 @@
       "kind": "adapted",
       "upstreamSha256": "d8b89c2068b33d96289360d2a8aa5b42af2ac667fc1df843110e61a796019b6c",
       "note": "只把判 404 的错误类型从上游 persistence/adapter 的 HttpStatusError 换成查看器 api.ts 的 FetchError，其余逐行同上游",
-      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
+      "reconciledCommit": "7a5cbf0563a5d13f2be9c1ceb945743617ee1442"
     },
     {
       "upstream": "viewer/src/ui/styles/prose.css",
@@ -283,6 +283,12 @@
       "local": "src/gcanvas/ui/styles/note.css",
       "kind": "verbatim",
       "upstreamSha256": "65cdab9c97c46016b0d220419b2774423283fe638f08fb8c35ac16085d339ea5"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/link-open.ts",
+      "local": "src/gcanvas/ui/editor-kernel/link-open.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "d2a25f58a3b1bc3aeb2c9a9497086a530d26232e1ef15662adb635c8d60b52fc"
     }
   ],
   "deps": {
@@ -345,6 +351,7 @@
         "viewer/src/ui/editor-kernel/controllers.ts",
         "viewer/src/ui/editor-kernel/extensions.ts",
         "viewer/src/ui/editor-kernel/index.ts",
+        "viewer/src/ui/editor-kernel/link-open.ts",
         "viewer/src/ui/editor-kernel/literal-fallback.ts",
         "viewer/src/ui/editor-kernel/markdown-paste.ts",
         "viewer/src/ui/editor-kernel/markdown.ts",

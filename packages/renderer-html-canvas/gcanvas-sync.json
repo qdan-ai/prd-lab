@@ -176,15 +176,15 @@
       "kind": "adapted",
       "upstreamSha256": "4636c96993c1d7bb97f892d9007373afa7a275292aec4806ea50dddd049ee9d4",
       "note": "上游把设计令牌挂在 :root、并写 * / body / .hc-app 全局规则，会改查看器外壳（字体、底色、.hc-app 布局）。改写件只保留 @font-face，令牌与 reset 收进 .hc-stage 作用域",
-      "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
     },
     {
       "upstream": "viewer/src/ui/canvas/ElementLayer.tsx",
       "local": "src/gcanvas/ui/canvas/ElementLayer.tsx",
       "kind": "adapted",
-      "upstreamSha256": "2553b8eb0b69c5d6703ec828897b22d2e8bb9662c108c5d3bdb06c1c81f3d37d",
+      "upstreamSha256": "0718687370a0b8de7a1e1604824af16e172ee954e350b5e11c4641fa0c83da04",
       "note": "只读子集：去掉拖动/编辑/样式预览/就地编辑/落点高亮；DOM 结构、class、data-hc-id/data-hc-type、wrapper 白名单、箭头自定位、数组序=图层序与上游一致；加未知元素类型占位分支",
-      "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
     },
     {
       "upstream": "viewer/src/ui/canvas/interactions/use-camera.ts",
@@ -192,23 +192,23 @@
       "kind": "adapted",
       "upstreamSha256": "4a9024f7313d5b23f9b7550053ee809b489d89546ef9a023a58abda44f9b85eb",
       "note": "查看器自有的相机交互（滚轮/空格拖/Cmd+0/Cmd+=/Cmd+-），数学取自逐字件 engine/camera.ts；去掉编辑态/多标签/聚焦/截图模式门控",
-      "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
     },
     {
       "upstream": "viewer/src/ui/canvas/canvas-context.ts",
       "local": "src/gcanvas/ui/canvas/canvas-context.ts",
       "kind": "shim",
-      "upstreamSha256": "402655e78460f04101b398a77b5f104a03a4dbacedf720f83ad11987f2f80bf4",
+      "upstreamSha256": "339de20959e7c9fe9c9c372e8272ed3196044b5272b5989e41d08de08709a221",
       "note": "顶替上游渲染上下文：adapter 只含 loadBlock/loadStyle/assetUrl（按 dataBaseUrl 取画板文件），blockCache/blockResourceReady 可选且查看器不提供",
-      "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
     },
     {
       "upstream": "viewer/src/ui/editor-kernel/index.ts",
       "local": "src/gcanvas/ui/editor-kernel/index.ts",
       "kind": "shim",
-      "upstreamSha256": "58e5b34fd51f9e50ed47e8cf687bd8a99269af6d327246a8bab0f28c144e6299",
+      "upstreamSha256": "adc9a806de455a60282d38dcf04d065e9686a709a0d627942d7a02032dd5256c",
       "note": "只导出静态渲染 renderStaticMarkdown（上游 index 还导出编辑器组件、工具栏、controller，查看器不需要）",
-      "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
     },
     {
       "upstream": "viewer/src/engine/note-model.ts",
@@ -298,6 +298,7 @@
         "viewer/src/ui/canvas/renderers/FrameView.tsx",
         "viewer/src/ui/canvas/renderers/HtmlBlockView.tsx",
         "viewer/src/ui/canvas/renderers/ImageView.tsx",
+        "viewer/src/ui/canvas/renderers/NoteView.tsx",
         "viewer/src/ui/canvas/renderers/ShapeView.tsx",
         "viewer/src/ui/canvas/renderers/TextView.tsx",
         "viewer/src/ui/canvas/renderers/arrow-path.ts",
@@ -305,8 +306,18 @@
       ]
     },
     {
+      "dir": "viewer/src/ui/canvas/note",
+      "exclude": "\\.test\\.",
+      "hint": "标注正文加载与编辑；查看器只用 note-loader（改写件），其余是编辑器文件",
+      "files": [
+        "viewer/src/ui/canvas/note/NoteEditor.tsx",
+        "viewer/src/ui/canvas/note/note-loader.ts",
+        "viewer/src/ui/canvas/note/note-measure.ts"
+      ]
+    },
+    {
       "dir": "viewer/src/engine",
-      "include": "^(arrow-|element-|viewport|camera|schema|sanitize|unwrap|store)",
+      "include": "^(arrow-|element-|viewport|camera|schema|sanitize|unwrap|store|note-)",
       "exclude": "\\.test\\.",
       "files": [
         "viewer/src/engine/arrow-binding.ts",
@@ -314,6 +325,8 @@
         "viewer/src/engine/arrow-routing.ts",
         "viewer/src/engine/camera.ts",
         "viewer/src/engine/element-geometry.ts",
+        "viewer/src/engine/note-content-cache.ts",
+        "viewer/src/engine/note-model.ts",
         "viewer/src/engine/sanitize.ts",
         "viewer/src/engine/schema.ts",
         "viewer/src/engine/store.ts",
@@ -326,13 +339,21 @@
       "exclude": "\\.test\\.",
       "files": [
         "viewer/src/ui/editor-kernel/EditorKernel.tsx",
+        "viewer/src/ui/editor-kernel/TextColorMenu.tsx",
         "viewer/src/ui/editor-kernel/Toolbar.tsx",
+        "viewer/src/ui/editor-kernel/blank-lines.ts",
         "viewer/src/ui/editor-kernel/controllers.ts",
         "viewer/src/ui/editor-kernel/extensions.ts",
         "viewer/src/ui/editor-kernel/index.ts",
         "viewer/src/ui/editor-kernel/literal-fallback.ts",
+        "viewer/src/ui/editor-kernel/markdown-paste.ts",
         "viewer/src/ui/editor-kernel/markdown.ts",
-        "viewer/src/ui/editor-kernel/static-render.ts"
+        "viewer/src/ui/editor-kernel/overlay-context.ts",
+        "viewer/src/ui/editor-kernel/semantic-empty.ts",
+        "viewer/src/ui/editor-kernel/static-render.ts",
+        "viewer/src/ui/editor-kernel/table-markdown.ts",
+        "viewer/src/ui/editor-kernel/text-color.ts",
+        "viewer/src/ui/editor-kernel/unreferenced-definition.ts"
       ]
     },
     {
@@ -342,12 +363,16 @@
         "viewer/src/ui/styles/base.css",
         "viewer/src/ui/styles/canvas-engine.css",
         "viewer/src/ui/styles/components.css",
+        "viewer/src/ui/styles/content.css",
         "viewer/src/ui/styles/layout.css",
         "viewer/src/ui/styles/light-tokens.css",
+        "viewer/src/ui/styles/note.css",
         "viewer/src/ui/styles/overlays.css",
         "viewer/src/ui/styles/panels.css",
+        "viewer/src/ui/styles/prose.css",
         "viewer/src/ui/styles/rich-text.css"
-      ]
+      ],
+      "exclude": "\\.test\\."
     },
     {
       "dir": "viewer/src/ui/fonts",

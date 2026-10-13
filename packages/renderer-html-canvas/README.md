@@ -56,41 +56,46 @@ pnpm --filter @prd-lab/renderer-html-canvas gcanvas:sync -- --accept         # �
 4. 逐字件报「引用了本地不存在的 …」：上游新增了依赖文件，把它加进清单 `files`（能逐字就 `verbatim`，依赖编辑器状态的写垫片）后再 `sync`
 5. `gcanvas:check` 回到「一致」；若有依赖版本「提示」，按需对齐本包 `package.json`
 
+### 日常规矩
+
+- G-canvas 每次发「会被分享的版本」（打正式包前）→ 在 PRD-Lab 跑 `gcanvas:check`；有漂移就开一轮「同步 → 对照 → 部署」。
+- `deploy.sh` 拿 G-canvas 的**当前 HEAD** 比对：同步要对准准备分享出去的那个 commit（`-- --commit <rev>`）。同步后到部署前 G-canvas 若又提交了渲染相关改动，部署会被拦下——要么再同步一轮，要么确认无关后加 `--allow-gcanvas-drift`。
+- G-canvas 改格式要保持向后兼容（查看器会用新代码重画所有历史画板）；做不到兼容时，在 `src/legacy-board.ts` 加旧格式转换（已有先例：旧箭头 `x1/y1/x2/y2` 转 `points`）。
+
 ### 画不了的元素
 
 `src/known-elements.ts` 逐元素分类：已接入类型且通过 G-canvas 单元素校验的交给逐字件渲染；未接入的类型显示「暂不支持的元素」占位卡；数据不符合 G-canvas 格式的显示红色占位卡并写明第一条校验错误。占位卡按元素的 x/y/w/h 定位定尺寸（缺尺寸取 320×160）并计入框选全部。所以 G-canvas 新增元素类型后、查看器同步之前，含新类型的画板仍能打开，新元素先显示为占位卡。
 
 ## 接入新元素类型（以「富文本标注块」`note` 为例）
 
-上游设计：`type: "note"`，内容在画板目录 `notes/<file>.md`，元素记 `file`（画板根视角路径）、`x/y/w/h`（`h` 为最小高度）、`color`；渲染器 `renderers/NoteView.tsx` 经 `adapter.loadNote` 取 md、用 full 档 Markdown 静态渲染，编辑内核新增文字颜色标记。
+上游设计：`type: "note"`，正文在画板目录 `notes/<file>.md`，元素记 `file`（画板根视角路径）、`x/y/w/h`（`h` 为最小高度）、`color`、`sizeTier`。渲染器 `renderers/NoteView.tsx` 经渲染上下文里的 `noteContent.{cache, loader}` 取正文（不走 adapter 直取），用 full 档 Markdown 静态渲染；链接等交互行为与 G-canvas 一致，见上游 `NoteView`。
 
-**1. 跑 check，预期报红**
+渲染器需要的数据除 adapter 外还可能经渲染上下文下发。note 的接线如下：
 
-- `[逐字件] viewer/src/engine/schema.ts` 上游内容已变（新增 `NoteElement`），以及 `element-geometry.ts` / `viewport.ts` / `store.ts` / `ui/canvas/bounds.ts` / `editor-kernel/extensions.ts` / `ui/styles/*.css` 中随之改动的文件
-- `[改写件] viewer/src/ui/canvas/ElementLayer.tsx` 对应的上游文件已变（分派里多了 note）
-- `[监视目录] viewer/src/ui/canvas/renderers/NoteView.tsx`（及编辑内核新增的颜色标记文件等）出现清单外的新文件
-- 若上游改了 `canvas-context.ts`，`[垫片]` 一并报红
+| 位置 | 做法 |
+|---|---|
+| `src/api.ts` `createCanvasAdapter` | 加 `loadNote: (_boardId, file) => fetchText(baseUrl, file)`（`file` 为画板根视角路径 `notes/…`）；垫片的 `CanvasAdapter` 类型取自它的返回值 |
+| `src/gcanvas/ui/canvas/canvas-context.ts`（垫片） | `CanvasContextValue` 加可选字段 `noteContent: { cache: NoteContentCache; loader: NoteLoader }` |
+| `src/gcanvas/ui/canvas/note/note-loader.ts`（改写件） | 逐行同上游，只把判 404 的错误类型换成本包 `api.ts` 的 `FetchError` |
+| `src/Canvas.tsx` | 每块画板建一个 `NoteContentCache` 与 `createNoteLoader(...)`，放进上下文 `noteContent` |
+| `src/gcanvas/ui/canvas/ElementLayer.tsx`（改写件） | `ElementBody` 加 `case 'note'`；上游的就地编辑槽不搬 |
+| `src/known-elements.ts` | `RENDERED_TYPES` 加 `note: true` |
 
-**2. 把新文件加进清单再同步**
+样式链：`prose.css` 用 Tailwind Typography 生成 `prose` 类，由 `vite.config.ts` 里的 `@tailwindcss/vite` 插件编译（只生成 `prose` / `prose-sm`，不带全局重置）；`content.css`（正文排版）与 `note.css`（卡片三色、字号）逐字复制。`src/main.tsx` 的引入顺序对应上游 `ui/main.tsx`：`base` → `canvas-engine` → `prose` → `content` → `rich-text` → `note` → 外壳 `styles.css`（`src/styles-entry.test.ts` 钉住）。
 
-在 `gcanvas-sync.json` 的 `files` 里加 `viewer/src/ui/canvas/renderers/NoteView.tsx` 等新文件（`kind: "verbatim"`，`local` 为 `src/gcanvas/` 下同一相对路径，`upstreamSha256: null`），然后跑 `gcanvas:sync`（不加 `--accept`，ElementLayer 与垫片的对照基准留在旧 commit，第 4 步对照时 diff 命令仍有效）。若 sync 报「引用了本地不存在的 …」，按同样方式补文件；只在编辑器里用到的文件不要复制，改在垫片里不导出。
+### 接入步骤（下一个新类型照此做）
 
-**3. 跑 typecheck，按报错改 PRD-Lab 自有代码**（逐字件一个字节不改）
+**1. 跑 check，看报红**：`schema.ts` 等逐字件内容变了；`[改写件] ElementLayer.tsx`（分派多了新类型）；`[监视目录]` 里出现清单外的新文件；上游改了 `canvas-context.ts` 时 `[垫片]` 也报红。
 
-- `src/known-elements.ts`：`RENDERED_TYPES` 不满足 `Record<ElementType, true>` → 加 `note: true`
-- `src/gcanvas/ui/canvas/ElementLayer.tsx`：`ElementBody` 的 `never` 分支报错 → 对照上游 ElementLayer 加 `case 'note': return <NoteView el={el} />`（wrapper 契约不变：`div.hc-el[data-hc-id][data-hc-type]`，style 只有 position/left/top）
-- `NoteView.tsx` 读 `adapter.loadNote` 报「属性不存在」→ 在 `src/api.ts` 的 `createCanvasAdapter` 加一行（垫片的 `CanvasAdapter` 类型取自它的返回值，无需改第二处）：
-  ```ts
-  loadNote: (_boardId: string, file: string) => fetchText(baseUrl, file),
-  ```
-  `file` 是画板根视角路径（`notes/…`），直接拼在 `dataBaseUrl` 后
-- 上游 `canvas-context.ts` 若新增字段（垫片报红时），对照补进 `src/gcanvas/ui/canvas/canvas-context.ts`
+**2. 新文件加进清单再同步**：渲染需要的文件加进 `gcanvas-sync.json` 的 `files`（`kind: "verbatim"`，`local` 为 `src/gcanvas/` 下同一相对路径，`upstreamSha256: null`），跑 `gcanvas:sync -- --commit <rev>`（不加 `--accept`，改写件与垫片的对照基准留在旧 commit，第 4 步的 diff 命令仍有效）。报「引用了本地不存在的 …」就按同样方式补；只给编辑器用的文件不复制，在垫片里不导出。
 
-**4. 记入清单**：按报红条目给出的 diff 命令对照完 ElementLayer、垫片后跑 `gcanvas:sync -- --accept`，`gcanvas:check` 应回到「一致」。`--accept` 会一并记入监视目录的新文件，跑之前确认新文件都已处理。
+**3. 跑 typecheck，按报错改 PRD-Lab 自有代码**（逐字件一个字节不改）：`RENDERED_TYPES` 不满足 `Record<ElementType, true>` 就登记；`ElementBody` 的 `never` 分支报错就对照上游加分派；渲染器读不到的上下文字段补进垫片并在 `Canvas.tsx` 提供。
+
+**4. 对照改写件与垫片**：按报红条目给出的 diff 命令逐文件对照，搬需要的 hunk；`watch` 的 `include` / 目录若漏了新文件的目录，在清单里补。然后 `gcanvas:sync -- --commit <rev> --accept`，`gcanvas:check -- --commit <rev>` 应回到「一致」。`--accept` 会把监视目录里的新文件一并记为已知，跑之前确认它们都已处理（复制或明确不需要）。
 
 **5. 验证**
 
-- `typecheck`、`vitest run` 全绿；在 `src/Canvas.test.tsx` 补用例：note 渲染出 `[data-hc-type="note"]` 节点而不是占位卡，`collectViewerBounds` 按上游包围盒规则计入
-- 在 `fixtures/` 放一块含 `notes/*.md` 的画板（可从上游 fixtures 复制），开发入口打开目视：标题 / 列表 / 表格 / 代码块 / 文字颜色、卡片高度随内容、三种底色
-- 上传链路：预览站按后缀给 `.md` 返回 `text/markdown`；确认发布打包会带上 `notes/` 目录
-- `build` 后 dist 只含 `index.html` 与 `assets/`
+- `typecheck`、`vitest run` 全绿；补渲染用例（参考 `src/note.test.tsx`：卡片结构、正文接线、缺失与失败提示、安全、包围盒）
+- `fixtures/` 放一块含新类型的画板，开发入口目视
+- 上传链路：预览站按后缀给 `.md` 返回 `text/markdown`；确认发布打包带上 `notes/` 目录
+- `build` 后 `dist` 只含 `index.html` 与 `assets/`

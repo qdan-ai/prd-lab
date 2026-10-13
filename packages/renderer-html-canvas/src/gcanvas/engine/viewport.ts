@@ -8,6 +8,7 @@
  */
 
 import type { ArrowElement, CanvasElement } from './schema'
+import { noteDisplayHeight } from './note-model'
 
 /** 世界坐标轴对齐矩形（px）。x/y 为左上角，w/h 为宽高（约定非负） */
 export interface Rect {
@@ -87,6 +88,9 @@ export function elementBounds(el: CanvasElement): Rect | null {
     case 'image':
     case 'frame':
       return { x: el.x, y: el.y, w: el.w, h: el.h }
+    case 'note':
+      // 宽恒取 w（measured.w 可能是改宽前的旧值）；高取显示高，从不为 null
+      return { x: el.x, y: el.y, w: el.w, h: noteDisplayHeight(el) }
     case 'arrow': {
       // 真实线几何 AABB（无外扩）——框选取盒用
       return pointsAABB(el.points)

@@ -11,6 +11,8 @@
  */
 import { useCallback, useMemo, useSyncExternalStore } from 'react'
 import { createDocStore } from './gcanvas/engine/store'
+import { NoteContentCache } from './gcanvas/engine/note-content-cache'
+import { createNoteLoader } from './gcanvas/ui/canvas/note/note-loader'
 import type { MeasuredSize } from './gcanvas/engine/schema'
 import { CanvasContextProvider, type CanvasContextValue } from './gcanvas/ui/canvas/canvas-context'
 import { ElementLayer } from './gcanvas/ui/canvas/ElementLayer'
@@ -51,9 +53,15 @@ export function Canvas({ board, baseUrl, boardId }: Props) {
     [store],
   )
   const adapter = useMemo(() => createCanvasAdapter(baseUrl), [baseUrl])
+  // 标注正文：每块画板一份缓存 + 加载器（同一路径只请求一次）。缓存与加载器只被本画板持有、无定时器，
+  // 随组件回收；不在 effect 清理里 dispose——StrictMode 开发期的模拟卸载会让复用的加载器永久停摆
+  const noteContent = useMemo(() => {
+    const cache = new NoteContentCache()
+    return { cache, loader: createNoteLoader({ adapter, boardId, cache }) }
+  }, [adapter, boardId])
   const ctx = useMemo<CanvasContextValue>(
-    () => ({ adapter, boardId, zoom: camera.zoom, setMeasured, resourceEpoch: 0 }),
-    [adapter, boardId, camera.zoom, setMeasured],
+    () => ({ adapter, boardId, zoom: camera.zoom, setMeasured, resourceEpoch: 0, noteContent }),
+    [adapter, boardId, camera.zoom, setMeasured, noteContent],
   )
 
   const cursor = panning ? 'grabbing' : spaceDown ? 'grab' : 'default'

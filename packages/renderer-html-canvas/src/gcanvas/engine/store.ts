@@ -79,8 +79,8 @@ export function createDocStore(initial: CanvasDoc, scheduler: Scheduler = defaul
       const idx = doc.elements.findIndex((el) => el.id === id)
       if (idx < 0) return false // 未知 id → 忽略，未变更
       const el = doc.elements[idx]!
-      // 仅 html / text 元素带 measured 字段（schema）；其余类型忽略
-      if (el.type !== 'html' && el.type !== 'text') return false
+      // 仅 html / text / note 元素带 measured 字段（schema）；其余类型忽略
+      if (el.type !== 'html' && el.type !== 'text' && el.type !== 'note') return false
       const cur = el.measured
       // 同尺寸 no-op：不产生新引用、不通知（§1.8 工程优化①）；返回未变更供调用方免标脏
       if (cur && cur.w === size.w && cur.h === size.h) return false

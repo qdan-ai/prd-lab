@@ -2,26 +2,26 @@
   "$comment": "G-canvas（html_canvas 仓库 viewer/src/）渲染件的逐字复制清单，由 scripts/gcanvas-sync.mjs 维护。verbatim：sync 覆盖写入、禁止手改，upstream.commit 是它们同步到的 commit。adapted/shim：PRD-Lab 自有代码，upstreamSha256 与 reconciledCommit 记录已人工对照到的上游版本，只在 sync --accept 时推进。watch：上游目录的已知文件集合。deps：比对逐字件引用的 npm 包声明版本（只提示）。用法见包内 README。",
   "upstream": {
     "repo": "html_canvas",
-    "commit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+    "commit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
   },
   "files": [
     {
       "upstream": "viewer/src/engine/schema.ts",
       "local": "src/gcanvas/engine/schema.ts",
       "kind": "verbatim",
-      "upstreamSha256": "7e34678848779a24a51c34f09b0cefdefd0f4edca628643ee0aef100f7b7470c"
+      "upstreamSha256": "0497eaa84d548ef115014b9ae8d5d2a8d0f6364d0153b3e0b8ecda7bd8d41f77"
     },
     {
       "upstream": "viewer/src/engine/viewport.ts",
       "local": "src/gcanvas/engine/viewport.ts",
       "kind": "verbatim",
-      "upstreamSha256": "96e5d1fa561574799d41a9a8734ae3a78eeb0adb9c78ea8953b1234c14d4fe14"
+      "upstreamSha256": "45b17c032c97895a9074e7f3826b92058e08b8a4a589ad7517c76d03be92f823"
     },
     {
       "upstream": "viewer/src/engine/element-geometry.ts",
       "local": "src/gcanvas/engine/element-geometry.ts",
       "kind": "verbatim",
-      "upstreamSha256": "3ff3c3976a33974d2d6eb4c46567608826e4d53e2071947d32c40e0e6d86fd29"
+      "upstreamSha256": "a862154c7ba3aa7959751fd87210ac9d202d713c8e915f016fc1a710ed1d258d"
     },
     {
       "upstream": "viewer/src/engine/arrow-routing.ts",
@@ -57,7 +57,7 @@
       "upstream": "viewer/src/engine/store.ts",
       "local": "src/gcanvas/engine/store.ts",
       "kind": "verbatim",
-      "upstreamSha256": "7f955beabf9db7e5fe70e087310c1fc043c1b3812568fa71de9d65beca20126a"
+      "upstreamSha256": "e3f0cce35cc38ddae14a3f730ae7c0ea73ef83dc0a2b3716a46ecfa9488cc29e"
     },
     {
       "upstream": "viewer/src/ui/canvas/bounds.ts",
@@ -117,37 +117,37 @@
       "upstream": "viewer/src/ui/editor-kernel/static-render.ts",
       "local": "src/gcanvas/ui/editor-kernel/static-render.ts",
       "kind": "verbatim",
-      "upstreamSha256": "b339e1f820ce4d3a87f185d2df362fd6348b1613a10525dca918eb2a095bba14"
+      "upstreamSha256": "3bd3950eb31690150c759816903a2256e6839ed3aff8d296ebaefcb0a1750e61"
     },
     {
       "upstream": "viewer/src/ui/editor-kernel/extensions.ts",
       "local": "src/gcanvas/ui/editor-kernel/extensions.ts",
       "kind": "verbatim",
-      "upstreamSha256": "eaf52f317ca7c3d38d2e901ba04745db33a7567dd1af48301486e574b995b43d"
+      "upstreamSha256": "ffd12b916c73a47ee533b69c74549883f9b3c10e1642d09fad7c117ed3bacf2b"
     },
     {
       "upstream": "viewer/src/ui/editor-kernel/markdown.ts",
       "local": "src/gcanvas/ui/editor-kernel/markdown.ts",
       "kind": "verbatim",
-      "upstreamSha256": "799b831a413605bfc6bb61d5d6de11f9b10e0e9dc2ab81ecafb28898a9022000"
+      "upstreamSha256": "d0fcea121c9270e9215a221ded06c89128a7136f9df38e7ef87d7c97816748a8"
     },
     {
       "upstream": "viewer/src/ui/editor-kernel/literal-fallback.ts",
       "local": "src/gcanvas/ui/editor-kernel/literal-fallback.ts",
       "kind": "verbatim",
-      "upstreamSha256": "454f71460b43018c78846ac46161bec216effac09c3c1ec43028d64bc5642785"
+      "upstreamSha256": "59a92e1d1a63f52521894d2083a625234d5c86ce559651dbc90a9aee0d244bfd"
     },
     {
       "upstream": "viewer/src/ui/styles/canvas-engine.css",
       "local": "src/gcanvas/ui/styles/canvas-engine.css",
       "kind": "verbatim",
-      "upstreamSha256": "5409e25bb03e5505c4f8de790a546cdb59a7cd34cb2e6a5ac21ba87f35b4fc7b"
+      "upstreamSha256": "6a647ed98ea11bbba9080f47dca71b3e48a3fd66831c3705ec0a795b5a52d227"
     },
     {
       "upstream": "viewer/src/ui/styles/rich-text.css",
       "local": "src/gcanvas/ui/styles/rich-text.css",
       "kind": "verbatim",
-      "upstreamSha256": "7cd610974dc04f5dc278a6d220f7fb76e98b207e06fd033e5b569a86f4a29552"
+      "upstreamSha256": "6ee612a74aeeca78fd2605eeb765f997e965434f36cc241b196e98c4a3838ab9"
     },
     {
       "upstream": "viewer/src/ui/fonts/Geist-Variable.woff2",
@@ -209,6 +209,62 @@
       "upstreamSha256": "58e5b34fd51f9e50ed47e8cf687bd8a99269af6d327246a8bab0f28c144e6299",
       "note": "只导出静态渲染 renderStaticMarkdown（上游 index 还导出编辑器组件、工具栏、controller，查看器不需要）",
       "reconciledCommit": "5d8b78bc41a83e75269f4b1fa83a4feddae2fdcf"
+    },
+    {
+      "upstream": "viewer/src/engine/note-model.ts",
+      "local": "src/gcanvas/engine/note-model.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "082231e79c4c93d62f58f78d8c02928ce4c09cf2561e7f184324aa77906052b3"
+    },
+    {
+      "upstream": "viewer/src/engine/note-content-cache.ts",
+      "local": "src/gcanvas/engine/note-content-cache.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "d46210de0a04b1be7cd3f1a0809921ee1e7a2d66a1b9b1d5f701edd2f0cf18d2"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/renderers/NoteView.tsx",
+      "local": "src/gcanvas/ui/canvas/renderers/NoteView.tsx",
+      "kind": "verbatim",
+      "upstreamSha256": "9c4693c06340fab6eebc83478b459a4bfefb4b53e8369b15325f76924afc9829"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/text-color.ts",
+      "local": "src/gcanvas/ui/editor-kernel/text-color.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "657c92ee7e0a9e8fe0283911931daae08072a6b0346765843b2e868e5df0674a"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/table-markdown.ts",
+      "local": "src/gcanvas/ui/editor-kernel/table-markdown.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "2719945a3c112a46f34b80c06fa0607aef9fb3bacbff0f95652fda9067163f8b"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/markdown-paste.ts",
+      "local": "src/gcanvas/ui/editor-kernel/markdown-paste.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "9376e3c181c135f6e4eb1d44004aedce40e33ca1c681ff5809b340d6b66546dd"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/blank-lines.ts",
+      "local": "src/gcanvas/ui/editor-kernel/blank-lines.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "06cadd875b505df31121c14f625a10ae441a5487f901cb5c564565be3c2f46e8"
+    },
+    {
+      "upstream": "viewer/src/ui/editor-kernel/unreferenced-definition.ts",
+      "local": "src/gcanvas/ui/editor-kernel/unreferenced-definition.ts",
+      "kind": "verbatim",
+      "upstreamSha256": "8d961b4a40c867691c05e3e75589714185bb723886ca46c8b41ed65fe49568cf"
+    },
+    {
+      "upstream": "viewer/src/ui/canvas/note/note-loader.ts",
+      "local": "src/gcanvas/ui/canvas/note/note-loader.ts",
+      "kind": "adapted",
+      "upstreamSha256": "d8b89c2068b33d96289360d2a8aa5b42af2ac667fc1df843110e61a796019b6c",
+      "note": "只把判 404 的错误类型从上游 persistence/adapter 的 HttpStatusError 换成查看器 api.ts 的 FetchError，其余逐行同上游",
+      "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
     }
   ],
   "deps": {

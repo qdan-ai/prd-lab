@@ -15,10 +15,11 @@
  *
  * 序列化往返说明：字面化后的段落文本在 getMarkdown 时会被序列化器反斜杠转义
  * （`# x` → `\# x`，防再解析为标题），可见内容不变；「双击进出未编辑」场景由调用方
- * 的「无编辑不提交」纪律保证落盘 1:1（见 canvas-text-controller）。
+ * 的「无编辑不提交」纪律保证落盘 1:1（见 canvas/edit-session）。
  */
 import { Extension } from '@tiptap/core'
 import type { AnyExtension, JSONContent, MarkdownToken } from '@tiptap/core'
+import { unreferencedDefinition } from './unreferenced-definition'
 
 /** parseMarkdown helpers 的本文件用到的最小面（核心 d.ts 的 MarkdownParseHelpers 子集） */
 interface ParseHelpers {
@@ -88,6 +89,33 @@ export function literalFallbackExtensions(tier: 'light' | 'full'): AnyExtension[
     ]
   }
   // full 档：heading/blockquote/code/codeBlock/hr/table/link 已装真扩展；
-  // 仍无 image 节点与原始 HTML 处理 → 字面量直通（批4 接 docs 时可换真扩展）
-  return [block('html'), block('def'), inline('image')]
+  // 仍无 image 节点与原始 HTML 处理 → 字面量直通（批4 接 docs 时可换真扩展）。
+  // 链接引用定义（`[id]: url`）：full 档的链接由 marked 按定义解析成带地址的行内链接，
+  // 被引用的定义行不进正文；没有任何地方引用的定义行按字面保留在原位置（见 orphanDefinition）。
+  return [block('html'), inline('image'), orphanDefinition()]
+}
+
+/**
+ * 孤立的链接定义行（整篇没有任何引用指向它）：块级分词器在定义行处判断，
+ * 孤立则产出字面段落、被引用则放行给 marked 的内置定义处理（静默并入链接地址表）。
+ * 判断需要整篇上下文：同层已分出的块的原文（`tokens`）加上剩余原文（`src`）就是整篇。
+ * 定义写在容器（列表项、引用块）里时只看得到容器内文，容器外的引用看不到，此时按孤立处理——多显示一行，不丢字。
+ */
+function orphanDefinition(): AnyExtension {
+  const NAME = 'orphanDefinition'
+  return Extension.create({
+    name: `literal_${NAME}`,
+    markdownTokenName: NAME,
+    markdownTokenizer: {
+      name: NAME,
+      level: 'block',
+      // 不参与段落截断判定：定义行跟在段落后面时仍属同一段（与 marked 内置行为一致）
+      start: () => -1,
+      tokenize: (src: string, tokens: MarkdownToken[]) => {
+        const raw = unreferencedDefinition(src, tokens.map((t) => (t as { raw?: string }).raw ?? '').join(''))
+        return raw === undefined ? undefined : ({ type: NAME, raw } as MarkdownToken)
+      },
+    },
+    parseMarkdown: (token: MarkdownToken, helpers: unknown) => literalBlock(token, helpers as ParseHelpers),
+  } as Parameters<typeof Extension.create>[0])
 }

@@ -17,7 +17,7 @@ import {
 
 /**
  * 查看器画布渲染单测（jsdom）：
- *   1. 六类元素经逐字复制的 G-canvas 渲染器各渲染出带 data-hc-type 的节点（DOM 契约）
+ *   1. 七类元素经逐字复制的 G-canvas 渲染器各渲染出带 data-hc-type 的节点（DOM 契约）
  *   2. 画不了的元素（未接入的类型 / 不符合 G-canvas 格式的数据）渲染占位卡、不抛错，并计入框选全部
  *   3. 上游 demo 画板的包围盒全为有限数
  *   4. 元素类型分派覆盖上游 schema 的全部 ElementType
@@ -62,8 +62,13 @@ async function render(board: CanvasDoc) {
 }
 
 describe("Canvas 渲染（G-canvas 逐字件）", () => {
-  it("六类元素各渲染出带 data-hc-type 的节点，按数组序、组装在 .hc-stage > .hc-world 内", async () => {
-    const board = loadDemo();
+  it("七类元素各渲染出带 data-hc-type 的节点，按数组序、组装在 .hc-stage > .hc-world 内", async () => {
+    // demo 画板是上游的六类样例；补一张标注覆盖第七类（标注细节见 note.test.tsx）
+    const demo = loadDemo();
+    const board = {
+      ...demo,
+      elements: [...demo.elements, { id: "note1", type: "note", file: "notes/a.md", x: 0, y: 0, w: 300, h: 120 }],
+    } as unknown as CanvasDoc;
     await render(board);
 
     const world = host.querySelector(".hc-stage > .hc-world");
@@ -123,24 +128,6 @@ describe("Canvas 渲染（G-canvas 逐字件）", () => {
     const n2card = host.querySelector<HTMLElement>('[data-hc-id="n2"] .hc-unknown-el')!;
     expect(n2card.style.width).toBe(`${UNKNOWN_PLACEHOLDER_W}px`);
     expect(host.querySelector('[data-hc-type="shape"]')).not.toBeNull();
-  });
-
-  it("同步前收到 note 类元素（内容在 notes/*.md、记 w/h）：按 w/h 占位并计入框选", async () => {
-    const note = { id: "n", type: "note", file: "notes/登录口径.md", x: 40, y: 60, w: 280, h: 160, color: "yellow" };
-    const board = {
-      title: "note",
-      format: "board/v1",
-      elements: [{ id: "f", type: "frame", name: "F", x: 0, y: 0, w: 100, h: 100 }, note],
-    } as unknown as CanvasDoc;
-    await render(board);
-    const wrapper = host.querySelector<HTMLElement>('[data-hc-id="n"]')!;
-    expect(wrapper.getAttribute("data-hc-type")).toBe("note");
-    expect(wrapper.getAttribute("style")).toBe("position: absolute; left: 40px; top: 60px;");
-    const card = wrapper.querySelector<HTMLElement>(".hc-unknown-el")!;
-    expect(card.className).not.toContain("is-invalid");
-    expect(card.style.width).toBe("280px");
-    expect(card.style.height).toBe("160px");
-    expect(collectViewerBounds(board)).toContainEqual({ x: 40, y: 60, w: 280, h: 160 });
   });
 
   it("不符合 G-canvas 格式的元素渲染出错占位卡（写明校验错误），画板其余元素照常显示", async () => {

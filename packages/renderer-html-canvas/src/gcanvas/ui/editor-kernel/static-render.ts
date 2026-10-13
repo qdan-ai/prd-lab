@@ -37,6 +37,17 @@ const cache = new Map<string, string>()
 const CACHE_MAX = 500
 
 /**
+ * 空段落（用户留的空行）占一行高：编辑器里 ProseMirror 往空段落放一个 `<br>` 撑出行高，
+ * 静态侧照做，否则空行在静态显示里塌成零高、退出编辑后像是被删了。
+ * 文末的空段落保持不占行——列表等块结尾时编辑器会自动补一个空段落供光标落脚，它不是用户留的空行。
+ */
+function blankParagraphsAsLines(html: string): string {
+  const trailing = html.match(/(?:<p><\/p>)+$/)?.[0] ?? ''
+  const body = html.slice(0, html.length - trailing.length)
+  return body.replace(/<p><\/p>/g, '<p><br></p>') + trailing
+}
+
+/**
  * md → 安全 HTML 字符串。与编辑侧同装配同灌入路径（见模块头）；输出已经 sanitize。
  */
 export function renderStaticMarkdown(tier: EditorTier, md: string): string {
@@ -46,7 +57,7 @@ export function renderStaticMarkdown(tier: EditorTier, md: string): string {
 
   const ed = mirrorEditor(tier)
   setMarkdownSafe(ed, md)
-  const raw = ed.getHTML()
+  const raw = blankParagraphsAsLines(ed.getHTML())
   const { html } = sanitizeHtml(raw)
 
   if (cache.size >= CACHE_MAX) cache.clear()

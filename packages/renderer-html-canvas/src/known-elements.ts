@@ -24,6 +24,7 @@ export const RENDERED_TYPES = {
   image: true,
   arrow: true,
   frame: true,
+  note: true,
 } as const satisfies Record<ElementType, true>
 
 /** 占位卡读取的字段（元素形态未知，逐个按需取） */

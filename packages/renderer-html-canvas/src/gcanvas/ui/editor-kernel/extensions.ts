@@ -5,19 +5,34 @@
  * 静态渲染侧（marked，Step 10）与编辑侧（Tiptap）须共用同一组 markdown 扩展配置，
  * 故档位定义集中在此，两侧从同一处取，杜绝双解析器行为漂移。
  *
- * 两档位（D1 定死片段级能力边界）：
- * - light = 画布文本框：加粗 / 斜体 / 删除线 / 有序无序列表 / `==高亮==`。
- *   **无下划线**（整框级字段，不入片段扩展）、**无颜色/字体/字号片段扩展**
- *   （整框级字段存 canvas.json，渲染时套容器 CSS，不进 Markdown）。
- * - full = docs 面板：light 基础上加标题 / 引用 / 代码块 / 分割线 / 表格。
- *   锚点节点（AnchorMarkerNode）批4 接入——此处预留装配位，本步不实现节点本体。
+ * 两档位（light = 画布文字元素，full = docs 面板与标注块；两档同一份解析，静态渲染与编辑共用）：
+ *
+ * | 能力                                   | light               | full            |
+ * | -------------------------------------- | ------------------- | --------------- |
+ * | 加粗 / 斜体 / 删除线 / `==高亮==`      | 编辑 + 按钮         | 编辑 + 按钮     |
+ * | 有序 / 无序列表                        | 编辑 + 按钮         | 编辑 + 按钮     |
+ * | 待办 `- [ ]` / `- [x]`（可嵌套）       | 显示与保存，无按钮  | 编辑 + 按钮     |
+ * | 文字颜色 `<span style="color: …">`     | 显示与保存，无按钮  | 编辑 + 颜色板   |
+ * | 标题 / 引用 / 代码块 / 分割线 / 表格   | 字面显示            | 编辑            |
+ * | 行内代码 / 链接（含引用式链接）        | 字面显示            | 编辑            |
+ * | 图片、块级原始 HTML                    | 字面显示            | 字面显示        |
+ *
+ * 「显示与保存」= 能解析、能渲染、编辑后原样写回，只是工具栏不给按钮（按钮是否出现见
+ * `toolbarCapabilities`）。「字面」= 原文当普通文字显示、不丢字（见 literal-fallback.ts）。
+ * 无下划线、无字体/字号片段扩展：这些是整框级字段，存 canvas.json，渲染时套容器 CSS，不进 Markdown。
+ * 锚点节点（AnchorMarkerNode）接入时在 full 档追加，此处预留装配位。
  */
 import type { AnyExtension } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import { Highlight } from '@tiptap/extension-highlight'
-import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table'
+import { TableRow } from '@tiptap/extension-table'
+import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { literalFallbackExtensions } from './literal-fallback'
+import { TextColor } from './text-color'
+import { tableExtensions } from './table-markdown'
+import { MarkdownPaste } from './markdown-paste'
+import { markedWithBlankLines } from './blank-lines'
 
 /** 编辑档位：light=画布文本框（片段能力做小），full=docs（含表格等结构）。 */
 export type EditorTier = 'light' | 'full'
@@ -53,24 +68,29 @@ export function buildExtensions(tier: EditorTier): AnyExtension[] {
     }),
     // `==高亮==`：两档共有；扩展自带 markdown parse/render 往返（== 进 == 出）
     Highlight,
+    // 待办 `- [ ]` / `- [x]`（可嵌套）与文字颜色：两档都装，AI 写进文件的这两种语法不丢信息；
+    // 按钮只在 full 档给（见 toolbarCapabilities）。TextColor 排在 StarterKit 之后，序列化时嵌在加粗/链接内层。
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    TextColor,
     // markdown 进出引擎：getMarkdown() / setContent(md) 的承载扩展。
     // breaks:true（GFM 硬换行）：单个 \n = 硬换行——画布既有 text 元素是含 \n 的纯文本，
     // 不开则单换行被按软换行折叠成空格（数据语义回退）。静态侧共用本装配，两侧一致。
+    // marked：读回时空段落（用户留的空行）不被前一个块吞掉，见 blank-lines.ts。
     Markdown.configure({
+      marked: markedWithBlankLines(),
       markedOptions: { gfm: true, breaks: true },
     }),
+    // 粘贴入口：纯文本 / 无格式 HTML 按 Markdown 源码解析，粘进表格格子压平（见 markdown-paste.ts）
+    MarkdownPaste,
     // 档位未覆盖语法的字面量直通（不支持的 md 永不丢内容，见 literal-fallback.ts）
     ...literalFallbackExtensions(tier),
   ]
 
   if (isFull) {
-    // 表格：docs 用；锚点节点（AnchorMarkerNode）批4 在此处追加
-    extensions.push(
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableCell,
-      TableHeader,
-    )
+    // 表格：docs 用；格子单段、格内换行存 `<br>`、不可拖列宽（见 table-markdown.ts）。
+    // 锚点节点（AnchorMarkerNode）批4 在此处追加
+    extensions.push(...tableExtensions(), TableRow)
   }
 
   return extensions
@@ -88,6 +108,8 @@ export interface TierToolbarCapabilities {
   orderedList: boolean
   highlight: boolean
   // full 专属
+  taskList: boolean
+  textColor: boolean
   heading: boolean
   blockquote: boolean
   codeBlock: boolean
@@ -104,6 +126,8 @@ export function toolbarCapabilities(tier: EditorTier): TierToolbarCapabilities {
     bulletList: true,
     orderedList: true,
     highlight: true,
+    taskList: isFull,
+    textColor: isFull,
     heading: isFull,
     blockquote: isFull,
     codeBlock: isFull,

@@ -524,3 +524,40 @@ svg.hc-placement-ghost {
   z-index: 46; /* 略高于 marquee/ghost(45)、低于手柄，落点提示压在内容上 */
 }
 
+
+/* —— 工具栏悬浮提示（Portal 到 body，fixed 定位由 ToolbarTip 计算）—— */
+.hc-toolbar-tip {
+  position: fixed;
+  z-index: 1600; /* 高于工具栏 1500，低于右抽屉 1650 */
+  width: max-content;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 8px 10px;
+  background: var(--surface);
+  border-radius: var(--r-panel);
+  box-shadow: var(--shadow-float);
+  pointer-events: none;
+}
+
+.hc-toolbar-tip-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.hc-toolbar-tip-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.hc-toolbar-tip-key {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.hc-toolbar-tip-desc {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}

@@ -56,6 +56,7 @@ export function elementGeometry(el: CanvasElement): ElementGeometry | null {
     case 'html':
     case 'image':
     case 'frame':
+    case 'note':
     case 'shape': {
       const bbox = elementBounds(el)
       if (!bbox) return null

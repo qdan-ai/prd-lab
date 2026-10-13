@@ -1,137 +1,6 @@
-/* 富文本与文档面板样式（.hc-md 渲染体系）。 */
+/* 富文本编辑相关样式：画布文字就地编辑、浮动工具条、文档面板外壳。
+ * 内容排版（段落、列表、标题、表格、待办……）不在本文件：见 content.css（prose 适配层）。 */
 
-/* ===========================================================================
- * 文本富文本（D1/D3/D4）—— 静态渲染 + 就地编辑
- * - .hc-md：markdown 内容样式，**静态（TextView）与编辑（ProseMirror）共用**，
- *   保证双击进出无视觉跳变（同字号继承、同段距、同列表缩进、同高亮样式）。
- * - 宽度策略（R-9）：.hc-text 基础 width:max-content；固定宽由渲染层内联 width 覆盖。
- * =========================================================================== */
-
-.hc-md p {
-  margin: 0;
-}
-.hc-md p + p,
-.hc-md ul + p,
-.hc-md ol + p,
-.hc-md p + ul,
-.hc-md p + ol {
-  margin-top: 0.35em;
-}
-.hc-md ul,
-.hc-md ol {
-  margin: 0;
-  padding-left: 1.4em;
-}
-.hc-md li > p {
-  margin: 0;
-}
-/* 文本高亮 mark（==text==）：DESIGN §4 无 mark 专用色，用交互蓝极淡底 + 墨字，
- * 冷盘内不引入暖黄/琥珀；文字保 --ink 可读，蓝洗底示意高亮（待用户拍是否另立 mark 色）。 */
-.hc-md mark {
-  background: var(--blue-bg);
-  color: var(--ink);
-  border-radius: 2px;
-  padding: 0 1px;
-}
-
-/* —— full 档结构样式（标题/引用/代码/分割线）：编辑态 .ProseMirror 与静态渲染共用 .hc-md ——
- * 编辑器容器 .hc-doc-editor-body.hc-md、静态渲染容器 .hc-text.hc-md 一处补两边生效。
- * 表格不在此层（仅 docs full 档产出真实 table，外观单一收口在 .hc-doc-editor-body .ProseMirror）。*/
-.hc-md h1 {
-  font-size: 1.5em;
-  font-weight: 700;
-  margin: 1.4em 0 0.6em;
-  color: var(--ink);
-  line-height: 1.3;
-}
-.hc-md h2 {
-  font-size: 1.25em;
-  font-weight: 700;
-  margin: 1.2em 0 0.5em;
-  color: var(--ink);
-  line-height: 1.35;
-}
-.hc-md h3 {
-  font-size: 1.1em;
-  font-weight: 600;
-  margin: 1em 0 0.4em;
-  color: var(--ink-mid);
-  line-height: 1.4;
-}
-.hc-md > *:first-child {
-  margin-top: 0;
-}
-/* strong 收窄到 docs 编辑器容器内（G）：画布文本框也挂 .hc-md 且 light 档 bold 存活，
- * 若用 .hc-md strong 会把画布粗体从浏览器默认 700 改成 600（外溢变细）。
- * 其余 .hc-md 结构规则（h1-3/table/blockquote/pre/code 等）在画布 light 档经 literal-fallback
- * 转纯文本/段落、无对应元素，故无外溢之虞；唯 strong 是 light 档存活标记的特例，单独收窄。 */
-.hc-doc-editor-body strong {
-  font-weight: 600;
-}
-/* 链接 a（DESIGN §3.5）：交互蓝 + 下划线 offset 2px */
-.hc-md a {
-  color: var(--blue);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-/* 行内 code（DESIGN §3.5/§4 行内 code）：中性灰底 --surface-strong + 墨字 + 等宽 + 圆角 4px，不着彩 */
-.hc-md code {
-  font-family: var(--font-mono);
-  font-size: 0.88em;
-  background: var(--surface-strong);
-  padding: 1px 5px;
-  border-radius: 4px;
-  color: var(--ink);
-}
-/* 代码块（DESIGN §3.5/§4 代码块）：亮底 --surface + 1px --line 边 + --r-panel + 等宽墨字。
- * 无语法高亮库（StarterKit 裸 codeBlock 输出纯文本），console 三色无 token class 可落，
- * 暂呈纯等宽文本；引入高亮库后再把 --code-kw/str/fn/comment 接到 token class。 */
-.hc-md pre {
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: var(--r-panel);
-  padding: 14px 16px;
-  margin: 0.8em 0;
-  overflow-x: auto;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.6;
-}
-.hc-md pre code {
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  color: inherit;
-  font-size: inherit;
-}
-/* 引用（DESIGN §3.5）：左 3px --line-strong 灰竖条 + 左 padding，弱化文字，朴素风（无底色、不强制斜体） */
-.hc-md blockquote {
-  border-left: 3px solid var(--line-strong);
-  background: none;
-  padding: 0.4em 14px;
-  margin: 0.8em 0;
-  color: var(--ink-soft);
-}
-.hc-md hr {
-  border: none;
-  border-top: 1px solid var(--line);
-  margin: 1.2em 0;
-}
-/* 表格样式不在共用 .hc-md 这层声明：表格仅 full 档（docs 面板）产出真实 <table> DOM——
- * 画布自由文字是 light 档，markdown 表格语法经 literal-fallback 转纯文本、永不出 table 元素。
- * 故表格的全部外观（含 selectedCell 框选高亮 / column-resize-handle / tableWrapper）单一收口在
- * docs 专属的 .hc-doc-editor-body .ProseMirror 一处（见本文件后段），杜绝两处同特异度争同一属性。 */
-
-/* 空文档占位（Tiptap Placeholder 扩展注入 .is-editor-empty 时显示中文提示；
- * 当前未装 Placeholder 扩展，该 class 不出现，本规则惰性待用，不引入新依赖）。 */
-.hc-md p.is-editor-empty:first-child::before {
-  content: '开始输入…';
-  float: left;
-  color: var(--ink-soft);
-  pointer-events: none;
-  height: 0;
-}
 
 /* —— 就地编辑容器（D3）：原地替换静态 TextView，容器同 .hc-text 排版 —— */
 .hc-text-edit {
@@ -158,13 +27,11 @@
   white-space: pre-wrap;
 }
 
-/* —— 浮动工具栏（Figma 式，元素上方；世界层内 scale(1/zoom) 反向补偿） —— */
-.hc-text-toolbar {
+/* —— 浮动编辑工具条（文字与标注共用）：portal 进 .hc-stage，屏幕坐标绝对定位，不随画布缩放；
+ * left/top 由 FloatingEditToolbar 每帧写入（避边） —— */
+.hc-edit-toolbar {
   position: absolute;
-  bottom: 100%;
-  left: 0;
-  margin-bottom: 8px;
-  transform-origin: left bottom;
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 3px;
@@ -186,7 +53,7 @@
   gap: 2px;
 }
 /* docs 窄面板：工具栏换行，表格激活时追加的 +行/+列/删表 按钮不溢出面板、不被裁切。
- * 画布浮动工具栏（.hc-text-toolbar 内、light 档）不换行，维持单行浮条形态。 */
+ * 画布浮动工具条（.hc-edit-toolbar 内、light 档）不换行，维持单行浮条形态。 */
 .hc-doc-editor-bar .ek-toolbar {
   flex-wrap: wrap;
   min-width: 0;
@@ -237,6 +104,42 @@
   margin: 0 5px;
   background: var(--line);
   flex-shrink: 0;
+}
+
+/* 文字颜色菜单：按钮 + 内联圆点面板（挂在工具栏 DOM 内，非 portal） */
+.ek-color {
+  position: relative;
+  display: inline-flex;
+}
+.ek-color__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: var(--r-float);
+  box-shadow: var(--shadow-sm);
+}
+.ek-color__dot {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.ek-color__dot--default {
+  background: linear-gradient(135deg, transparent 46%, var(--ink-mid) 46%, var(--ink-mid) 54%, transparent 54%), var(--surface, #fff);
+}
+.ek-color__dot--on {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 
 /* 整框外观控件已迁至属性面板「文字分区」（见 panels.css .hc-text-controls）；
@@ -577,174 +480,6 @@
   min-height: 100%;
   padding: 16px 20px;
   font-family: var(--font-doc);
-}
-
-/* —— 文档正文衬线排版梯度（DESIGN §2.2 文档梯度 + §3.5 第4项）——
- * 仅作用于 docs 编辑器内的文档正文；画布自由文字（.hc-text.hc-md）保持无衬线，不受影响。 */
-.hc-doc-editor-body .ProseMirror :is(h1, h2, h3, p, ul, ol, li, blockquote, th, td) {
-  font-family: var(--font-doc);
-}
-.hc-doc-editor-body .ProseMirror h1 {
-  font-size: 26px;
-  font-weight: 600;
-  line-height: 1.22;
-  letter-spacing: -0.005em;
-  color: var(--ink);
-  margin: 0 0 6px;
-}
-.hc-doc-editor-body .ProseMirror h2 {
-  font-size: 19px;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: 0;
-  color: var(--ink);
-  margin: 24px 0 9px;
-}
-.hc-doc-editor-body .ProseMirror h3 {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--ink);
-  margin: 18px 0 7px;
-}
-.hc-doc-editor-body .ProseMirror p {
-  font-size: 15px;
-  font-weight: 400;
-  line-height: 1.7;
-  color: var(--ink-mid);
-  margin: 0 0 13px;
-}
-.hc-doc-editor-body .ProseMirror strong {
-  font-weight: 700;
-  color: var(--ink);
-}
-/* 列表项标记（DESIGN §3.5）：浏览器默认标记（无序圆点 disc / 有序数字），朴素风、无自定义 motif */
-.hc-doc-editor-body .ProseMirror ul {
-  list-style: disc;
-  padding-left: 1.5em;
-  margin: 0 0 14px;
-}
-.hc-doc-editor-body .ProseMirror ul li {
-  font-size: 15px;
-  line-height: 1.62;
-  color: var(--ink-mid);
-  margin-bottom: 7px;
-}
-.hc-doc-editor-body .ProseMirror ol {
-  list-style: decimal;
-  padding-left: 1.5em;
-  margin: 0 0 14px;
-}
-.hc-doc-editor-body .ProseMirror ol li {
-  font-size: 15px;
-  line-height: 1.62;
-  color: var(--ink-mid);
-  margin-bottom: 7px;
-}
-/* blockquote（DESIGN §3.5）：左 3px 灰竖条 + 左 padding，弱化文字，朴素风（无底色、不强制斜体）。
-   文档编辑器 host 同挂 .hc-md，须显式 reset background/font-style 把朴素风坐实——
-   不依赖共用 .hc-md blockquote 规则的属性继承，本作用域内自洽。 */
-.hc-doc-editor-body .ProseMirror blockquote {
-  border-left: 3px solid var(--line-strong);
-  background: none;
-  padding: 0 0 0 14px;
-  margin: 6px 0 16px;
-  font-style: normal;
-  color: var(--ink-soft);
-}
-.hc-doc-editor-body .ProseMirror blockquote p {
-  margin: 0 0 0.5em;
-  font-size: 15px;
-  line-height: 1.62;
-  color: var(--ink-soft);
-}
-/* 行内 code（DESIGN §3.5/§4 行内 code）：中性灰底 --surface-strong + 墨字 + 等宽 + 圆角 4px，不着彩 */
-.hc-doc-editor-body .ProseMirror code {
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  background: var(--surface-strong);
-  color: var(--ink);
-  padding: 1.5px 6px;
-  border-radius: 4px;
-}
-/* 代码块 pre（DESIGN §3.5/§4 代码块）：亮底 --canvas + 1px --line 边 + --r-panel，等宽墨字，朴素风。
- * 无语法高亮库（裸 codeBlock），console 三色无 token class 可落，暂呈纯等宽文本。 */
-.hc-doc-editor-body .ProseMirror pre {
-  background: var(--canvas);
-  border: 1px solid var(--line);
-  border-radius: var(--r-panel);
-  padding: 14px 16px;
-  margin: 6px 0 18px;
-  overflow-x: auto;
-}
-.hc-doc-editor-body .ProseMirror pre code {
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 1.6;
-  display: block;
-}
-/* 表格（DESIGN §3.5）：朴素 1px 灰边网格，无圆角/无阴影/无斑马；表头仅 --surface-strong 底 + 加重字作区分。
- * 表格样式（含选中态 / 列宽手柄 / 横向滚动）唯一权威收口在此 docs 作用域——见前段 .hc-md hr 后注释。
- * selectedCell / column-resize-handle / tableWrapper 由 Tiptap table 扩展自动注入 class，CSS 只管外观。 */
-.hc-doc-editor-body .ProseMirror table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 8px 0 18px;
-  font-size: 13px;
-}
-.hc-doc-editor-body .ProseMirror th,
-.hc-doc-editor-body .ProseMirror td {
-  border: 1px solid var(--line-strong);
-  padding: 6px 10px;
-  text-align: left;
-  vertical-align: top;
-  min-width: 60px;
-  position: relative;
-}
-.hc-doc-editor-body .ProseMirror th {
-  background: var(--surface-strong);
-  color: var(--ink);
-  font-weight: 600;
-}
-.hc-doc-editor-body .ProseMirror td {
-  background: var(--surface-2);
-  color: var(--ink-mid);
-}
-/* 单元格框选高亮（ProseMirror tableEditing 注入 .selectedCell）：用 ::after 半透明叠加层而非改
- * background——叠加层盖在格子原底色（普通格白 / 表头暖米）之上，框选反馈在两种格子上一致且明显，
- * 不与各自底色打架；pointer-events:none 不拦事件，不影响继续拖选 / 点击。 */
-.hc-doc-editor-body .ProseMirror th.selectedCell::after,
-.hc-doc-editor-body .ProseMirror td.selectedCell::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  /* 框选高亮=选中语义→交互蓝半透明叠加层 */
-  background: rgba(0, 114, 245, 0.16);
-  pointer-events: none;
-  z-index: 2;
-}
-.hc-doc-editor-body .ProseMirror .column-resize-handle {
-  position: absolute;
-  right: -2px;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  cursor: col-resize;
-  /* 列宽手柄=交互affordance→交互蓝 */
-  background: rgba(0, 114, 245, 0.4);
-}
-.hc-doc-editor-body .ProseMirror .tableWrapper {
-  overflow-x: auto;
-  margin: 0.8em 0;
-}
-.hc-doc-editor-body .ProseMirror hr {
-  height: 1px;
-  border: none;
-  background: var(--line);
-  margin: 22px 0;
 }
 
 /* 非 MD 附件占位（Step 15 接入编辑器前） */

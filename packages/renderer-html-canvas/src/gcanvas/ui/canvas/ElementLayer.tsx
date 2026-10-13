@@ -2,9 +2,11 @@
  * ElementLayer 改写件（PRD-Lab 自有，对应上游 ui/canvas/ElementLayer.tsx）—— 只读子集
  *
  * 与上游一致的部分（DOM 契约，对照脚本按 [data-hc-id] 与 .hc-world 的 transform 导出几何）：
- * - 六类元素严格按 elements 数组序渲染：DOM 序 = 图层序，不用 z-index，箭头不特殊置顶。
+ * - 七类元素严格按 elements 数组序渲染：DOM 序 = 图层序，不用 z-index，箭头不特殊置顶。
  * - 非箭头元素外层 wrapper：`div.hc-el[data-hc-id][data-hc-type]`，style 仅 position:absolute + left/top。
  * - 箭头自定位：ArrowView 自带 data-hc-id / data-hc-type 与绝对定位，不套 wrapper。
+ *
+ * note 的正文经渲染上下文 noteContent 取（NoteView 内部订阅），分派处只传 el。
  *
  * 只读裁剪：去掉拖动 / 编辑 / 样式预览、就地编辑替换、拖入落点高亮（查看器无这些交互）。
  * 查看器扩展：画不了的元素（未接入的类型、不符合 G-canvas 格式的数据，见 known-elements）渲染占位卡，
@@ -13,6 +15,7 @@
 import type { CanvasDoc, CanvasElement } from '../../engine/schema'
 import { ShapeView } from './renderers/ShapeView'
 import { TextView } from './renderers/TextView'
+import { NoteView } from './renderers/NoteView'
 import { ImageView } from './renderers/ImageView'
 import { FrameView } from './renderers/FrameView'
 import { ArrowView } from './renderers/ArrowView'
@@ -67,6 +70,8 @@ function ElementBody({ el }: { el: Exclude<CanvasElement, { type: 'arrow' }> }) 
       return <ImageView el={el} />
     case 'frame':
       return <FrameView el={el} />
+    case 'note':
+      return <NoteView el={el} />
     default: {
       const unreachable: never = el
       return unreachable

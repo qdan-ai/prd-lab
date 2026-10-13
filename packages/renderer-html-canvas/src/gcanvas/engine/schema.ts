@@ -4,6 +4,8 @@
  * 契约文件：前后端共同依赖的类型真相源。
  */
 
+import { isNoteFilePath, NOTE_COLORS, NOTE_SIZE_TIERS } from './note-model'
+
 export const BOARD_FORMAT = 'board/v1'
 
 /** 实测尺寸缓存（首渲写回，与用户编辑数据分离，供视口剔除预判与挂载前占位） */
@@ -133,6 +135,28 @@ export interface ArrowElement extends ElementBase, NamedElement {
   label?: string
 }
 
+/**
+ * 标注块：位置、尺寸、颜色与正文文件路径记在 canvas.json，正文本体是 notes/ 下的 .md 文件。
+ * 显示高度 = max(h, 内容在宽 w 下的自然高度)，h 只表示用户设定的「至少这么高」。
+ */
+export interface NoteElement extends ElementBase, NamedElement {
+  type: 'note'
+  x: number
+  y: number
+  /** 卡片宽（世界坐标 px） */
+  w: number
+  /** 用户设定的最小高度；显示高度见 noteDisplayHeight */
+  h: number
+  /** 画板根视角路径，恒为 `notes/<文件名>.md`（单层，不含子目录） */
+  file: string
+  /** 卡片底色，缺省 = 'yellow' */
+  color?: 'yellow' | 'blue' | 'gray'
+  /** 字号档位（整张卡片），缺省 = 'medium'；字号见 NOTE_FONT_SIZES */
+  sizeTier?: 'small' | 'medium' | 'large'
+  /** 显示尺寸缓存 { w: 卡片宽, h: 显示高 }：渲染后写回，不进撤销栈（与 html / text 同一门控） */
+  measured?: MeasuredSize
+}
+
 /** Frame 容器：命名 + 视觉边界 + 整体拖动（v1 不嵌套、不裁剪、不自动布局） */
 export interface FrameElement extends ElementBase {
   type: 'frame'
@@ -150,6 +174,7 @@ export type CanvasElement =
   | ImageElement
   | ArrowElement
   | FrameElement
+  | NoteElement
 
 export type ElementType = CanvasElement['type']
 
@@ -279,6 +304,7 @@ const REQUIRED_FIELDS: Record<ElementType, { num: string[]; str: string[]; strEd
   image: { num: ['x', 'y', 'w', 'h'], str: ['src'], strEditable: [] },
   arrow: { num: [], str: [], strEditable: [] },
   frame: { num: ['x', 'y', 'w', 'h'], str: [], strEditable: ['name'] },
+  note: { num: ['x', 'y', 'w', 'h'], str: ['file'], strEditable: [] },
 }
 
 export function validateCanvasDoc(data: unknown): ValidationResult {
@@ -391,14 +417,25 @@ export function validateCanvasDoc(data: unknown): ValidationResult {
         }
       }
     }
-    // measured 实测缓存：html 与 text 共用同一校验（首渲写回，{ w>0, h>0 }）
-    if ((type === 'html' || type === 'text') && e['measured'] !== undefined) {
+    // measured 实测缓存：html / text / note 共用同一校验（首渲写回，{ w>0, h>0 }）
+    if ((type === 'html' || type === 'text' || type === 'note') && e['measured'] !== undefined) {
       const m = e['measured'] as Record<string, unknown> | null
       if (
         typeof m !== 'object' || m === null ||
         !isNum(m['w']) || !isNum(m['h']) || m['w'] <= 0 || m['h'] <= 0
       ) {
         errors.push(`${where(e['id'])} measured 必须是 { w>0, h>0 }`)
+      }
+    }
+    if (type === 'note') {
+      if (isStr(e['file']) && !isNoteFilePath(e['file'])) {
+        errors.push(`${where(e['id'])} file 必须是 notes/ 下的 .md 文件名（单层、不以 . 开头）：${e['file']}`)
+      }
+      if (Object.hasOwn(e, 'color') && e['color'] !== undefined && !(NOTE_COLORS as readonly unknown[]).includes(e['color'])) {
+        errors.push(`${where(e['id'])} color 取值非法（须为 yellow|blue|gray）：${JSON.stringify(e['color'])}`)
+      }
+      if (Object.hasOwn(e, 'sizeTier') && e['sizeTier'] !== undefined && !(NOTE_SIZE_TIERS as readonly unknown[]).includes(e['sizeTier'])) {
+        errors.push(`${where(e['id'])} sizeTier 取值非法（须为 small|medium|large）：${JSON.stringify(e['sizeTier'])}`)
       }
     }
     if (type === 'image' && isStr(e['src']) && (!e['src'].startsWith('assets/') || !isSafeRelPath(e['src']))) {

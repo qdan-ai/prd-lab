@@ -53,6 +53,8 @@ export function createCanvasAdapter(baseUrl: string) {
   return {
     /** blocks/ 下块文件原文 */
     loadBlock: (_boardId: string, file: string) => fetchText(baseUrl, `blocks/${file}`),
+    /** notes/ 下标注正文原文（file 为画板根视角路径 notes/…） */
+    loadNote: (_boardId: string, file: string) => fetchText(baseUrl, file),
     /** 共享 css 原文（画板根视角路径） */
     loadStyle: (_boardId: string, relPath: string) => fetchText(baseUrl, relPath),
     /** 资源 URL（<img src> / css url() 重写直用；画板根视角路径） */

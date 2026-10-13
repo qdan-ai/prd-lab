@@ -11,6 +11,7 @@
  * - zoom：FrameView 标题字号反向补偿
  * - setMeasured：html / text 首渲实测尺寸写回内存 store（查看器不落盘）
  * - resourceEpoch：查看器无热同步，恒为 0
+ * - noteContent：标注正文缓存 + 加载器（Canvas.tsx 按画板建一份），NoteView 经它取 notes/*.md
  * - blockCache / blockResourceReady：上游编辑侧的撤销快照与注入握手，查看器不提供
  *
  * 上游 canvas-context.ts 变动时 gcanvas-sync check 会报红：对照新增字段补到这里。
@@ -18,6 +19,8 @@
 import { createContext, useContext } from 'react'
 import type { MeasuredSize } from '../../engine/schema'
 import type { createCanvasAdapter } from '../../../api'
+import type { NoteContentCache } from '../../engine/note-content-cache'
+import type { NoteLoader } from './note/note-loader'
 
 /**
  * 查看器取画板文件的 adapter：类型即 api.ts createCanvasAdapter 的返回值（上游 PersistenceAdapter 中
@@ -32,6 +35,7 @@ export interface CanvasContextValue {
   setMeasured: (id: string, size: MeasuredSize) => void
   blockCache?: { note(file: string, raw: string): void }
   resourceEpoch: number
+  noteContent?: { cache: NoteContentCache; loader: NoteLoader }
   blockResourceReady?: {
     publishReady(key: BlockResourceKey, generation: number): void
     publishError(key: BlockResourceKey, generation: number, err: unknown): void

@@ -1,10 +1,14 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-// 画布样式取自 G-canvas（base 为作用域收进 .hc-stage 的改写件，其余逐字）；外壳样式 styles.css 压轴
+// 画布样式取自 G-canvas（base 为作用域收进 .hc-stage 的改写件，其余逐字），相对顺序同上游 ui/main.tsx：
+// prose（Tailwind Typography，由 vite 插件编译）→ content（正文排版）→ rich-text → note；外壳样式 styles.css 压轴
 import "./gcanvas/ui/styles/base.css";
 import "./gcanvas/ui/styles/canvas-engine.css";
+import "./gcanvas/ui/styles/prose.css";
+import "./gcanvas/ui/styles/content.css";
 import "./gcanvas/ui/styles/rich-text.css";
+import "./gcanvas/ui/styles/note.css";
 import "./styles.css";
 
 /**

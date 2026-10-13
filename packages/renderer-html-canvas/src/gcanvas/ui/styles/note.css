@@ -1,0 +1,29 @@
+/* 标注卡片（画布静态 + 编辑态 + 测量器共用；选择器不挂在 .hc-stage 之下，世界层里的测量节点也要命中）。
+ * 内边距与圆角按 em 写，随字号档位等比缩放；上下内边距加上行距留白（0.3em）与左右视觉等宽 */
+.hc-note {
+  box-sizing: border-box;
+  padding: 0.5em 0.8em;
+  border: 1px solid;
+  border-radius: 0.25em;
+  font-size: var(--hc-note-font-size, 30px);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.hc-note--yellow { background: #fef6d8; border-color: #f3de9b; color: var(--ink, #1f2328); }
+.hc-note--blue { background: #e8f1fd; border-color: #b9d3f5; color: var(--ink, #1f2328); }
+.hc-note--gray { background: #f2f3f5; border-color: #d6d9de; color: var(--ink, #1f2328); }
+
+.hc-note-placeholder { min-height: 1.6em; }
+.hc-note-problem { color: var(--ink-soft, #6b7280); }
+
+/* 编辑态：与静态卡片同盒（宽、最小高、三色），只多一圈编辑描边与可输入光标 */
+.hc-note-editing {
+  outline: 1.5px solid var(--hc-accent);
+  outline-offset: 0;
+  cursor: text;
+}
+.hc-note-editing .ProseMirror {
+  outline: none;
+  white-space: pre-wrap;
+  min-height: 1.6em;
+}

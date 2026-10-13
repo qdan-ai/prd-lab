@@ -1,0 +1,10 @@
+/*
+ * 内容排版引擎入口（Tailwind Typography）：只生成 `prose` / `prose-sm` 两个类，供文档面板与标注卡片的内容容器使用。
+ * 与组件套件入口 kit/styles/kit.css 互相独立：这里不带 `ai:` 前缀、不扫描任何源码目录（`source(none)`）、不引全局重置，
+ * 也不登记 `@property`；产物放进产品专用的 `hc-content` 层（登记在 scripts/kit-css-audit.mjs 的 LAYER_ORDER，排在套件各层之后，只作用于 `.prose` 容器）。
+ * 适配层（DSH 色值、字号行高、Tiptap 结构）见 content.css。
+ */
+@import "tailwindcss/theme.css" layer(hc-content);
+@import "tailwindcss/utilities.css" layer(hc-content) source(none);
+@plugin "@tailwindcss/typography";
+@source inline("prose prose-sm");

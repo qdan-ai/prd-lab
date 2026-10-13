@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,11 +12,13 @@ import { computeMetadata } from "./node/index";
  * - build.sourcemap: false 生产关闭 source map（避免暴露 SPA 源码）
  * - 生产入口只有 index.html（→ src/main.tsx）；dev.html 是本地开发入口，不进 dist
  *
+ * - tailwindcss 插件：编译 G-canvas 的 prose.css（只生成 prose / prose-sm，不引入全局重置）
+ *
  * 本配置 ONLY 编译 SPA 部分；node/index.ts 走 tsc -p tsconfig.node.json 单独编译。
  */
 export default defineConfig({
   base: "./",
-  plugins: [react(), devFixtures()],
+  plugins: [react(), tailwindcss(), devFixtures()],
   build: {
     outDir: "dist",
     sourcemap: false,

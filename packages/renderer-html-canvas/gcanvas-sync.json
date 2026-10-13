@@ -265,6 +265,24 @@
       "upstreamSha256": "d8b89c2068b33d96289360d2a8aa5b42af2ac667fc1df843110e61a796019b6c",
       "note": "只把判 404 的错误类型从上游 persistence/adapter 的 HttpStatusError 换成查看器 api.ts 的 FetchError，其余逐行同上游",
       "reconciledCommit": "de05ee6954d60e8658c3c1262a8ead2d9f99019c"
+    },
+    {
+      "upstream": "viewer/src/ui/styles/prose.css",
+      "local": "src/gcanvas/ui/styles/prose.css",
+      "kind": "verbatim",
+      "upstreamSha256": "b29f56260f65fc38f95d2fb9eae54d593cbe66de89e8786a2d4970fc481dbc8b"
+    },
+    {
+      "upstream": "viewer/src/ui/styles/content.css",
+      "local": "src/gcanvas/ui/styles/content.css",
+      "kind": "verbatim",
+      "upstreamSha256": "3ac59912da58bcf1818764b87360346cdb6fea88714c7befc88c78252759f8fe"
+    },
+    {
+      "upstream": "viewer/src/ui/styles/note.css",
+      "local": "src/gcanvas/ui/styles/note.css",
+      "kind": "verbatim",
+      "upstreamSha256": "65cdab9c97c46016b0d220419b2774423283fe638f08fb8c35ac16085d339ea5"
     }
   ],
   "deps": {

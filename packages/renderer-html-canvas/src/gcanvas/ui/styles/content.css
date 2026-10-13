@@ -1,0 +1,219 @@
+/*
+ * 富文本内容排版（文档面板、标注卡片、画布文字三处共用的内容样式）。
+ *
+ * - `.hc-prose`：文档面板编辑区与标注卡片（静态、编辑态、测量器）的内容容器，类名与 `prose prose-sm`（prose.css 生成）
+ *   一起挂在内容容器上。prose 提供标题、段落、列表、引用、代码、表格的整套节律（全部按 em 随字号缩放），
+ *   本文件只做：DSH 色值、字号 / 行高、Tiptap 结构适配、中文文档习惯。
+ * - `.hc-md`：画布「文字」元素的内容容器。只吃下面「共用适配」，不吃 prose 段距：段落紧凑，文字框尺寸由内容自然撑开。
+ * - 特异度：prose 在 utilities 层，本文件不分层，同一属性以本文件为准；`@layer hc-content` 里的最小重置只作用于 `.hc-prose` 内部。
+ * - 改字号 / 行高：根上的 `--hc-prose-size`（文档 15px，标注卡片取 `--hc-note-font-size`）与 `line-height`；画布文字的字号在 `.hc-md` 容器上。
+ * - 尺寸一律按 em 写（勾选框、圆角、内边距、引用竖线……），随根字号等比缩放；只有细线粗细与交互手柄写 px。
+ *   规则由 content-scale.test.ts 校验。
+ */
+
+/* —— prose 依赖的最小重置（preflight 在 `.ai-scope` 之外不存在）：仅 `.hc-prose` 内部。
+ * 放进 hc-content 层并用 :where() 清零特异度，prose 自己写了的属性一律以 prose 为准，这里只补它没写的 —— */
+@layer hc-content {
+  /* 表单控件（待办勾选框）不继承字体：浏览器给它固定字号（Chromium 13.33px），其上的 em 会按这个固定字号算 */
+  :where(.hc-prose, .hc-md) :where(input, button, select, textarea) {
+    font: inherit;
+    color: inherit;
+  }
+  :where(.hc-prose, .hc-prose *, .hc-prose ::before, .hc-prose ::after) {
+    box-sizing: border-box;
+    border: 0 solid;
+  }
+  :where(.hc-prose) :where(p, blockquote, figure, pre, ul, ol, dl, dd, hr, h1, h2, h3, h4, h5, h6) {
+    margin: 0;
+  }
+  :where(.hc-prose table) {
+    border-collapse: collapse;
+    text-indent: 0;
+  }
+}
+
+/* —— 色值：prose 官方变量接 DSH 变量 —— */
+.hc-prose {
+  --tw-prose-body: var(--ink-mid);
+  --tw-prose-headings: var(--ink);
+  --tw-prose-bold: var(--ink);
+  --tw-prose-links: var(--blue);
+  --tw-prose-code: var(--ink);
+  --tw-prose-pre-code: var(--ink);
+  --tw-prose-pre-bg: var(--canvas);
+  --tw-prose-quotes: var(--ink-soft);
+  --tw-prose-quote-borders: var(--line-strong);
+  --tw-prose-hr: var(--line);
+  --tw-prose-bullets: var(--ink-soft);
+  --tw-prose-counters: var(--ink-soft);
+  --tw-prose-th-borders: var(--line-strong);
+  --tw-prose-td-borders: var(--line-strong);
+  --hc-prose-th-bg: var(--surface-strong);
+
+  font-family: var(--font-doc);
+  font-size: var(--hc-prose-size, 15px);
+  line-height: 1.6;
+  max-width: none;
+}
+/* 标注卡片：底色是三色便签，正文取主文字色，表格线 / 表头底取半透明黑，字号取卡片根上的 `--hc-note-font-size`（小 26 / 中 30 / 大 36，缺省中），标题层级收小 */
+.hc-note .hc-prose {
+  --hc-prose-size: var(--hc-note-font-size, 30px);
+  --tw-prose-body: var(--ink, #1f2328);
+  --tw-prose-td-borders: rgba(0, 0, 0, 0.18);
+  --tw-prose-th-borders: rgba(0, 0, 0, 0.18);
+  --hc-prose-th-bg: rgba(0, 0, 0, 0.05);
+}
+.hc-note .hc-prose h1 { font-size: 1.286em; }
+.hc-note .hc-prose h2 { font-size: 1.143em; }
+.hc-note .hc-prose h3 { font-size: 1em; }
+
+/* —— 标题：沿用 DSH 文档梯度 26 / 19 / 16px（em，随根字号缩放） —— */
+.hc-prose :is(h1, h2, h3) { font-weight: 600; }
+.hc-prose h1 { font-size: 1.733em; letter-spacing: -0.005em; margin-bottom: 0.6em; }
+.hc-prose h2 { font-size: 1.267em; }
+.hc-prose h3 { font-size: 1.067em; }
+
+/* —— 首尾块不留外距（静态内容在直接子级；编辑态多一层 .ProseMirror） —— */
+.hc-prose > :first-child,
+.hc-prose .ProseMirror > :first-child { margin-top: 0; }
+.hc-prose > :last-child,
+.hc-prose .ProseMirror > :last-child { margin-bottom: 0; }
+
+/* —— Tiptap 结构适配：列表项文字外总包一层 p（待办里是 div > p），prose 会把它当「松散列表」加段距 —— */
+.hc-prose li { margin-top: 0.25em; margin-bottom: 0.25em; }
+.hc-prose li :is(ul, ol) { margin-top: 0.25em; margin-bottom: 0; }
+
+/* —— 去掉 prose 的英文排版习惯：行内代码反引号、引用的引号与斜体、链接加粗 —— */
+.hc-prose code::before,
+.hc-prose code::after,
+.hc-prose blockquote p::before,
+.hc-prose blockquote p::after { content: none; }
+.hc-prose a { font-weight: inherit; text-underline-offset: 0.15em; }
+.hc-prose blockquote { font-style: normal; font-weight: 400; border-inline-start-width: 0.25em; }
+.hc-prose code {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 0.88em;
+  background: var(--surface-strong);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25em;
+}
+.hc-prose pre {
+  border: 1px solid var(--line);
+  border-radius: 0.5em;
+  padding: 0.9em 1.1em;
+  overflow-x: auto;
+}
+.hc-prose pre code { background: none; padding: 0; font-size: inherit; border-radius: 0; }
+/* 卡片里代码块折行：横向滚动会让「最小高 = 正好装下内容」不成立 */
+.hc-note .hc-prose pre { white-space: pre-wrap; overflow-x: visible; }
+.hc-prose hr { margin: 1.5em 0; }
+.hc-prose mark { background: var(--blue-bg); color: var(--ink); border-radius: 0.15em; padding: 0 0.08em; }
+
+/* —— 表格：中文文档习惯的网格，表头浅底；格内换行，段落不加段距 —— */
+.hc-prose .tableWrapper { overflow-x: auto; margin: 0.6em 0; }
+.hc-prose table { width: 100%; margin: 0.6em 0; }
+.hc-prose .tableWrapper > table { margin: 0; }
+.hc-note .hc-prose table { table-layout: fixed; }
+.hc-prose :is(th, td) {
+  position: relative;
+  min-width: 60px;
+  padding: 0.4em 0.7em;
+  vertical-align: top;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--tw-prose-td-borders);
+}
+.hc-prose th { background: var(--hc-prose-th-bg); color: var(--ink); font-weight: 600; }
+.hc-prose :is(th, td) p { margin: 0; }
+/* 单元格框选高亮（tableEditing 注入 .selectedCell）：半透明叠加层，在表头与普通格上反馈一致 */
+.hc-prose :is(th, td).selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 114, 245, 0.16);
+  pointer-events: none;
+  z-index: 2;
+}
+.hc-prose .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: rgba(0, 114, 245, 0.4);
+}
+
+/* ===========================================================================
+ * 共用适配（.hc-prose 与画布文字 .hc-md）
+ * =========================================================================== */
+
+/* 列表里的段落不带段距（待办里是 li > div > p） */
+:is(.hc-md, .hc-prose) li > p,
+:is(.hc-md, .hc-prose) li > div > p { margin-top: 0; margin-bottom: 0; }
+
+/* 待办：去圆点；勾选框所在盒高取「一行」(1lh)，与首行文字天然同中线，任何字号 / 行高都对齐；已勾选不划线。
+ * 勾选框边长 0.85em 按正文字号算（控件字体在上面的重置层改为继承），用浏览器原生框：Chromium 按设定尺寸矢量绘制 */
+:is(.hc-md, .hc-prose) ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+:is(.hc-md, .hc-prose) ul[data-type="taskList"] ul[data-type="taskList"] {
+  margin: 0;
+  padding-left: 1.5em;
+}
+:is(.hc-md, .hc-prose) ul[data-type="taskList"] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+  padding-left: 0;
+}
+:is(.hc-md, .hc-prose) ul[data-type="taskList"] > li::marker { content: none; }
+:is(.hc-md, .hc-prose) ul[data-type="taskList"] > li > label {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  height: 1lh;
+  margin: 0;
+  user-select: none;
+}
+:is(.hc-md, .hc-prose) ul[data-type="taskList"] > li > label input[type="checkbox"] {
+  margin: 0;
+  width: 0.85em;
+  height: 0.85em;
+  cursor: pointer;
+  accent-color: var(--ink);
+}
+:is(.hc-md, .hc-prose) ul[data-type="taskList"] > li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* 静态态（不在 ProseMirror 内）勾选框只读：要改就进编辑 */
+:is(.hc-md, .hc-prose):not(.ProseMirror):not(:has(.ProseMirror)) ul[data-type="taskList"] input[type="checkbox"] {
+  pointer-events: none;
+}
+
+/* 空文档占位（Tiptap Placeholder 扩展注入 .is-editor-empty 时显示） */
+:is(.hc-md, .hc-prose) p.is-editor-empty:first-child::before {
+  content: '开始输入…';
+  float: left;
+  color: var(--ink-soft);
+  pointer-events: none;
+  height: 0;
+}
+
+/* ===========================================================================
+ * 画布文字 .hc-md：只有段落、列表、待办与行内标记（加粗 / 斜体 / 删除线 / 高亮 / 颜色）；段落紧凑，不吃 prose 段距
+ * =========================================================================== */
+.hc-md p { margin: 0; }
+.hc-md p + p,
+.hc-md ul + p,
+.hc-md ol + p,
+.hc-md p + ul,
+.hc-md p + ol { margin-top: 0.35em; }
+.hc-md ul,
+.hc-md ol { margin: 0; padding-left: 1.4em; }
+.hc-md mark { background: var(--blue-bg); color: var(--ink); border-radius: 0.15em; padding: 0 0.08em; }
+.hc-md > *:first-child { margin-top: 0; }

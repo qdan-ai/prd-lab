@@ -19,6 +19,7 @@
 
 - `fixtures/gcanvas-parity-board/`：被 G-canvas 打开过（带 measured）的版本，贴近用户真实分享出的画板。
 - `fixtures/gcanvas-parity-board-raw/`：从未打开过（无 measured）的版本，用来测查看器缺 measured 时的表现。
+- `fixtures/gcanvas-note-board/`：标注验收画板被 G-canvas 打开过（带 measured）的版本，`notes/` 与 raw 相同。
 - `fixtures/gcanvas-note-board-raw/`：标注块验收画板（`canvas.json` + `notes/*.md`，20 个元素），无 measured。覆盖三色×三档字号、综合格式（含 http(s) 链接）、文字颜色（预设/自定义/非法值）、表格、超长代码行、空行、字面保留与恶意写法、最小高生效与窄宽长内容、空正文、缺失文件、中文文件名、框内标注与绑定到标注的箭头。
 
 元素与覆盖的难点见 `gcanvas-parity-board/docs/验收说明.md` 与元素清单（`ai/scratch/gcanvas-viewer-sync/parity-notes.md`）。

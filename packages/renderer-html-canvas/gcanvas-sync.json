@@ -199,7 +199,7 @@
       "local": "src/gcanvas/ui/canvas/canvas-context.ts",
       "kind": "shim",
       "upstreamSha256": "339de20959e7c9fe9c9c372e8272ed3196044b5272b5989e41d08de08709a221",
-      "note": "顶替上游渲染上下文：adapter 只含 loadBlock/loadStyle/assetUrl（按 dataBaseUrl 取画板文件），blockCache/blockResourceReady 可选且查看器不提供",
+      "note": "顶替上游渲染上下文：adapter 含 loadBlock/loadStyle/loadNote/assetUrl（按 dataBaseUrl 取画板文件），noteContent（标注正文缓存与加载器）可选，blockCache/blockResourceReady 可选且查看器不提供",
       "reconciledCommit": "7a5cbf0563a5d13f2be9c1ceb945743617ee1442"
     },
     {
@@ -312,18 +312,8 @@
       ]
     },
     {
-      "dir": "viewer/src/ui/canvas/note",
-      "exclude": "\\.test\\.",
-      "hint": "标注正文加载与编辑；查看器只用 note-loader（改写件），其余是编辑器文件",
-      "files": [
-        "viewer/src/ui/canvas/note/NoteEditor.tsx",
-        "viewer/src/ui/canvas/note/note-loader.ts",
-        "viewer/src/ui/canvas/note/note-measure.ts"
-      ]
-    },
-    {
       "dir": "viewer/src/engine",
-      "include": "^(arrow-|element-|viewport|camera|schema|sanitize|unwrap|store|note-)",
+      "include": "^(arrow-|element-|viewport|camera|schema|sanitize|unwrap|store)",
       "exclude": "\\.test\\.",
       "files": [
         "viewer/src/engine/arrow-binding.ts",
@@ -331,36 +321,11 @@
         "viewer/src/engine/arrow-routing.ts",
         "viewer/src/engine/camera.ts",
         "viewer/src/engine/element-geometry.ts",
-        "viewer/src/engine/note-content-cache.ts",
-        "viewer/src/engine/note-model.ts",
         "viewer/src/engine/sanitize.ts",
         "viewer/src/engine/schema.ts",
         "viewer/src/engine/store.ts",
         "viewer/src/engine/unwrap.ts",
         "viewer/src/engine/viewport.ts"
-      ]
-    },
-    {
-      "dir": "viewer/src/ui/editor-kernel",
-      "exclude": "\\.test\\.",
-      "files": [
-        "viewer/src/ui/editor-kernel/EditorKernel.tsx",
-        "viewer/src/ui/editor-kernel/TextColorMenu.tsx",
-        "viewer/src/ui/editor-kernel/Toolbar.tsx",
-        "viewer/src/ui/editor-kernel/blank-lines.ts",
-        "viewer/src/ui/editor-kernel/controllers.ts",
-        "viewer/src/ui/editor-kernel/extensions.ts",
-        "viewer/src/ui/editor-kernel/index.ts",
-        "viewer/src/ui/editor-kernel/link-open.ts",
-        "viewer/src/ui/editor-kernel/literal-fallback.ts",
-        "viewer/src/ui/editor-kernel/markdown-paste.ts",
-        "viewer/src/ui/editor-kernel/markdown.ts",
-        "viewer/src/ui/editor-kernel/overlay-context.ts",
-        "viewer/src/ui/editor-kernel/semantic-empty.ts",
-        "viewer/src/ui/editor-kernel/static-render.ts",
-        "viewer/src/ui/editor-kernel/table-markdown.ts",
-        "viewer/src/ui/editor-kernel/text-color.ts",
-        "viewer/src/ui/editor-kernel/unreferenced-definition.ts"
       ]
     },
     {

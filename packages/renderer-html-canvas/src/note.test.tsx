@@ -154,6 +154,8 @@ describe("标注块渲染", () => {
   it("安全：脚本、事件属性、javascript:、url( 不进卡片 DOM", async () => {
     await render(board([note({ file: "notes/evil.md" })]));
     const card = host.querySelector<HTMLElement>(".hc-note")!;
+    // 正面锚点：正文已渲染，且原始 HTML 按字面文字显示（正文没加载出来时下面的「没有」断言会空过）
+    expect(card.querySelector(".hc-note-body")?.textContent).toContain("<script>alert(1)</script>");
     expect(card.querySelector("script")).toBeNull();
     for (const el of [card, ...card.querySelectorAll<HTMLElement>("*")]) {
       for (const attr of Array.from(el.attributes)) {
@@ -234,7 +236,7 @@ describe("标注内链接", () => {
     await render(board([note({ file: "notes/links.md" })]));
     for (const text of ["脚本", "相对", "锚点"]) {
       const a = linkByText(text);
-      if (!a) continue; // 被清洗掉的链接没有 <a>，同样打不开
+      expect(a, `链接「${text}」已渲染`).toBeTruthy();
       fire(a, "click", { metaKey: true });
     }
     expect(openSpy).not.toHaveBeenCalled();

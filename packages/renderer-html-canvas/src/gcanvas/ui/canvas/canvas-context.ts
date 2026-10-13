@@ -5,7 +5,7 @@
  * adapter 定为完整的 PersistenceAdapter（读写画板、AI 会话等），查看器只读、只需取文件：
  * 这里给出结构兼容的最小面，渲染器读到的字段一个不少。
  *
- * - adapter：loadBlock / loadStyle / assetUrl，按画板文件 URL 前缀（dataBaseUrl）取 blocks/、styles/、assets/；
+ * - adapter：loadBlock / loadStyle / loadNote / assetUrl，按画板文件 URL 前缀（dataBaseUrl）取 blocks/、styles/、notes/、assets/；
  *   实现与类型都在 api.ts createCanvasAdapter（新增取文件方法只改那一处）
  * - boardId：渲染器透传给 adapter；查看器一次只看一块画板，值仅作标识
  * - zoom：FrameView 标题字号反向补偿

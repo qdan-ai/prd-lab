@@ -1,0 +1,232 @@
+{
+  "title": "标注验收画板",
+  "format": "board/v1",
+  "elements": [
+    {
+      "id": "f1",
+      "type": "frame",
+      "name": "框内标注",
+      "x": 40,
+      "y": 3200,
+      "w": 1700,
+      "h": 700
+    },
+    {
+      "id": "n-fmt",
+      "type": "note",
+      "file": "notes/综合格式.md",
+      "x": 60,
+      "y": 0,
+      "w": 480,
+      "h": 200
+    },
+    {
+      "id": "n-yl",
+      "type": "note",
+      "file": "notes/黄大.md",
+      "x": 620,
+      "y": 0,
+      "w": 480,
+      "h": 160,
+      "sizeTier": "large"
+    },
+    {
+      "id": "n-bl",
+      "type": "note",
+      "file": "notes/蓝大.md",
+      "x": 1180,
+      "y": 0,
+      "w": 480,
+      "h": 160,
+      "color": "blue",
+      "sizeTier": "large"
+    },
+    {
+      "id": "n-gs",
+      "type": "note",
+      "file": "notes/灰小.md",
+      "x": 60,
+      "y": 560,
+      "w": 480,
+      "h": 160,
+      "color": "gray",
+      "sizeTier": "small"
+    },
+    {
+      "id": "n-ys",
+      "type": "note",
+      "file": "notes/黄小.md",
+      "x": 620,
+      "y": 560,
+      "w": 480,
+      "h": 160,
+      "color": "yellow",
+      "sizeTier": "small"
+    },
+    {
+      "id": "n-bm",
+      "type": "note",
+      "file": "notes/蓝中.md",
+      "x": 1180,
+      "y": 560,
+      "w": 480,
+      "h": 160,
+      "color": "blue",
+      "sizeTier": "medium"
+    },
+    {
+      "id": "n-gm",
+      "type": "note",
+      "file": "notes/灰中.md",
+      "x": 60,
+      "y": 1120,
+      "w": 480,
+      "h": 160,
+      "color": "gray"
+    },
+    {
+      "id": "n-col",
+      "type": "note",
+      "file": "notes/colors.md",
+      "x": 620,
+      "y": 1120,
+      "w": 480,
+      "h": 200,
+      "color": "yellow",
+      "sizeTier": "medium"
+    },
+    {
+      "id": "n-tab",
+      "type": "note",
+      "file": "notes/table.md",
+      "x": 1180,
+      "y": 1120,
+      "w": 480,
+      "h": 200,
+      "color": "blue"
+    },
+    {
+      "id": "n-code",
+      "type": "note",
+      "file": "notes/code.md",
+      "x": 60,
+      "y": 1680,
+      "w": 480,
+      "h": 200,
+      "color": "gray"
+    },
+    {
+      "id": "n-blank",
+      "type": "note",
+      "file": "notes/blank.md",
+      "x": 620,
+      "y": 1680,
+      "w": 480,
+      "h": 200
+    },
+    {
+      "id": "n-lit",
+      "type": "note",
+      "file": "notes/literal.md",
+      "x": 1180,
+      "y": 1680,
+      "w": 480,
+      "h": 200,
+      "color": "yellow"
+    },
+    {
+      "id": "n-short",
+      "type": "note",
+      "file": "notes/short.md",
+      "x": 60,
+      "y": 2240,
+      "w": 480,
+      "h": 400,
+      "color": "blue"
+    },
+    {
+      "id": "n-narrow",
+      "type": "note",
+      "file": "notes/narrow.md",
+      "x": 620,
+      "y": 2240,
+      "w": 240,
+      "h": 160,
+      "color": "gray"
+    },
+    {
+      "id": "n-empty",
+      "type": "note",
+      "file": "notes/empty.md",
+      "x": 1180,
+      "y": 2240,
+      "w": 480,
+      "h": 160
+    },
+    {
+      "id": "n-miss",
+      "type": "note",
+      "file": "notes/不存在.md",
+      "x": 60,
+      "y": 2800,
+      "w": 480,
+      "h": 160,
+      "color": "yellow"
+    },
+    {
+      "id": "n-frame",
+      "type": "note",
+      "file": "notes/登录口径.md",
+      "x": 700,
+      "y": 3400,
+      "w": 480,
+      "h": 200,
+      "color": "blue",
+      "parent": "f1"
+    },
+    {
+      "id": "s1",
+      "type": "shape",
+      "shape": "rect",
+      "x": 120,
+      "y": 3450,
+      "w": 240,
+      "h": 100,
+      "text": "登录页",
+      "parent": "f1"
+    },
+    {
+      "id": "a1",
+      "type": "arrow",
+      "points": [
+        {
+          "x": 360,
+          "y": 3500
+        },
+        {
+          "x": 700,
+          "y": 3500
+        }
+      ],
+      "routing": "auto",
+      "startBinding": {
+        "elementId": "s1",
+        "fixedPoint": [
+          0.5,
+          0.5
+        ],
+        "mode": "floating"
+      },
+      "endBinding": {
+        "elementId": "n-frame",
+        "fixedPoint": [
+          0.5,
+          0.5
+        ],
+        "mode": "floating"
+      },
+      "label": "口径",
+      "parent": "f1"
+    }
+  ]
+}

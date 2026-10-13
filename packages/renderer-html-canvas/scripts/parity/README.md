@@ -19,6 +19,7 @@
 
 - `fixtures/gcanvas-parity-board/`：被 G-canvas 打开过（带 measured）的版本，贴近用户真实分享出的画板。
 - `fixtures/gcanvas-parity-board-raw/`：从未打开过（无 measured）的版本，用来测查看器缺 measured 时的表现。
+- `fixtures/gcanvas-note-board-raw/`：标注块验收画板（`canvas.json` + `notes/*.md`，20 个元素），无 measured。覆盖三色×三档字号、综合格式（含 http(s) 链接）、文字颜色（预设/自定义/非法值）、表格、超长代码行、空行、字面保留与恶意写法、最小高生效与窄宽长内容、空正文、缺失文件、中文文件名、框内标注与绑定到标注的箭头。
 
 元素与覆盖的难点见 `gcanvas-parity-board/docs/验收说明.md` 与元素清单（`ai/scratch/gcanvas-viewer-sync/parity-notes.md`）。
 
@@ -79,6 +80,7 @@ node compare.mjs /path/to/out/gcanvas.json /path/to/out/prdlab.json --out /path/
 - `arrow.stroke / strokeWidth / dasharray / linecap`：线色、线宽、线型（虚线 / 点线）。
 - `arrow.label`：标签文本与中心的世界坐标。
 - `text.html`：渲染后的 Markdown HTML（忽略标签间空白）；`text.fontSize / fontFamily / color / textAlign / lineHeight / textDecorationLine / width`：整框外观；`text.inline.*`：加粗、斜体、删除线、高亮、列表等标签的计算样式。
+- `note.*`：标注卡片。`note.color`（颜色类后缀）、`note.fontSize / padding / borderRadius / background / borderColor / width / minHeight`：卡片外观；`note.html`：`.hc-note-body` 的渲染 HTML（与 `text.html` 同口径，忽略标签间空白）；`note.problem`：文件缺失/读取失败时的提示文字，正常为 `null`；`note.inline.*`：首个 h1/h2/h3/th/td/pre/code/blockquote/勾选框的计算字号与外边距。
 - `frame.title`、`shape.text / clipPath`、`image.file / natural / size`、`html.hostBox / imgs / text`：对应元素类型的专属字段。`html.text` 含注入的样式文本，样式没带全会在这里体现。
 - `(元素)` 行：某一侧缺元素。`(图层顺序)`：元素 DOM 顺序不同，遮挡关系会不一致。
 
@@ -86,4 +88,4 @@ node compare.mjs /path/to/out/gcanvas.json /path/to/out/prdlab.json --out /path/
 
 ## 采集约定（改 DOM 时需保持）
 
-舞台 `.hc-stage`，世界容器 `.hc-world`（`transform = translate(tx,ty) scale(zoom)`）；非箭头元素 `.hc-el[data-hc-id][data-hc-type]`；箭头 `.hc-arrow[data-hc-id][data-hc-type=arrow]`（内含 svg，可见路径是 svg 下最后一个非透明 `path`，标签 `.hc-arrow-label`）；文本 `.hc-text`；frame 标题 `.hc-frame-title`；形状 `.hc-shape` / `.hc-shape-text`；HTML 块 `.hc-html-host`（Shadow DOM）；图片 `img`。选择器对不上时 `extract` 会等到超时并报元素数。
+舞台 `.hc-stage`，世界容器 `.hc-world`（`transform = translate(tx,ty) scale(zoom)`）；非箭头元素 `.hc-el[data-hc-id][data-hc-type]`；箭头 `.hc-arrow[data-hc-id][data-hc-type=arrow]`（内含 svg，可见路径是 svg 下最后一个非透明 `path`，标签 `.hc-arrow-label`）；文本 `.hc-text`；标注 `.hc-note`（正文 `.hc-note-body`，缺失/失败提示 `.hc-note-problem`，加载中 `.hc-note-placeholder`，`extract` 等到没有加载中的标注才采集）；frame 标题 `.hc-frame-title`；形状 `.hc-shape` / `.hc-shape-text`；HTML 块 `.hc-html-host`（Shadow DOM）；图片 `img`。选择器对不上时 `extract` 会等到超时并报元素数。

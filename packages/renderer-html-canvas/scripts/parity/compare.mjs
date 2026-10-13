@@ -74,7 +74,7 @@ function diffLeaf(path, a, b, tol, styleTol) {
   }
   if (typeof a === 'string' && typeof b === 'string') {
     if (/(^|\.)arrow\.d$/.test(path)) return comparePathD(a, b, tol)
-    if (/(^|\.)text\.html$/.test(path)) return normHtml(a) === normHtml(b) ? null : '内容 HTML 不同'
+    if (/(^|\.)(text|note)\.html$/.test(path)) return normHtml(a) === normHtml(b) ? null : '内容 HTML 不同'
     const ma = PX.exec(a)
     const mb = PX.exec(b)
     if (ma && mb) return Math.abs(Number(ma[1]) - Number(mb[1])) <= styleTol ? null : `差 ${(Number(mb[1]) - Number(ma[1])).toFixed(2)}px`

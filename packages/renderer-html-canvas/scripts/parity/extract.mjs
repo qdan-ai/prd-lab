@@ -14,7 +14,8 @@
  * --gcanvas-repo  上游仓库根目录（缺省读环境变量 GCANVAS_REPO，再缺省与 prd-lab 同级的 ../html_canvas）。
  *
  * 约定的 DOM：舞台 .hc-stage，世界容器 .hc-world（transform = translate(tx,ty) scale(zoom)），
- * 元素 [data-hc-id][data-hc-type]；箭头 .hc-arrow；文本 .hc-text；HTML 块 .hc-html-host（Shadow DOM）。
+ * 元素 [data-hc-id][data-hc-type]；箭头 .hc-arrow；文本 .hc-text；HTML 块 .hc-html-host（Shadow DOM）；
+ * 标注 .hc-note（正文 .hc-note-body，缺失/失败提示 .hc-note-problem，加载中 .hc-note-placeholder）。
  */
 import { spawn } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -130,6 +131,22 @@ function pageSnapshot() {
     return out
   }
 
+  // 标注正文里各标签（每种取首个）的计算字号与外边距；th/td/pre/勾选框是表格、代码块、待办的关键外观
+  const noteInlineStyles = (root) => {
+    const out = {}
+    const sels = {
+      h1: 'h1', h2: 'h2', h3: 'h3', th: 'th', td: 'td', pre: 'pre', code: 'code', blockquote: 'blockquote',
+      checkbox: 'input[type="checkbox"]',
+    }
+    for (const [key, sel] of Object.entries(sels)) {
+      const n = root.querySelector(sel)
+      if (!n) continue
+      const c = getComputedStyle(n)
+      out[key] = { fontSize: c.fontSize, marginTop: c.marginTop, marginBottom: c.marginBottom, width: c.width }
+    }
+    return out
+  }
+
   const elements = {}
   const order = []
   for (const node of world.querySelectorAll('[data-hc-id]')) {
@@ -183,6 +200,25 @@ function pageSnapshot() {
         whiteSpace: cs.whiteSpace,
         box: toWorldRect(t.getBoundingClientRect()),
         inline: inlineStyles(t),
+      }
+    } else if (type === 'note') {
+      const card = node.querySelector('.hc-note')
+      const body = node.querySelector('.hc-note-body')
+      const problem = node.querySelector('.hc-note-problem')
+      const cs = card ? getComputedStyle(card) : null
+      rec.note = {
+        loading: !!node.querySelector('.hc-note-placeholder'),
+        color: card ? ([...card.classList].find((c) => c.startsWith('hc-note--')) ?? '').slice('hc-note--'.length) : '',
+        fontSize: cs ? parseFloat(cs.fontSize) : null,
+        padding: cs?.padding ?? '',
+        borderRadius: cs?.borderRadius ?? '',
+        background: cs?.backgroundColor ?? '',
+        borderColor: cs?.borderTopColor ?? '',
+        width: card ? r2(card.getBoundingClientRect().width / zoom) : null,
+        minHeight: cs?.minHeight ?? '',
+        html: body && !problem ? body.innerHTML : '',
+        problem: problem ? (problem.textContent ?? '').trim() : null,
+        inline: body ? noteInlineStyles(body) : {},
       }
     } else if (type === 'frame') {
       const title = node.querySelector('.hc-frame-title')
@@ -251,6 +287,7 @@ async function waitStable(page, expect, timeoutMs = 45000) {
         els.every((e) => {
           if (e.type === 'html') return e.html.hasShadow && e.html.elemCount > 0 && e.html.imgs.every((i) => i.complete)
           if (e.type === 'image') return e.image.complete
+          if (e.type === 'note') return !e.note.loading
           return true
         })
       const key = JSON.stringify(snap)

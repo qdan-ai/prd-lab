@@ -110,6 +110,7 @@ async function getSwitcherView(session: Pick<Session, "userId" | "isAdmin">) {
       name: projects.name,
       visibility: projects.visibility,
       ownerId: projects.ownerId,
+      kind: projects.kind,
     })
     .from(projects)
     .where(
@@ -220,6 +221,7 @@ async function getSwitcherView(session: Pick<Session, "userId" | "isAdmin">) {
     id: p.id,
     name: p.name,
     visibility: p.visibility,
+    kind: p.kind,
     ownedByMe: p.ownerId === userId,
     canManage: canManageProject(p, session),
     versions: (versionsByProject.get(p.id) ?? []).map((v) => ({

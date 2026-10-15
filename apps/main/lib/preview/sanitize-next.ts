@@ -9,7 +9,15 @@
  * 响应头注入面（Node 的 Headers 校验虽会抛错，但那是 500 不是预期行为）。
  */
 export function sanitizeNextPath(rawNext: string | null, sid: string): string {
-  const prefix = `/p/${sid}`;
+  return sanitizeUnder(rawNext, `/p/${sid}`);
+}
+
+/** 仓库查看器（预览站 /r/{pid}）的同一套校验：next 只能落在 `/r/{pid}` 之下。 */
+export function sanitizeRepoNextPath(rawNext: string | null, pid: string): string {
+  return sanitizeUnder(rawNext, `/r/${pid}`);
+}
+
+function sanitizeUnder(rawNext: string | null, prefix: string): string {
   if (
     rawNext &&
     rawNext.length <= 2048 &&

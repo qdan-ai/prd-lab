@@ -24,6 +24,12 @@ export const errorCodes = {
   // ---- S7 PM 主动权 ----
   content_duplicate: { status: 409 }, // sha256 命中 active snapshot；user 路径触发二次确认
   version_label_conflict: { status: 409 }, // 同方案下已有活跃 snapshot 占用此 version_label
+  // ---- repo-push 仓库式推送 ----
+  repo_managed: { status: 409 }, // 仓库项目只接受仓库式推送（拒 zip 上传 / 新建方案）
+  not_repo: { status: 409 }, // 对普通项目调仓库接口
+  blobs_missing: { status: 409 }, // sync 引用了未上传的文件，details.missing 列出
+  unsupported_format: { status: 400 }, // 清单 format 不认识
+  discussions_not_allowed: { status: 400 }, // 文件路径在 docs/discussions/ 下，details.path
 } as const;
 
 export type ErrorCode = keyof typeof errorCodes;

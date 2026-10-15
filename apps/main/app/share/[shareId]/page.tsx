@@ -1,7 +1,10 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db, shareLinks, snapshots, users, versions } from "@prd-lab/core";
 import { getShareSession } from "@/lib/share/share-session";
+import { headersOrigin } from "@/lib/api/request-origin";
+import { repoShareEntryUrl } from "@/lib/repo/share-entry";
 import { ShareFileList } from "@/components/share-file-list";
 import { ShareSnapshotSwitcher } from "@/components/share-snapshot-switcher";
 
@@ -20,6 +23,7 @@ type Props = {
  *   4. 方案无活跃 snapshot → "还没有可查看的版本"
  *   5. ?snapshot=v{seq} 非法 / 未命中活跃列表 → redirect 去 query（回默认最新）
  *   6. 正常 → 渲染选中版本的文件列表 + 版本切换器
+ *   仓库项目（链接绑定的是仓库的系统方案）：3 之后直接签仓库级令牌跳预览站查看器，`?v=` 原样转交
  */
 export default async function SharePage({ params, searchParams }: Props) {
   const { shareId } = await params;
@@ -38,6 +42,15 @@ export default async function SharePage({ params, searchParams }: Props) {
   if (session.kind !== "ok") {
     redirect(`/share/${shareId}/login`);
   }
+
+  const repoEntry = await repoShareEntryUrl({
+    shareId,
+    versionId: session.versionId,
+    pv: session.pv,
+    origin: headersOrigin(await headers()),
+    v: typeof search.v === "string" ? search.v : null,
+  });
+  if (repoEntry) redirect(repoEntry);
 
   const [versionRows, snapRows] = await Promise.all([
     db

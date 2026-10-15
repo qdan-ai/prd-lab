@@ -47,12 +47,16 @@ export async function POST(request: Request, { params }: Ctx) {
 
   // owner 或管理员（team 项目）可建 version
   const projRows = await db
-    .select({ ownerId: projects.ownerId, visibility: projects.visibility })
+    .select({ ownerId: projects.ownerId, visibility: projects.visibility, kind: projects.kind })
     .from(projects)
     .where(and(eq(projects.id, pid), isNull(projects.archivedAt)))
     .limit(1);
   if (!projRows[0]) return errorResponse("not_found");
   if (!canManageProject(projRows[0], session)) return errorResponse("not_owner");
+  // 仓库项目只有一个系统方案，由仓库式推送维护
+  if (projRows[0].kind === "repo") {
+    return errorResponse("repo_managed", "该项目由 G-canvas 仓库式推送维护，不能新建方案");
+  }
 
   try {
     const result = await db.transaction(async (tx) => {

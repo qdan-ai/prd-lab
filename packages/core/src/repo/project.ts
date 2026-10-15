@@ -64,10 +64,10 @@ export async function createRepoProject(input: {
 }
 
 /**
- * 读取未归档的仓库项目；不存在 / 已归档 → not_found；普通项目 → not_repo。
- * 权限判定（可读 / 可管）由调用方按 ownerId、visibility 做。
+ * 读取未归档项目的仓库视图；不存在 / 已归档返回 null。普通项目 kind='upload'、versionId=null。
+ * 调用方先按 ownerId / visibility 判权限，再看 kind（不让无权的人从「不是仓库」里得知项目存在）。
  */
-export async function loadRepoProject(projectId: string): Promise<RepoProject> {
+export async function findProjectForRepo(projectId: string) {
   const rows = await db
     .select({
       id: projects.id,
@@ -81,16 +81,20 @@ export async function loadRepoProject(projectId: string): Promise<RepoProject> {
     .leftJoin(repoState, eq(repoState.projectId, projects.id))
     .where(and(eq(projects.id, projectId), isNull(projects.archivedAt)))
     .limit(1);
-  const row = rows[0];
-  if (!row) throw new RepoError("not_found");
+  return rows[0] ?? null;
+}
+
+/** 收窄成仓库项目：普通项目 → not_repo。 */
+export function asRepoProject(row: NonNullable<Awaited<ReturnType<typeof findProjectForRepo>>>): RepoProject {
   if (row.kind !== "repo" || !row.versionId) throw new RepoError("not_repo", "project is not a repo project");
-  return {
-    id: row.id,
-    name: row.name,
-    ownerId: row.ownerId,
-    visibility: row.visibility,
-    versionId: row.versionId,
-  };
+  return { id: row.id, name: row.name, ownerId: row.ownerId, visibility: row.visibility, versionId: row.versionId };
+}
+
+/** 读取未归档的仓库项目；不存在 / 已归档 → not_found；普通项目 → not_repo（不判权限，供预览站等已凭令牌授权的路径用）。 */
+export async function loadRepoProject(projectId: string): Promise<RepoProject> {
+  const row = await findProjectForRepo(projectId);
+  if (!row) throw new RepoError("not_found");
+  return asRepoProject(row);
 }
 
 /** 系统方案 → 仓库项目 id；不是任何仓库的系统方案时返回 null。旧上传接口与分享页据此分流。 */

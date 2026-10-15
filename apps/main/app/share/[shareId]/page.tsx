@@ -19,7 +19,7 @@ type Props = {
  * SSR 分支：
  *   1. share 不存在 → "链接不存在"
  *   2. share 已 revoked → "已撤销"
- *   3. cookie 无 / pv 不匹配 / 过期 → /share/[shareId]/login
+ *   3. cookie 无 / pv 不匹配 / 过期 → /share/[shareId]/login（`?v=` 一并带过去）
  *   4. 方案无活跃 snapshot → "还没有可查看的版本"
  *   5. ?snapshot=v{seq} 非法 / 未命中活跃列表 → redirect 去 query（回默认最新）
  *   6. 正常 → 渲染选中版本的文件列表 + 版本切换器
@@ -38,9 +38,11 @@ export default async function SharePage({ params, searchParams }: Props) {
   if (shareRows[0].revokedAt !== null)
     return <ShareErrorPanel title="分享已撤销" message="该分享链接已被项目所有者撤销，无法再访问。" />;
 
+  const v = typeof search.v === "string" ? search.v : null;
   const session = await getShareSession(shareId);
   if (session.kind !== "ok") {
-    redirect(`/share/${shareId}/login`);
+    // 带上 v：输完密码回到同一个版本
+    redirect(v ? `/share/${shareId}/login?${new URLSearchParams({ v })}` : `/share/${shareId}/login`);
   }
 
   const repoEntry = await repoShareEntryUrl({
@@ -48,7 +50,7 @@ export default async function SharePage({ params, searchParams }: Props) {
     versionId: session.versionId,
     pv: session.pv,
     origin: headersOrigin(await headers()),
-    v: typeof search.v === "string" ? search.v : null,
+    v,
   });
   if (repoEntry) redirect(repoEntry);
 

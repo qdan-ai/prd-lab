@@ -48,3 +48,15 @@ export function shareUrl(origin: string, shareId: string): string {
 export function previewOrigin(): string {
   return process.env.NEXT_PUBLIC_PREVIEW_ORIGIN ?? "http://preview.local";
 }
+
+const REPO_MANAGED_MESSAGES = {
+  rename_version: "该项目由 G-canvas 仓库式推送维护，内置方案不能改名",
+  delete_version: "该项目由 G-canvas 仓库式推送维护，内置方案不能单独删除；不再需要可以删除整个项目",
+  edit_snapshot: "该项目由 G-canvas 仓库式推送维护，版本信息以 G-canvas 为准：请在 G-canvas 里修改后重新推送",
+  delete_snapshot: "该项目由 G-canvas 仓库式推送维护，版本不能在网页上删除：请在 G-canvas 里撤销封版后重新推送",
+} as const;
+
+/** 仓库项目的内置方案与版本只由仓库式推送维护：主站上的改名、删除一律 409 repo_managed，并说明该去哪里改。 */
+export function repoManagedResponse(action: keyof typeof REPO_MANAGED_MESSAGES): Response {
+  return errorResponse("repo_managed", REPO_MANAGED_MESSAGES[action]);
+}

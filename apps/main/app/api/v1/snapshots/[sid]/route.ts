@@ -4,6 +4,7 @@ import { getSession } from "@/lib/api/auth-guard";
 import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
+import { repoManagedResponse } from "@/lib/repo/route-helpers";
 
 type Ctx = { params: Promise<{ sid: string }> };
 
@@ -69,6 +70,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
       archivedAt: snapshots.archivedAt,
       ownerId: projects.ownerId,
       visibility: projects.visibility,
+      projectKind: projects.kind,
     })
     .from(snapshots)
     .innerJoin(versions, eq(snapshots.versionId, versions.id))
@@ -78,6 +80,8 @@ export async function PATCH(request: Request, { params }: Ctx) {
   const row = rows[0];
   if (!row) return errorResponse("not_found");
   if (!canManageProject(row, session)) return errorResponse("not_owner");
+  // 仓库项目的版本只由仓库式推送维护（版本号、名称在 repo_versions，以 G-canvas 为准）
+  if (row.projectKind === "repo") return repoManagedResponse("edit_snapshot");
   if (row.archivedAt !== null) return errorResponse("snapshot_archived");
 
   try {
@@ -113,6 +117,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
       archivedAt: snapshots.archivedAt,
       ownerId: projects.ownerId,
       visibility: projects.visibility,
+      projectKind: projects.kind,
     })
     .from(snapshots)
     .innerJoin(versions, eq(snapshots.versionId, versions.id))
@@ -122,6 +127,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
   const row = rows[0];
   if (!row) return errorResponse("not_found");
   if (!canManageProject(row, session)) return errorResponse("not_owner");
+  if (row.projectKind === "repo") return repoManagedResponse("delete_snapshot");
   if (row.archivedAt !== null) return errorResponse("snapshot_archived");
 
   await db

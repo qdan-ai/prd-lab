@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, repoState, shareLinks, versions } from "../db/schema";
+import { projects, repoState, repoVersions, shareLinks, versions } from "../db/schema";
 
 /** 仓库服务层的业务错误；路由层按 code 映射成 HTTP 错误响应。 */
 export class RepoError extends Error {
@@ -143,4 +143,38 @@ export async function getRepoShare(versionId: string) {
     .limit(1);
   const row = rows[0];
   return row ? { shareId: row.id, hasPassword: row.passwordHash !== null, createdAt: row.createdAt } : null;
+}
+
+/**
+ * 一批仓库项目的列表摘要：访客能看到的版本数（未撤回的版本 / 基线，不含草稿与起点）与最近推送时间。
+ * 不是仓库的 id 不出现在结果里。
+ */
+export async function repoProjectSummaries(
+  projectIds: string[],
+): Promise<Map<string, { versionCount: number; lastPushedAt: Date | null }>> {
+  const out = new Map<string, { versionCount: number; lastPushedAt: Date | null }>();
+  if (projectIds.length === 0) return out;
+  const [states, counts] = await Promise.all([
+    db
+      .select({ projectId: repoState.projectId, lastPushedAt: repoState.lastPushedAt })
+      .from(repoState)
+      .where(inArray(repoState.projectId, projectIds)),
+    db
+      .select({ projectId: repoVersions.projectId, n: count(repoVersions.id) })
+      .from(repoVersions)
+      .where(
+        and(
+          inArray(repoVersions.projectId, projectIds),
+          inArray(repoVersions.kind, ["version", "baseline"]),
+          isNull(repoVersions.withdrawnAt),
+        ),
+      )
+      .groupBy(repoVersions.projectId),
+  ]);
+  for (const s of states) out.set(s.projectId, { versionCount: 0, lastPushedAt: s.lastPushedAt });
+  for (const c of counts) {
+    const row = out.get(c.projectId);
+    if (row) row.versionCount = Number(c.n);
+  }
+  return out;
 }

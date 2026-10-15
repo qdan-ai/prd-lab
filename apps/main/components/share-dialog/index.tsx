@@ -8,10 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { apiFetch, sharesApi, type ShareRow } from "@/lib/api-client";
+import { copyText } from "@/lib/copy-text";
 
 interface Props {
   open: boolean;
   version: { id: string; name: string } | null;
+  /** 主视图的说明文字；缺省为方案级分享的说明 */
+  description?: string;
   onClose: () => void;
 }
 
@@ -25,7 +28,7 @@ const NO_PASSWORD_HINT = "任何拿到链接的人都能查看，请勿公开转
  *   - 已存在态：按 share.hasPassword 分支为「无密码 / 有密码」两套管理操作。
  * `version` 为 null 时 dialog 不渲染。
  */
-export function ShareDialog({ open, version, onClose }: Props) {
+export function ShareDialog({ open, version, description, onClose }: Props) {
   const vid = version?.id ?? "";
   const label = version?.name ?? "";
   const [view, setView] = useState<View>("main");
@@ -144,10 +147,9 @@ export function ShareDialog({ open, version, onClose }: Props) {
     const payload = includePassword
       ? `分享链接：${shareUrl}\n访问密码：${sessionPassword}`
       : shareUrl;
-    try {
-      await navigator.clipboard.writeText(payload);
+    if (await copyText(payload)) {
       toast.success(includePassword ? "已复制链接和密码" : "已复制分享链接");
-    } catch {
+    } else {
       toast.error("复制失败，请手动选择");
     }
   };
@@ -159,7 +161,7 @@ export function ShareDialog({ open, version, onClose }: Props) {
         : "设置后访客需先输入密码才能查看该链接"
       : view === "revoke_confirm"
         ? "撤销后旧 URL 永久失效，新建分享会生成新 URL"
-        : "外部访客可查看该方案的所有版本，之后上传的新版本也自动可见";
+        : (description ?? "外部访客可查看该方案的所有版本，之后上传的新版本也自动可见");
 
   const dialogTitle =
     view === "set_password"

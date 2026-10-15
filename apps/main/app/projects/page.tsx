@@ -1,5 +1,6 @@
 import { and, count, desc, eq, isNull, max, or } from "drizzle-orm";
 import { db, projects, snapshots, versions } from "@prd-lab/core";
+import { repoProjectSummaries } from "@prd-lab/core/repo";
 import { auth, signOut } from "@/auth";
 import { isAdminName } from "@/lib/auth/admins";
 import { canManageProject } from "@/lib/api/owner-check";
@@ -44,6 +45,7 @@ export default async function ProjectsListPage({
       name: projects.name,
       visibility: projects.visibility,
       ownerId: projects.ownerId,
+      kind: projects.kind,
       createdAt: projects.createdAt,
     })
     .from(projects)
@@ -79,6 +81,11 @@ export default async function ProjectsListPage({
     if (r.latestAt) latestSnapshotByProject.set(r.projectId, r.latestAt);
   }
 
+  // 3) G-canvas 仓库项目：版本数按访客可见的版本算（快照里还有草稿、起点、已撤回的），时间取最近推送
+  const repoSummaries = await repoProjectSummaries(
+    list.filter((p) => p.kind === "repo").map((p) => p.id),
+  );
+
   // 4) 全局最近一条 snapshot（用于副标题）
   let globalLatest: Date | null = null;
   for (const d of latestSnapshotByProject.values()) {
@@ -96,8 +103,15 @@ export default async function ProjectsListPage({
     createdAt: p.createdAt.toISOString(),
     ownedByMe: p.ownerId === userId,
     canManage: canManageProject(p, { userId, isAdmin }),
-    snapshotCount: snapshotCountByProject.get(p.id) ?? 0,
-    latestSnapshotAt: latestSnapshotByProject.get(p.id)?.toISOString() ?? null,
+    kind: p.kind,
+    snapshotCount:
+      p.kind === "repo"
+        ? (repoSummaries.get(p.id)?.versionCount ?? 0)
+        : (snapshotCountByProject.get(p.id) ?? 0),
+    latestSnapshotAt:
+      p.kind === "repo"
+        ? (repoSummaries.get(p.id)?.lastPushedAt?.toISOString() ?? null)
+        : (latestSnapshotByProject.get(p.id)?.toISOString() ?? null),
   });
 
   const activeProjects = tab === "team" ? teamList : mineList;

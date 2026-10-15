@@ -10,6 +10,8 @@ import { projectsApi } from "@/lib/api-client";
 interface Props {
   open: boolean;
   target: { id: string; name: string } | null;
+  /** G-canvas 仓库项目：说明删除对访客链接与 G-canvas 推送的影响 */
+  isRepo?: boolean;
   onClose: () => void;
   /** 删完跳转目标（删的是当前正在看的项目时传 "/projects"）；不传则 router.refresh */
   redirectTo?: string;
@@ -18,7 +20,7 @@ interface Props {
 }
 
 /** S17：删除项目确认弹窗（软删，可由所有者从归档恢复）。 */
-export function DeleteProjectModal({ open, target, onClose, redirectTo, onDeleted }: Props) {
+export function DeleteProjectModal({ open, target, isRepo, onClose, redirectTo, onDeleted }: Props) {
   const [deleting, setDeleting] = useState(false);
   const router = useRouter();
 
@@ -54,7 +56,9 @@ export function DeleteProjectModal({ open, target, onClose, redirectTo, onDelete
             删除项目 <span className="text-ink-700">「{target?.name}」</span>
           </DialogTitle>
           <div className="text-[13px] text-ink-500 mt-1">
-            项目下的所有方案与版本将一并归档，可由项目所有者从归档恢复
+            {isRepo
+              ? "推送过的所有版本一并归档，访客链接随即失效；G-canvas 之后再推送会提示仓库已不存在"
+              : "项目下的所有方案与版本将一并归档，可由项目所有者从归档恢复"}
           </div>
         </div>
 

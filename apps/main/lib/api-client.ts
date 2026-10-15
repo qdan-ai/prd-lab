@@ -224,6 +224,16 @@ export const snapshotsApi = {
     ),
 };
 
+// ---- G-canvas 仓库项目 ----
+
+export const reposApi = {
+  /** 「在查看器中打开」：签短期交接令牌，返回预览站查看器入口地址。 */
+  previewToken: (pid: string) =>
+    apiFetch<{ token: string; expiresIn: number; url: string }>(`/api/v1/repos/${pid}/preview-token`, {
+      method: "POST",
+    }),
+};
+
 // ---- snapshot files API (S9) ----
 
 export type SnapshotFileRow = {
@@ -342,6 +352,8 @@ export type SwitcherProject = {
   ownedByMe: boolean;
   /** 是否可管理（owner 或 team 项目管理员）→ 控制 ⋯ 菜单/删除/改名/新建方案显隐。 */
   canManage: boolean;
+  /** repo = G-canvas 仓库项目：只有一个内置方案，不列方案、不能新建方案 */
+  kind: "upload" | "repo";
   versions: Array<{
     id: string;
     name: string;

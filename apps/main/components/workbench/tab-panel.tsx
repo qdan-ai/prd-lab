@@ -13,6 +13,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeleteProjectModal } from "@/components/delete-project-modal";
 import { useCreateDialogStore } from "@/components/create-dialog/use-create-dialog-store";
+import { RepoChip } from "@/components/repo-project/repo-chip";
 import { formatRelative } from "./format";
 import { useWorkbenchSearchStore } from "./search-store";
 
@@ -26,6 +27,8 @@ export interface WorkbenchProject {
   ownedByMe: boolean;
   /** 可管理（owner 或 team 项目管理员）→ 控制卡片 ⋯ 删除菜单显隐。 */
   canManage: boolean;
+  /** repo = G-canvas 仓库项目：版本数为访客可见的版本数，时间为最近推送 */
+  kind: "upload" | "repo";
   snapshotCount: number;
   latestSnapshotAt: string | null;
 }
@@ -37,7 +40,9 @@ interface Props {
 
 export function WorkbenchTabPanel({ tab, projects }: Props) {
   const query = useWorkbenchSearchStore((s) => s.query);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; isRepo: boolean } | null>(
+    null,
+  );
 
   const filtered = useMemo(() => {
     const kw = query.trim().toLowerCase();
@@ -56,12 +61,13 @@ export function WorkbenchTabPanel({ tab, projects }: Props) {
         data-testid="workbench-grid"
       >
         {filtered.map((p) => (
-          <ProjectCard key={p.id} project={p} onDelete={() => setDeleteTarget({ id: p.id, name: p.name })} />
+          <ProjectCard key={p.id} project={p} onDelete={() => setDeleteTarget({ id: p.id, name: p.name, isRepo: p.kind === "repo" })} />
         ))}
       </ul>
       <DeleteProjectModal
         open={deleteTarget !== null}
         target={deleteTarget}
+        isRepo={deleteTarget?.isRepo}
         onClose={() => setDeleteTarget(null)}
       />
     </>
@@ -80,6 +86,7 @@ function ProjectCard({ project, onDelete }: { project: WorkbenchProject; onDelet
             {project.name}
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {project.kind === "repo" ? <RepoChip /> : null}
             <VisibilityChip visibility={project.visibility} />
             {project.canManage ? (
               <DropdownMenu>
@@ -131,6 +138,7 @@ function ProjectCard({ project, onDelete }: { project: WorkbenchProject; onDelet
 }
 
 function CardMeta({ project }: { project: WorkbenchProject }) {
+  const isRepo = project.kind === "repo";
   const hasSnapshot = project.snapshotCount > 0;
   const primary = hasSnapshot ? (
     <span className="text-ink-700">
@@ -139,13 +147,13 @@ function CardMeta({ project }: { project: WorkbenchProject }) {
         <>
           <span className="text-ink-300 mx-1.5">·</span>
           <span className="text-ink-500">
-            最近 {formatRelative(project.latestSnapshotAt)}
+            {isRepo ? "推送于" : "最近"} {formatRelative(project.latestSnapshotAt)}
           </span>
         </>
       ) : null}
     </span>
   ) : (
-    <span className="text-ink-400">还没有上传版本</span>
+    <span className="text-ink-400">{isRepo ? "还没有从 G-canvas 推送版本" : "还没有上传版本"}</span>
   );
 
   return (
@@ -158,7 +166,7 @@ function CardMeta({ project }: { project: WorkbenchProject }) {
   );
 }
 
-function VisibilityChip({ visibility }: { visibility: "private" | "team" }) {
+export function VisibilityChip({ visibility }: { visibility: "private" | "team" }) {
   const isPrivate = visibility === "private";
   return (
     <span

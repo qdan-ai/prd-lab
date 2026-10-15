@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { checkRepoPath, parseSyncManifest, REPO_FORMAT } from "./manifest";
+import {
+  CHANGE_MANIFEST_FORMAT,
+  checkChangeManifest,
+  checkRepoPath,
+  parseSyncManifest,
+  REPO_FORMAT,
+  REPO_SUMMARY_MAX,
+} from "./manifest";
 import { blobS3Key, contentDigest, draftKey } from "./digest";
 
 const SHA_A = "a".repeat(64);
@@ -15,7 +22,7 @@ describe("parseSyncManifest", () => {
     const r = parseSyncManifest(body());
     expect(r).toEqual({
       ok: true,
-      manifest: { versions: [], withdraw: [], online: undefined, draft: null, hidden: [] },
+      manifest: { versions: [], withdraw: [], online: undefined, draft: null, hidden: [], summary: undefined },
     });
   });
 
@@ -138,5 +145,77 @@ describe("contentDigest / draftKey", () => {
 
   it("对象存储键按项目隔离", () => {
     expect(blobS3Key("p1", SHA_A)).toBe(`projects/p1/blobs/${SHA_A}`);
+  });
+});
+
+describe("parseSyncManifest · 机器清单与项目简介", () => {
+  const ver = (extra: Record<string, unknown> = {}) => ({ key: "c1", number: "v1", ...extra });
+
+  it("versions[].manifest 原样带出，不在解析时校验；没带为 null", () => {
+    const m = { format: "whatever", anything: [1, 2] };
+    const r = parseSyncManifest(body({ versions: [ver({ manifest: m }), { key: "c2" }] }));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.manifest.versions[0]!.manifest).toEqual(m);
+    expect(r.manifest.versions[1]!.manifest).toBeNull();
+  });
+
+  it("project.summary：给了字符串就带出；没带 project 或没带 summary = 不改", () => {
+    const set = parseSyncManifest(body({ project: { summary: "支付前后三屏" } }));
+    expect(set.ok && set.manifest.summary).toBe("支付前后三屏");
+    const none = parseSyncManifest(body());
+    expect(none.ok && none.manifest.summary).toBeUndefined();
+    const noField = parseSyncManifest(body({ project: {} }));
+    expect(noField.ok && noField.manifest.summary).toBeUndefined();
+  });
+
+  it("project.summary 为 null 或空串 = 清空", () => {
+    for (const summary of [null, ""]) {
+      const r = parseSyncManifest(body({ project: { summary } }));
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.manifest.summary).toBeNull();
+    }
+  });
+
+  it("project.summary 超长或不是字符串、project 不是对象 → validation_error", () => {
+    const at = parseSyncManifest(body({ project: { summary: "x".repeat(REPO_SUMMARY_MAX) } }));
+    expect(at.ok).toBe(true);
+    for (const project of [{ summary: "x".repeat(REPO_SUMMARY_MAX + 1) }, { summary: 3 }, "简介"]) {
+      const r = parseSyncManifest(body({ project }));
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error.code).toBe("validation_error");
+    }
+  });
+});
+
+describe("checkChangeManifest", () => {
+  const DIGEST = "d".repeat(64);
+  const good = () => ({
+    format: CHANGE_MANIFEST_FORMAT,
+    projectId: "p1",
+    version: { key: "c1", line: "main" },
+    contentDigest: DIGEST,
+    requirements: [{ id: "R-1", items: [{ item: "page:b1" }] }],
+  });
+
+  it("格式号、key、内容指纹都对得上 → 可以存（其余字段不看）", () => {
+    expect(checkChangeManifest(good(), "c1", DIGEST)).toBeNull();
+    expect(checkChangeManifest({ ...good(), requirements: "随便什么形状" }, "c1", DIGEST)).toBeNull();
+  });
+
+  it("三种不符：格式号、版本 key、内容指纹", () => {
+    expect(checkChangeManifest({ ...good(), format: "prdlab-change/2" }, "c1", DIGEST)).toBe("format");
+    expect(checkChangeManifest(good(), "c2", DIGEST)).toBe("key");
+    expect(checkChangeManifest({ ...good(), version: "c1" }, "c1", DIGEST)).toBe("key");
+    expect(checkChangeManifest(good(), "c1", "e".repeat(64))).toBe("content_digest");
+  });
+
+  it("不是对象 → not_object", () => {
+    for (const m of ["清单", 3, [good()], true]) expect(checkChangeManifest(m, "c1", DIGEST)).toBe("not_object");
+  });
+
+  it("序列化超过 1 MB → too_large", () => {
+    const big = { ...good(), pad: "x".repeat(1024 * 1024) };
+    expect(checkChangeManifest(big, "c1", DIGEST)).toBe("too_large");
   });
 });

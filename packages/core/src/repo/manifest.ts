@@ -1,19 +1,25 @@
 /**
  * 仓库式推送的清单格式（gcanvas-repo/1）解析与校验。纯函数，不碰数据库与对象存储。
  *
- * 清单由 G-canvas 每次推送整体发来：全部版本的元数据（新版本带文件表）、要撤回的 key、
- * 上线标记、可选草稿、首个版本之父「开始前的样子」。字段定义见
+ * 清单由 G-canvas 每次推送整体发来：全部版本的元数据（新版本带文件表与机器清单）、要撤回的 key、
+ * 上线标记、可选草稿、首个版本之父「开始前的样子」、项目简介。字段定义见
  * ai/specs/2026-10-15-repo-push-design.md §3.2。
  */
 
 export const REPO_FORMAT = "gcanvas-repo/1";
 
-/** 单版本上限，沿用 zip 上传的解包上限（packages/core/src/zip-utils ZIP_LIMITS）。 */
+/**
+ * 仓库项目的上限。单个文件与 zip 上传同为 20 MB（上传时整个读进内存算指纹）；
+ * 每版的文件数与合计按「整个版本历史一起同步、文件按内容去重」定：一版内容超限就永远推不上去。
+ */
 export const REPO_LIMITS = {
   maxFileBytes: 20 * 1024 * 1024,
-  maxFilesPerVersion: 500,
-  maxBytesPerVersion: 200 * 1024 * 1024,
+  maxFilesPerVersion: 2000,
+  maxBytesPerVersion: 1024 * 1024 * 1024,
 } as const;
+
+/** 项目简介上限（字符），与版本简介一致。 */
+export const REPO_SUMMARY_MAX = 20000;
 
 /** 讨论记录目录：只在本机，服务端拒收（本机过滤出错时尽早暴露）。 */
 export const DISCUSSIONS_PREFIX = "docs/discussions/";
@@ -37,6 +43,8 @@ export type ManifestVersion = {
   specDocs: string[] | null;
   /** null = 未带文件表（服务端已有这一版时可省） */
   files: ManifestFile[] | null;
+  /** 机器清单原样（未校验）；null = 没带。校验在落库时做，不符只丢清单，见 checkChangeManifest */
+  manifest: unknown;
 };
 
 export type ManifestDraft = {
@@ -55,6 +63,8 @@ export type SyncManifest = {
   /** null = 撤下远端草稿 */
   draft: ManifestDraft | null;
   hidden: ManifestHidden[];
+  /** 项目简介：undefined = 本次不改；null = 清空 */
+  summary: string | null | undefined;
 };
 
 export type ManifestError = {
@@ -180,6 +190,7 @@ function parseVersion(v: unknown, i: number): ManifestVersion {
     changes: v.changes === undefined ? null : v.changes,
     specDocs,
     files: optFiles(v.files, at),
+    manifest: v.manifest ?? null,
   };
 }
 
@@ -247,9 +258,43 @@ export function parseSyncManifest(body: unknown): ParseResult {
       return { key: h.key, files: optFiles(h.files, `hidden[${i}]`) };
     });
 
-    return { ok: true, manifest: { versions, withdraw, online, draft, hidden } };
+    let summary: string | null | undefined;
+    if (body.project !== undefined && body.project !== null) {
+      if (!isObject(body.project)) fail("project must be an object");
+      if (body.project.summary !== undefined) {
+        // 空串与 null 同义：清空简介
+        summary = optString(body.project.summary, "project.summary", REPO_SUMMARY_MAX) || null;
+      }
+    }
+
+    return { ok: true, manifest: { versions, withdraw, online, draft, hidden, summary } };
   } catch (e) {
     if (e instanceof ParseFail) return { ok: false, error: e.error };
     throw e;
   }
+}
+
+/** 机器清单的格式号（G-canvas change-manifest.ts 生成）。 */
+export const CHANGE_MANIFEST_FORMAT = "prdlab-change/1";
+
+/** 单份机器清单序列化后的上限（字节）；超过只丢清单，不让它拖垮整次推送。 */
+export const CHANGE_MANIFEST_MAX_BYTES = 1024 * 1024;
+
+export type ManifestRejectReason = "not_object" | "format" | "key" | "content_digest" | "too_large";
+
+/**
+ * 校验一份机器清单是否属于这一版：格式号、`version.key`、`contentDigest`（与服务端按文件表算的同一个）。
+ * 只看这三处，其余字段原样存取（清单的粒度与形状由 G-canvas 定）。返回 null 表示可以存。
+ */
+export function checkChangeManifest(
+  manifest: unknown,
+  versionKey: string,
+  contentDigest: string,
+): ManifestRejectReason | null {
+  if (!isObject(manifest)) return "not_object";
+  if (manifest.format !== CHANGE_MANIFEST_FORMAT) return "format";
+  if (!isObject(manifest.version) || manifest.version.key !== versionKey) return "key";
+  if (manifest.contentDigest !== contentDigest) return "content_digest";
+  if (Buffer.byteLength(JSON.stringify(manifest), "utf8") > CHANGE_MANIFEST_MAX_BYTES) return "too_large";
+  return null;
 }

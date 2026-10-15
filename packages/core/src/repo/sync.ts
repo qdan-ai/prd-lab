@@ -9,6 +9,7 @@ import { blobS3Key, contentDigest, draftKey } from "./digest";
 import {
   REPO_FORMAT,
   REPO_LIMITS,
+  checkChangeManifest,
   isValidSha256,
   type ManifestFile,
   type ManifestVersion,
@@ -89,6 +90,10 @@ type PreparedEntry = {
   rendererMetadata: Record<string, unknown> | null;
   meta: ManifestVersion | null;
   draft: { line: string | null; basedOn: string | null } | null;
+  /** 校验通过、要随新版本存下的机器清单；null = 没带或不符 */
+  manifest: unknown;
+  /** 带了机器清单但不符（只丢清单，版本照常落库） */
+  manifestRejected: boolean;
 };
 
 export type SyncResult = {
@@ -97,6 +102,8 @@ export type SyncResult = {
   created: string[];
   updated: string[];
   withdrawn: string[];
+  /** 带了机器清单但校验不符、清单被丢掉的版本 key（版本本身照常落库） */
+  manifestRejected: string[];
 };
 
 /**
@@ -109,15 +116,35 @@ export async function syncRepo(repo: RepoProject, userId: string, manifest: Sync
 
   // ---- 事务外：确定要新建的条目并校验 ----
   const pending: Array<Omit<PreparedEntry, "sizes" | "rendererName" | "rendererMetadata">> = [];
+  const noManifest = { manifest: null, manifestRejected: false };
   for (const v of manifest.versions) {
     if (existingBefore.has(v.key)) continue;
     if (!v.files) throw new RepoError("validation_error", "files_required", { key: v.key });
-    pending.push({ key: v.key, role: "version", files: v.files, digest: contentDigest(v.files), meta: v, draft: null });
+    const digest = contentDigest(v.files);
+    const rejected = v.manifest !== null && checkChangeManifest(v.manifest, v.key, digest) !== null;
+    pending.push({
+      key: v.key,
+      role: "version",
+      files: v.files,
+      digest,
+      meta: v,
+      draft: null,
+      manifest: rejected ? null : v.manifest,
+      manifestRejected: rejected,
+    });
   }
   for (const h of manifest.hidden) {
     if (existingBefore.has(h.key)) continue;
     if (!h.files) throw new RepoError("validation_error", "files_required", { key: h.key });
-    pending.push({ key: h.key, role: "hidden", files: h.files, digest: contentDigest(h.files), meta: null, draft: null });
+    pending.push({
+      key: h.key,
+      role: "hidden",
+      files: h.files,
+      digest: contentDigest(h.files),
+      meta: null,
+      draft: null,
+      ...noManifest,
+    });
   }
   let wantedDraftKey: string | null = null;
   if (manifest.draft) {
@@ -131,6 +158,7 @@ export async function syncRepo(repo: RepoProject, userId: string, manifest: Sync
         digest,
         meta: null,
         draft: { line: manifest.draft.line, basedOn: manifest.draft.basedOn },
+        ...noManifest,
       });
     }
   }
@@ -177,6 +205,7 @@ export async function syncRepo(repo: RepoProject, userId: string, manifest: Sync
 
     const created: string[] = [];
     const updated: string[] = [];
+    const manifestRejected: string[] = [];
 
     const insertEntry = async (p: PreparedEntry) => {
       const snapshotId = randomUUID();
@@ -217,19 +246,30 @@ export async function syncRepo(repo: RepoProject, userId: string, manifest: Sync
         kind: p.role === "version" ? (p.meta?.kind ?? "version") : p.role,
         ...(p.meta ? versionMetaColumns(p.meta) : {}),
         ...(p.draft ? { line: p.draft.line, parentKey: p.draft.basedOn } : {}),
+        manifest: p.manifest as object | null,
         createdAt: now,
         updatedAt: now,
       });
       created.push(p.key);
+      if (p.manifestRejected) manifestRejected.push(p.key);
     };
     const preparedByKey = new Map(prepared.map((p) => [p.key, p]));
 
-    // 版本：已有的只改元数据（撤回过的恢复），新的建快照
+    // 版本：已有的只改元数据（撤回过的恢复；机器清单只在还没有时写），新的建快照
     for (const v of manifest.versions) {
-      if (existing.has(v.key)) {
+      const row = existing.get(v.key);
+      if (row) {
+        let manifestColumn = {};
+        if (v.manifest !== null && !row.hasManifest) {
+          if (checkChangeManifest(v.manifest, v.key, row.contentDigest) === null) {
+            manifestColumn = { manifest: v.manifest as object };
+          } else {
+            manifestRejected.push(v.key);
+          }
+        }
         await tx
           .update(repoVersions)
-          .set({ ...versionMetaColumns(v), kind: v.kind, withdrawnAt: null, updatedAt: now })
+          .set({ ...versionMetaColumns(v), ...manifestColumn, kind: v.kind, withdrawnAt: null, updatedAt: now })
           .where(and(eq(repoVersions.projectId, repo.id), eq(repoVersions.key, v.key)));
         updated.push(v.key);
       } else {
@@ -289,10 +329,11 @@ export async function syncRepo(repo: RepoProject, userId: string, manifest: Sync
         ...(manifest.online
           ? { onlineKey: manifest.online.key, onlinePeriods: manifest.online.periods as object | null }
           : {}),
+        ...(manifest.summary !== undefined ? { summary: manifest.summary } : {}),
       })
       .where(eq(repoState.projectId, repo.id));
 
-    return { pushedAt: now, draftKey: wantedDraftKey, created, updated, withdrawn };
+    return { pushedAt: now, draftKey: wantedDraftKey, created, updated, withdrawn, manifestRejected };
   });
 }
 
@@ -317,18 +358,36 @@ function mustPrepared(map: Map<string, PreparedEntry>, key: string): PreparedEnt
   return p;
 }
 
-type ExistingRow = { kind: "version" | "baseline" | "draft" | "hidden"; withdrawnAt: Date | null };
+type ExistingRow = {
+  kind: "version" | "baseline" | "draft" | "hidden";
+  withdrawnAt: Date | null;
+  hasManifest: boolean;
+  /** 已存快照的内容指纹：已有版本补带的机器清单按它校验 */
+  contentDigest: string;
+};
 
 async function loadKeys(
   projectId: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   conn: any = db,
 ): Promise<Map<string, ExistingRow>> {
-  const rows: Array<{ key: string } & ExistingRow> = await conn
-    .select({ key: repoVersions.key, kind: repoVersions.kind, withdrawnAt: repoVersions.withdrawnAt })
+  const rows: Array<{ key: string; hasManifest: number | string } & Omit<ExistingRow, "hasManifest">> = await conn
+    .select({
+      key: repoVersions.key,
+      kind: repoVersions.kind,
+      withdrawnAt: repoVersions.withdrawnAt,
+      hasManifest: sql<number>`${repoVersions.manifest} IS NOT NULL`,
+      contentDigest: snapshots.contentSha256,
+    })
     .from(repoVersions)
+    .innerJoin(snapshots, eq(repoVersions.snapshotId, snapshots.id))
     .where(eq(repoVersions.projectId, projectId));
-  return new Map(rows.map((r) => [r.key, { kind: r.kind, withdrawnAt: r.withdrawnAt }]));
+  return new Map(
+    rows.map((r) => [
+      r.key,
+      { kind: r.kind, withdrawnAt: r.withdrawnAt, hasManifest: Number(r.hasManifest) === 1, contentDigest: r.contentDigest },
+    ]),
+  );
 }
 
 function rowCount(result: unknown): number {

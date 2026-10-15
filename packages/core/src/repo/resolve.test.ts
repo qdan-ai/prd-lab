@@ -73,14 +73,14 @@ describe("resolveRepoVersion", () => {
   it("号只出现在已撤回的版本上 → 落默认版本，提示 withdrawn", () => {
     expect(resolveRepoVersion(base, "v1.2")).toEqual({
       key: "k1",
-      notice: { reason: "withdrawn", requested: "v1.2", openedKey: "k1", openedNumber: "v1.0" },
+      notice: { reason: "withdrawn", requested: "v1.2", openedKey: "k1", openedNumber: "v1.0", locked: false },
     });
   });
 
   it("没有这个号 → 落默认版本，提示 not_found", () => {
     expect(resolveRepoVersion(base, "v9")).toEqual({
       key: "k1",
-      notice: { reason: "not_found", requested: "v9", openedKey: "k1", openedNumber: "v1.0" },
+      notice: { reason: "not_found", requested: "v9", openedKey: "k1", openedNumber: "v1.0", locked: false },
     });
   });
 
@@ -92,5 +92,50 @@ describe("resolveRepoVersion", () => {
   it("同号多个未撤回 → 封版最新的", () => {
     const dup = input([v("a", "v2"), v("b", "v2")]);
     expect(resolveRepoVersion(dup, "v2").key).toBe("b");
+  });
+});
+
+describe("resolveRepoVersion · 锁版本链接 k", () => {
+  const vs = [
+    v("k1aaaaaaaaaa", "v1.0"),
+    v("k2bbbbbbbbbb", "v1.1"),
+    v("k3cccccccccc", "v1.2", { withdrawn: true }),
+  ];
+  const base = input(vs, { onlineKey: "k1aaaaaaaaaa", draft: { key: "draft-d1" } });
+
+  it("key 有效 → 打开它、无提示（哪怕不是默认版本）", () => {
+    expect(resolveRepoVersion(base, null, "k2bbbbbbbbbb")).toEqual({ key: "k2bbbbbbbbbb", notice: null });
+  });
+
+  it("同时带 v 与 k → 以 k 为准", () => {
+    expect(resolveRepoVersion(base, "v1.0", "k2bbbbbbbbbb")).toEqual({ key: "k2bbbbbbbbbb", notice: null });
+  });
+
+  it("当前草稿的 key → 打开草稿", () => {
+    expect(resolveRepoVersion(base, null, "draft-d1")).toEqual({ key: "draft-d1", notice: null });
+  });
+
+  it("已撤回 → 不打开任何版本，锁定提示带 key 前 8 位与默认版本", () => {
+    expect(resolveRepoVersion(base, "v1.0", "k3cccccccccc")).toEqual({
+      key: null,
+      notice: { reason: "withdrawn", requested: "k3cccccc", openedKey: "k1aaaaaaaaaa", openedNumber: "v1.0", locked: true },
+    });
+  });
+
+  it("不存在 → 不回落，锁定提示 not_found", () => {
+    expect(resolveRepoVersion(base, null, "zzzzzzzzzzzz")).toEqual({
+      key: null,
+      notice: { reason: "not_found", requested: "zzzzzzzz", openedKey: "k1aaaaaaaaaa", openedNumber: "v1.0", locked: true },
+    });
+  });
+
+  it("撤回后又以同号重封（新 key）→ 旧 key 仍判已撤回，不跟到同号新版", () => {
+    const again = input([...vs, v("k5eeeeeeeeee", "v1.2")], { onlineKey: "k1aaaaaaaaaa" });
+    expect(resolveRepoVersion(again, null, "k3cccccccccc").key).toBeNull();
+    expect(resolveRepoVersion(again, null, "k3cccccccccc").notice?.reason).toBe("withdrawn");
+  });
+
+  it("k 为空串 → 按 v 解析（不当作锁定）", () => {
+    expect(resolveRepoVersion(base, "v1.1", "")).toEqual({ key: "k2bbbbbbbbbb", notice: null });
   });
 });

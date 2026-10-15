@@ -48,6 +48,7 @@ import {
  *        - + repo_state（一仓库一行：系统方案、上线标记、最近推送）
  *        - + repo_versions（版本图元数据，一行对应系统方案下的一个快照）
  *        - + repo_blobs（项目内按内容指纹登记已上传文件，MinIO 键 projects/<pid>/blobs/<sha256>）
+ *   repo-push 字段对齐（迁移 0005）：repo_versions + manifest（机器清单）；repo_state + summary（项目简介）
  */
 
 const uuidPk = () =>
@@ -267,6 +268,8 @@ export const repoState = mysqlTable("repo_state", {
   format: varchar("format", { length: 32 }),
   onlineKey: varchar("online_key", { length: 128 }),
   onlinePeriods: json("online_periods"),
+  // 项目简介：G-canvas 推送时带上（sync.project.summary），访客页与主站项目页显示
+  summary: text("summary"),
   lastPushedAt: datetimeFsp("last_pushed_at"),
   lastPushedBy: varchar("last_pushed_by", { length: 36 }).references(() => users.id, {
     onDelete: "set null",
@@ -301,6 +304,8 @@ export const repoVersions = mysqlTable(
     sealedAt: datetimeFsp("sealed_at"),
     changes: json("changes"),
     specDocs: json("spec_docs"),
+    // 机器清单（prdlab-change/1）：随新版本推来，校验通过才存；已存的不再改写
+    manifest: json("manifest"),
     withdrawnAt: datetimeFsp("withdrawn_at"),
     createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
     updatedAt: datetimeFsp("updated_at").notNull().default(nowDefault()),

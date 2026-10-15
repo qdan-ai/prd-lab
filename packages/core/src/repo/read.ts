@@ -52,6 +52,7 @@ async function loadStateRow(projectId: string) {
     .select({
       onlineKey: repoState.onlineKey,
       onlinePeriods: repoState.onlinePeriods,
+      summary: repoState.summary,
       lastPushedAt: repoState.lastPushedAt,
       lastPushedBy: users.name,
     })
@@ -59,7 +60,7 @@ async function loadStateRow(projectId: string) {
     .leftJoin(users, eq(repoState.lastPushedBy, users.id))
     .where(eq(repoState.projectId, projectId))
     .limit(1);
-  return rows[0] ?? { onlineKey: null, onlinePeriods: null, lastPushedAt: null, lastPushedBy: null };
+  return rows[0] ?? { onlineKey: null, onlinePeriods: null, summary: null, lastPushedAt: null, lastPushedBy: null };
 }
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
@@ -111,7 +112,7 @@ export async function getRepoPushState(repo: RepoProject) {
   const draft = rows.find((r) => r.kind === "draft" && r.withdrawnAt === null);
   return {
     format: REPO_FORMAT,
-    project: { id: repo.id, name: repo.name },
+    project: { id: repo.id, name: repo.name, summary: state.summary },
     versions: rows
       .filter((r) => r.kind === "version" || r.kind === "baseline")
       .map((r) => ({ ...versionView(r), withdrawn: r.withdrawnAt !== null })),
@@ -146,7 +147,7 @@ export async function getRepoView(repo: RepoProject) {
   const draft = live.find((r) => r.kind === "draft");
   const view = {
     format: REPO_FORMAT,
-    project: { id: repo.id, name: repo.name },
+    project: { id: repo.id, name: repo.name, summary: state.summary },
     versions: live.filter((r) => r.kind === "version" || r.kind === "baseline").map(versionView),
     draft: draft
       ? { key: draft.key, line: draft.line, basedOn: draft.parentKey, pushedAt: draft.createdAt.toISOString() }

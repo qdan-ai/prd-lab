@@ -36,6 +36,13 @@
       "when": 1792034611249,
       "tag": "0004_repo_push",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1792085058417,
+      "tag": "0005_repo_manifest_summary",
+      "breakpoints": true
     }
   ]
 }

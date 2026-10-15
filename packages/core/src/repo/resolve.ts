@@ -5,6 +5,9 @@
  * 默认：上线版本（未撤回）→ 主线最新封版 → 草稿 → null（空仓库）。
  * `?v=<版本号>`：在未撤回的版本 / 基线里按版本号匹配（忽略大小写与开头的 v），同号取封版最新；
  * `?v=draft` 指草稿。找不到落到默认版本，并给出 notice 供查看器提示。
+ * 锁版本链接 `?k=<key>`（机器入口、写进已封 spec 的链接）：严格按 key，永不回落——
+ * 已撤回或不存在时不打开任何版本（key = null），notice 带 locked 与可供手动打开的默认版本。
+ * 同时带 k 与 v 时以 k 为准。
  */
 
 export const MAIN_LINE = "main";
@@ -28,10 +31,13 @@ export type ResolveInput = {
 
 export type ResolveNotice = {
   reason: "not_found" | "withdrawn";
+  /** `?v=` 原样；锁版本链接给 key 前 8 位 */
   requested: string;
-  /** 实际打开的版本 key 与版本号（落到草稿时号为 null） */
+  /** 实际打开的版本 key 与版本号（落到草稿时号为 null）；锁定时是「打开当前版本」要去的默认版本 */
   openedKey: string | null;
   openedNumber: string | null;
+  /** 锁版本链接：查看器不自动换版本，只给整块提示与手动入口 */
+  locked: boolean;
 };
 
 export type ResolveResult = { key: string | null; notice: ResolveNotice | null };
@@ -56,8 +62,13 @@ export function defaultVersionKey(input: ResolveInput): string | null {
   return input.draft?.key ?? null;
 }
 
-export function resolveRepoVersion(input: ResolveInput, requested: string | null | undefined): ResolveResult {
+export function resolveRepoVersion(
+  input: ResolveInput,
+  requested: string | null | undefined,
+  lockedKey?: string | null,
+): ResolveResult {
   const fallback = defaultVersionKey(input);
+  if (lockedKey) return resolveLocked(input, lockedKey, fallback);
   if (requested === undefined || requested === null || requested.trim() === "") {
     return { key: fallback, notice: null };
   }
@@ -77,6 +88,24 @@ export function resolveRepoVersion(input: ResolveInput, requested: string | null
       requested,
       openedKey: fallback,
       openedNumber: opened?.number ?? null,
+      locked: false,
+    },
+  };
+}
+
+function resolveLocked(input: ResolveInput, lockedKey: string, fallback: string | null): ResolveResult {
+  const hit = input.versions.find((v) => v.key === lockedKey);
+  if (hit && !hit.withdrawn) return { key: hit.key, notice: null };
+  if (!hit && input.draft?.key === lockedKey) return { key: lockedKey, notice: null };
+  const opened = input.versions.find((v) => v.key === fallback) ?? null;
+  return {
+    key: null,
+    notice: {
+      reason: hit ? "withdrawn" : "not_found",
+      requested: lockedKey.slice(0, 8),
+      openedKey: fallback,
+      openedNumber: opened?.number ?? null,
+      locked: true,
     },
   };
 }

@@ -15,12 +15,18 @@ export {
   issueShareToken,
   reissueToken,
   verifyToken,
+  issueRepoToken,
+  issueRepoShareToken,
+  reissueRepoToken,
+  verifyRepoToken,
   PREVIEW_HANDOFF_TTL_SECONDS,
   PREVIEW_SESSION_TTL_SECONDS,
   PREVIEW_COOKIE_MAX_AGE_SECONDS,
   type TokenKind,
   type TokenPayload,
   type VerifyResult,
+  type RepoTokenPayload,
+  type VerifyRepoResult,
 } from "./hmac-token";
 export {
   issueShareCookie,

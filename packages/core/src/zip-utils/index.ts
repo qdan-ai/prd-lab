@@ -209,7 +209,7 @@ function stripSingleTopLevelDir(files: ZipFile[]): ZipFile[] {
 }
 
 /** 从 rel_path 后缀推断 content-type（最佳实践：白名单 + 默认 octet-stream） */
-function sniffContentType(relPath: string): string {
+export function sniffContentType(relPath: string): string {
   const ext = relPath.split(".").pop()?.toLowerCase() ?? "";
   const map: Record<string, string> = {
     html: "text/html; charset=utf-8",

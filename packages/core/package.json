@@ -10,7 +10,8 @@
     "./db": "./src/db/index.ts",
     "./db/schema": "./src/db/schema.ts",
     "./zip-utils": "./src/zip-utils/index.ts",
-    "./renderers": "./src/renderers/registry.ts"
+    "./renderers": "./src/renderers/registry.ts",
+    "./repo": "./src/repo/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

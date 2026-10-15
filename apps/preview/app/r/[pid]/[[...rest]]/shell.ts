@@ -3,7 +3,7 @@ import type { ResolveNotice } from "@prd-lab/core/repo";
 /**
  * 仓库查看器外壳（预览站 /r/<pid>）。
  *
- * 挂载点约定：页面注入 window.__PRD_LAB_REPO__（数据地址、?v= 解析结果），留 #repo-viewer-root；
+ * 挂载点约定：页面注入 window.__PRD_LAB_REPO__（数据地址、?v= / ?k= 解析结果、项目访客链接），留 #repo-viewer-root；
  * G-canvas 只读成品包接入后，外壳加载它并调用 mountRepoViewer(el, { reader, initialVersion,
  * onVersionChange, capabilities })，reader 用 apiBase 下的 repo.json / files / v 三类地址实现。
  * 成品包接入前，外壳本身渲染一个只列版本的占位视图。
@@ -13,8 +13,11 @@ export type RepoShellConfig = {
   apiBase: string;
   repoJson: string;
   initialVersion: string | null;
+  /** 锁版本链接指向的版本已撤回或不存在时 notice.locked = true，且 initialVersion = null */
   notice: ResolveNotice | null;
   versionParam: "v";
+  /** 项目访客链接（主站 /share/<链接号>）；没有开放访客链接时为 null。查看器据此拼「复制此版本链接」 */
+  shareUrl: string | null;
 };
 
 export type RepoShellVersion = { key: string; number: string | null; name: string | null };
@@ -36,17 +39,24 @@ export function renderRepoShell(input: {
   hasDraft: boolean;
 }): string {
   const { config } = input;
+  const { notice } = config;
   const opened = input.versions.find((v) => v.key === config.initialVersion);
   const openedLabel = opened
     ? `${opened.number ?? ""} ${opened.name ?? ""}`.trim()
     : config.initialVersion && input.hasDraft
       ? "草稿"
-      : "（还没有推送任何版本）";
-  const noticeHtml = config.notice
-    ? `<p class="notice">${escapeHtml(config.notice.requested)} ${
-        config.notice.reason === "withdrawn" ? "已被撤回" : "已改号或不存在"
-      }，已为你打开 ${escapeHtml(config.notice.openedNumber ?? openedLabel)}</p>`
-    : "";
+      : notice?.locked
+        ? "（未打开）"
+        : "（还没有推送任何版本）";
+  const noticeHtml = !notice
+    ? ""
+    : notice.locked
+      ? `<p class="notice" data-locked="true">这个链接固定指向的版本（${escapeHtml(notice.requested)}）${
+          notice.reason === "withdrawn" ? "已被撤回" : "不存在"
+        }${notice.openedNumber ? `，当前版本是 ${escapeHtml(notice.openedNumber)}` : ""}</p>`
+      : `<p class="notice">${escapeHtml(notice.requested)} ${
+          notice.reason === "withdrawn" ? "已被撤回" : "已改号或不存在"
+        }，已为你打开 ${escapeHtml(notice.openedNumber ?? openedLabel)}</p>`;
   const list = input.versions
     .map(
       (v) =>

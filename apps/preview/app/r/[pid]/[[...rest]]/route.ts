@@ -9,6 +9,7 @@ import {
 } from "@prd-lab/core";
 import {
   findSnapshotFile,
+  getRepoShare,
   getRepoView,
   listSnapshotFiles,
   loadRepoProject,
@@ -27,15 +28,18 @@ type Ctx = { params: Promise<{ pid: string; rest?: string[] }> };
 /**
  * GET /r/:pid/…  仓库项目的只读数据（G-canvas 只读查看器的 RepoReader HTTP 实现）
  *
- *   /r/:pid/                 查看器外壳（?v= 解析结果注入页面）
- *   /r/:pid/repo.json        getRepo()：未撤回的版本图、上线标记、默认版本（带 ?v= 时附 resolved）
+ *   /r/:pid/                 查看器外壳（?v= / ?k= 解析结果与项目访客链接注入页面）
+ *   /r/:pid/repo.json        getRepo()：未撤回的版本图、上线标记、默认版本（带 ?v= 或 ?k= 时附 resolved）
  *   /r/:pid/files/:key       listFiles(key)
  *   /r/:pid/v/:key/<路径>    readText / fileUrl：某版本某文件原文
+ *
+ * `?k=<key>` 是锁版本链接（主站 /r/<pid>/k/<key> 转来）：严格按 key，已撤回或不存在时不回落（resolveRepoVersion）。
  *
  * 鉴权与 /p/:snapshotId 同一机制，作用对象换成整个仓库：
  *   ?token=<300s 交接仓库令牌> → 重签 12h 会话令牌写 cookie（Path=/r/:pid，Max-Age 30d）；
  *   之后凭 cookie；会话过期时 document 导航 302 回主站重签，其余请求 401。
- * 每个请求再校验 key 属于本仓库：已撤回 → 410，不存在 → 404。
+ * 每个请求再校验 key 属于本仓库：已撤回 → 410，不存在 → 404。两种 404 用响应头
+ * `X-Repo-Error: version_not_found | file_not_found` 区分（查看器把后者当「没有这个文件」）。
  */
 export async function GET(request: NextRequest, { params }: Ctx) {
   const { pid, rest = [] } = await params;
@@ -71,7 +75,7 @@ export async function GET(request: NextRequest, { params }: Ctx) {
     throw e;
   }
 
-  const response = await dispatch(repo, rest, request);
+  const response = await dispatch(repo, rest, request, verified.payload.origin ?? null);
   if (tokenInQuery) {
     response.headers.append(
       "Set-Cookie",
@@ -82,12 +86,21 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   return response;
 }
 
-async function dispatch(repo: RepoProject, rest: string[], request: NextRequest): Promise<Response> {
+/**
+ * @param mainOrigin 主站 origin，取自会话令牌里受签名保护的 claim；拼项目访客链接用，没有时不给链接
+ */
+async function dispatch(
+  repo: RepoProject,
+  rest: string[],
+  request: NextRequest,
+  mainOrigin: string | null,
+): Promise<Response> {
   const v = request.nextUrl.searchParams.get("v");
+  const k = request.nextUrl.searchParams.get("k");
 
   if (rest.length === 0) {
-    const { view, resolveInput } = await getRepoView(repo);
-    const resolved = resolveRepoVersion(resolveInput, v);
+    const [{ view, resolveInput }, share] = await Promise.all([getRepoView(repo), getRepoShare(repo.versionId)]);
+    const resolved = resolveRepoVersion(resolveInput, v, k);
     const html = renderRepoShell({
       projectName: repo.name,
       versions: view.versions.map((x) => ({ key: x.key, number: x.number, name: x.name })),
@@ -98,6 +111,7 @@ async function dispatch(repo: RepoProject, rest: string[], request: NextRequest)
         initialVersion: resolved.key,
         notice: resolved.notice,
         versionParam: "v",
+        shareUrl: share && mainOrigin ? `${mainOrigin}/share/${share.shareId}` : null,
       },
     });
     return new Response(html, {
@@ -113,7 +127,10 @@ async function dispatch(repo: RepoProject, rest: string[], request: NextRequest)
 
   if (rest.length === 1 && rest[0] === "repo.json") {
     const { view, resolveInput } = await getRepoView(repo);
-    return json(200, v === null ? view : { ...view, resolved: resolveRepoVersion(resolveInput, v) });
+    return json(
+      200,
+      v === null && k === null ? view : { ...view, resolved: resolveRepoVersion(resolveInput, v, k) },
+    );
   }
 
   if (rest.length === 2 && rest[0] === "files") {
@@ -136,7 +153,7 @@ async function dispatch(repo: RepoProject, rest: string[], request: NextRequest)
     const found = await lookupRepoKey(repo.id, rest[1]!);
     if (found.status !== "ok") return keyError(found.status);
     const file = await findSnapshotFile(found.snapshotId, relPath);
-    if (!file) return text(404, "file not found");
+    if (!file) return text(404, "file not found", { "X-Repo-Error": "file_not_found" });
     return streamObject(file.s3Key, file.contentType);
   }
 
@@ -169,15 +186,15 @@ async function streamObject(s3Key: string, contentType: string): Promise<Respons
 function keyError(status: "withdrawn" | "not_found"): Response {
   return status === "withdrawn"
     ? json(410, { error: "withdrawn", message: "该版本已被撤回" })
-    : json(404, { error: "not_found", message: "版本不存在" });
+    : json(404, { error: "not_found", message: "版本不存在" }, "no-store", { "X-Repo-Error": "version_not_found" });
 }
 
-function json(status: number, body: unknown, cacheControl = "no-store"): Response {
-  return Response.json(body, { status, headers: { "Cache-Control": cacheControl } });
+function json(status: number, body: unknown, cacheControl = "no-store", extra: Record<string, string> = {}): Response {
+  return Response.json(body, { status, headers: { "Cache-Control": cacheControl, ...extra } });
 }
 
-function text(status: number, body: string): Response {
-  return new Response(body, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+function text(status: number, body: string, extra: Record<string, string> = {}): Response {
+  return new Response(body, { status, headers: { "Content-Type": "text/plain; charset=utf-8", ...extra } });
 }
 
 /**

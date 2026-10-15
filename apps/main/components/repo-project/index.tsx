@@ -32,6 +32,8 @@ interface Props {
   project: { id: string; name: string; visibility: "private" | "team" };
   /** 仓库的系统方案：项目级分享链接挂在它上面 */
   systemVersionId: string;
+  /** 项目简介（G-canvas 推送时带上）；没有为 null */
+  summary: string | null;
   canManage: boolean;
   pushedAt: string | null;
   pushedBy: string | null;
@@ -47,6 +49,7 @@ interface Props {
 export function RepoProjectView({
   project,
   systemVersionId,
+  summary,
   canManage,
   pushedAt,
   pushedBy,
@@ -78,6 +81,14 @@ export function RepoProjectView({
             <RepoChip />
             <VisibilityChip visibility={project.visibility} />
           </div>
+          {summary ? (
+            <p
+              className="text-[13px] text-ink-700 mt-1.5 whitespace-pre-wrap break-words"
+              data-testid="repo-summary"
+            >
+              {summary}
+            </p>
+          ) : null}
           <p className="text-[13px] text-ink-500 mt-1.5 tabular-nums" data-testid="repo-push-meta">
             内容由 G-canvas 推送维护
             <span className="text-ink-300 mx-1.5">·</span>

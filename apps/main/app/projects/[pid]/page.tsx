@@ -109,6 +109,7 @@ async function RepoProjectPage({
       <RepoProjectView
         project={{ id: project.id, name: project.name, visibility: project.visibility }}
         systemVersionId={repo.versionId}
+        summary={push.project.summary}
         canManage={canManage}
         pushedAt={push.pushedAt}
         pushedBy={push.pushedBy}

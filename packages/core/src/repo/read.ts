@@ -43,7 +43,8 @@ async function loadVersionRows(projectId: string): Promise<VersionRow[]> {
     .from(repoVersions)
     .innerJoin(snapshots, eq(repoVersions.snapshotId, snapshots.id))
     .where(eq(repoVersions.projectId, projectId))
-    .orderBy(asc(repoVersions.createdAt), asc(repoVersions.key));
+    // 按封版时间升序（草稿、起点没有封版时间，排最前）；同一次推送写入的行 created_at 相同，最后按 key 保证顺序稳定
+    .orderBy(asc(repoVersions.sealedAt), asc(repoVersions.createdAt), asc(repoVersions.key));
 }
 
 async function loadStateRow(projectId: string) {

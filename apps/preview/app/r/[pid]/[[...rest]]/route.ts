@@ -18,6 +18,7 @@ import {
   RepoError,
   type RepoProject,
 } from "@prd-lab/core/repo";
+import { currentViewerBundle } from "../../../../lib/gcanvas-viewer";
 import { buildRendererCsp } from "../../../../lib/renderer-csp";
 import { expiredHtml, renderRepoShell } from "./shell";
 
@@ -105,6 +106,7 @@ async function dispatch(
       projectName: repo.name,
       versions: view.versions.map((x) => ({ key: x.key, number: x.number, name: x.name })),
       hasDraft: view.draft !== null,
+      viewer: currentViewerBundle(),
       config: {
         apiBase: `/r/${repo.id}`,
         repoJson: `/r/${repo.id}/repo.json`,
@@ -120,7 +122,7 @@ async function dispatch(
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
         "X-Frame-Options": "SAMEORIGIN",
-        "Content-Security-Policy": buildRendererCsp(),
+        "Content-Security-Policy": buildRendererCsp({ httpsImages: true }),
       },
     });
   }

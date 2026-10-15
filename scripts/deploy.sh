@@ -23,7 +23,7 @@
 #   ./scripts/deploy.sh --force         # 允许带 unstaged 改动
 #   ./scripts/deploy.sh --skip-prune    # 跳过 docker prune（紧急部署用）
 #   ./scripts/deploy.sh --dry-run       # 只打印将要执行的步骤、不真的执行（前置检查照常跑）
-#   ./scripts/deploy.sh --allow-gcanvas-drift  # 画板查看器落后于 G-canvas 时仍继续（确认本次发布与查看器无关）
+#   ./scripts/deploy.sh --allow-gcanvas-drift  # 兼容旧调用，已无效果（旧渲染件同步检查现在只提示）
 #
 # 环境变量（DEPLOY_PASS 必须由调用方提供，不在脚本中硬编码 -- R7 守约）:
 #   DEPLOY_HOST   默认 101.96.194.178（试用环境）
@@ -126,25 +126,19 @@ if [[ -z "$DEPLOY_PASS" && "$DRY_RUN" -eq 0 ]]; then
   exit 1
 fi
 
-# 画板查看器与 G-canvas 同步检查（packages/renderer-html-canvas 逐字复制 G-canvas 渲染代码，见其 README）
+# 旧画板渲染件（packages/renderer-html-canvas）与 G-canvas 的同步检查：只提示，不中止部署
+# 旧渲染件只服务已有快照、已冻结；新项目走 apps/preview/vendor/gcanvas-viewer 里的成品包（更新见 apps/preview/scripts/update-gcanvas-viewer.mjs）
 # 只读：比对上游仓库已提交内容；找不到上游仓库时脚本自行打印跳过说明并返回 0
 GCANVAS_SYNC="packages/renderer-html-canvas/scripts/gcanvas-sync.mjs"
 if ! command -v node >/dev/null 2>&1; then
-  warn "缺少 node，跳过画板查看器同步检查"
+  warn "缺少 node，跳过旧画板渲染件同步检查"
 else
   GCANVAS_RC=0
   GCANVAS_OUT="$(node "$GCANVAS_SYNC" check 2>&1)" || GCANVAS_RC=$?
   if [[ "$GCANVAS_RC" -eq 0 ]]; then
     printf "%s\n" "$GCANVAS_OUT"
-  elif [[ "$ALLOW_GCANVAS_DRIFT" -eq 1 ]]; then
-    printf "%s\n" "$GCANVAS_OUT" >&2
-    warn "画板查看器同步检查未通过（退出码 ${GCANVAS_RC}：1=与 G-canvas 不一致，2=检查本身出错），--allow-gcanvas-drift 已指定，继续"
   else
-    printf "%s\n" "$GCANVAS_OUT" >&2
-    err "画板查看器同步检查未通过（退出码 ${GCANVAS_RC}：1=与 G-canvas 不一致，2=检查本身出错），终止部署"
-    err "  先同步（见 packages/renderer-html-canvas/README.md「与 G-canvas 同步」），"
-    err "  或确认本次发布与画板查看器无关后加 --allow-gcanvas-drift 重跑"
-    exit 1
+    warn "旧画板渲染件与 G-canvas 不一致（退出码 ${GCANVAS_RC}：1=不一致，2=检查本身出错），仅提示，继续部署；详情运行 node $GCANVAS_SYNC check"
   fi
 fi
 

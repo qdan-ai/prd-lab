@@ -1,12 +1,15 @@
 import type { ResolveNotice } from "@prd-lab/core/repo";
+import type { ViewerBundle } from "../../../../lib/gcanvas-viewer";
 
 /**
  * 仓库查看器外壳（预览站 /r/<pid>）。
  *
  * 挂载点约定：页面注入 window.__PRD_LAB_REPO__（数据地址、?v= / ?k= 解析结果、项目访客链接），留 #repo-viewer-root；
- * G-canvas 只读成品包接入后，外壳加载它并调用 mountRepoViewer(el, { reader, initialVersion,
- * onVersionChange, capabilities })，reader 用 apiBase 下的 repo.json / files / v 三类地址实现。
- * 成品包接入前，外壳本身渲染一个只列版本的占位视图。
+ * 有 G-canvas 只读成品包（lib/gcanvas-viewer.ts 的 currentViewerBundle）时，外壳加载它并挂载到 #repo-viewer-root；
+ * 没有成品包时渲染一个只列版本的占位视图。
+ *
+ * 外壳页面样式只写 `html, body { margin: 0; height: 100% }` 与给挂载点的高度，不写元素选择器的全局规则
+ * （不分层的页面规则会压过查看器所有样式层）；要放自己的全局样式就改用 iframe 承载查看器。
  */
 
 export type RepoShellConfig = {
@@ -37,6 +40,8 @@ export function renderRepoShell(input: {
   config: RepoShellConfig;
   versions: RepoShellVersion[];
   hasDraft: boolean;
+  /** 有成品包时输出查看器胶水（无占位样式）；没有就保持占位页 */
+  viewer?: ViewerBundle | null;
 }): string {
   const { config } = input;
   const { notice } = config;
@@ -64,6 +69,11 @@ export function renderRepoShell(input: {
     )
     .join("");
 
+  const configScript = `<script>window.__PRD_LAB_REPO__=${scriptJson(config)};
+(function(){try{var u=new URL(location.href);if(u.searchParams.has("token")){u.searchParams.delete("token");history.replaceState(null,"",u.pathname+u.search+u.hash);}}catch(e){}})();</script>`;
+
+  if (input.viewer) return renderViewerShell(input.projectName, configScript, input.viewer);
+
   return `<!DOCTYPE html>
 <html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(input.projectName)} · PRD-Lab</title>
@@ -74,8 +84,7 @@ h1{font-size:20px;margin:0 0 8px}.sub{color:#666;font-size:14px;margin:0 0 24px}
 .notice{background:#fff7e6;border:1px solid #f0d199;padding:8px 12px;border-radius:6px;font-size:14px}
 ul{padding-left:18px;font-size:14px;line-height:1.8}li.current{font-weight:600}
 </style>
-<script>window.__PRD_LAB_REPO__=${scriptJson(config)};
-(function(){try{var u=new URL(location.href);if(u.searchParams.has("token")){u.searchParams.delete("token");history.replaceState(null,"",u.pathname+u.search+u.hash);}}catch(e){}})();</script>
+${configScript}
 </head><body>
 <div id="repo-viewer-root"><main>
 <h1>${escapeHtml(input.projectName)}</h1>
@@ -83,6 +92,39 @@ ul{padding-left:18px;font-size:14px;line-height:1.8}li.current{font-weight:600}
 ${noticeHtml}
 <ul>${list}</ul>
 </main></div>
+</body></html>`;
+}
+
+/**
+ * 成品包胶水。成品包导出 fromPrdLabConfig 时用它把注入对象转成查看器选项；
+ * 导出里还没有它的早期成品包只挂载查看器本体，换成正式包后不用改外壳。
+ */
+function renderViewerShell(projectName: string, configScript: string, viewer: ViewerBundle): string {
+  const base = `/gcanvas-viewer/${viewer.version}`;
+  const entry = `${base}/${viewer.entry}`;
+  const css = `${base}/${viewer.css}`;
+  return `<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(projectName)} · PRD-Lab</title>
+<style>html,body{margin:0;height:100%}#repo-viewer-root{height:100vh}</style>
+<link rel="stylesheet" href="${escapeHtml(css)}">
+${configScript}
+</head><body>
+<div id="repo-viewer-root"></div>
+<script type="module">
+import * as viewer from ${scriptJson(entry)}
+const cfg = window.__PRD_LAB_REPO__
+const host = typeof viewer.fromPrdLabConfig === 'function' ? viewer.fromPrdLabConfig(cfg) : {}
+viewer.mountRepoViewer(document.getElementById('repo-viewer-root'), {
+  ...host,
+  onVersionChange: (v) => {
+    const u = new URL(location.href)
+    u.searchParams.delete('k')
+    u.searchParams.set(cfg.versionParam, v.param)
+    history.replaceState(null, '', u)
+  },
+})
+</script>
 </body></html>`;
 }
 

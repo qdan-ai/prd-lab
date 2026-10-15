@@ -24,6 +24,6 @@ export async function POST(request: Request, { params }: Ctx) {
   return Response.json({
     token,
     expiresIn: PREVIEW_HANDOFF_TTL_SECONDS,
-    url: `${previewOrigin()}/r/${repo.id}/?token=${token}`,
+    url: `${previewOrigin()}/r/${repo.id}?token=${token}`,
   });
 }

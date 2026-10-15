@@ -1,7 +1,7 @@
 import type { ResolveNotice } from "@prd-lab/core/repo";
 
 /**
- * 仓库查看器外壳（预览站 /r/<pid>/）。
+ * 仓库查看器外壳（预览站 /r/<pid>）。
  *
  * 挂载点约定：页面注入 window.__PRD_LAB_REPO__（数据地址、?v= 解析结果），留 #repo-viewer-root；
  * G-canvas 只读成品包接入后，外壳加载它并调用 mountRepoViewer(el, { reader, initialVersion,

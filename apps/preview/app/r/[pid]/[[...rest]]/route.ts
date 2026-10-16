@@ -20,6 +20,7 @@ import {
 } from "@prd-lab/core/repo";
 import { currentViewerBundle } from "../../../../lib/gcanvas-viewer";
 import { buildRendererCsp } from "../../../../lib/renderer-csp";
+import { badFilePath } from "./file-path";
 import { expiredHtml, renderRepoShell } from "./shell";
 
 export const runtime = "nodejs";
@@ -143,15 +144,7 @@ async function dispatch(
 
   if (rest.length >= 3 && rest[0] === "v") {
     const relPath = rest.slice(2).join("/");
-    if (
-      relPath.length > 1024 ||
-      relPath.includes("..") ||
-      relPath.includes("\\") ||
-      // eslint-disable-next-line no-control-regex
-      /[\x00-\x1f]/.test(relPath)
-    ) {
-      return text(400, "invalid path");
-    }
+    if (badFilePath(relPath)) return text(400, "invalid path");
     const found = await lookupRepoKey(repo.id, rest[1]!);
     if (found.status !== "ok") return keyError(found.status);
     const file = await findSnapshotFile(found.snapshotId, relPath);

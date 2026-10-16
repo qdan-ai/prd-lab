@@ -104,11 +104,11 @@ describe("parseSyncManifest", () => {
 });
 
 describe("checkRepoPath", () => {
-  it.each(["blocks/a.html", "docs/specs/登录 改版.md", "docs/discussions.md"])("合法：%s", (p) => {
+  // 文件名里的连续点号是合法名字，只有整段 `..` 才是往上一级
+  it.each(["blocks/a.html", "docs/specs/登录 改版.md", "docs/discussions.md", "docs/方案...md", "blocks/a..b.html", "a..b/c.html", "...", "x/..y/z"])("合法：%s", (p) => {
     expect(checkRepoPath(p)).toBeNull();
   });
-  // a..b 与 zip / 预览站规则一致按子串拒
-  it.each(["", "/abs", "../x", "a..b", "a\\b", "C:/x", "a\nb", "x".repeat(701)])("非法：%j", (p) => {
+  it.each(["", "/abs", "..", "../x", "a/..", "a/../b", "a\\b", "C:/x", "a\nb", "x".repeat(701)])("非法：%j", (p) => {
     expect(checkRepoPath(p)?.code).toBe("validation_error");
   });
 });

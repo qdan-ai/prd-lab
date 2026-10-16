@@ -84,7 +84,14 @@ export function isValidSha256(s: unknown): s is string {
 }
 
 /**
- * 文件路径校验：与 zip 解包、预览站 rel 校验同一套规则，外加讨论记录目录拒收。
+ * 路径里有没有 `..` 段（往上一级）。只认整段：文件名里的连续点号（`方案...md`、`a..b.html`）是合法名字。
+ */
+export function hasParentSegment(path: string): boolean {
+  return path.split("/").includes("..");
+}
+
+/**
+ * 文件路径校验：非空、≤ 700、没有 `..` 段、无 `\`、不以 `/` 或盘符开头、无控制字符，外加讨论记录目录拒收。
  * 返回 null 表示合法。
  */
 export function checkRepoPath(path: string): ManifestError | null {
@@ -98,7 +105,7 @@ export function checkRepoPath(path: string): ManifestError | null {
   if (
     path.length === 0 ||
     path.length > 700 ||
-    path.includes("..") ||
+    hasParentSegment(path) ||
     path.includes("\\") ||
     path.startsWith("/") ||
     /^[A-Za-z]:/.test(path) ||

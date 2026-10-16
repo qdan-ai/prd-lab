@@ -23,17 +23,21 @@ export type HtmlCanvasComputedMetadata = {
 };
 
 const DOCS_PREFIX = "docs/";
+const ACCEPTED_FORMATS: readonly unknown[] = ["board/v1", "board/v2"];
 
 /**
- * 校验 zip 是否为合法的 html_canvas board/v1 格式。
+ * 校验 zip 是否为合法的 html_canvas board/v1 或 board/v2 格式。
  *
  * 必需文件：
  *   - canvas.json（根目录）
- *   - canvas.json.format === "board/v1"（区分新旧格式的关键）
+ *   - canvas.json.format 为 "board/v1" 或 "board/v2"（区分新旧格式的关键）
  *
  * 与 pm-canvas 的区别：
  *   - pm-canvas 没有 format 字段，块文件在根目录
- *   - html_canvas format="board/v1"，块文件在 blocks/ 子目录
+ *   - html_canvas 的块文件在 blocks/ 子目录
+ *
+ * board/v2 在 v1 上增加顶层 objects 与 html 元素的分类字段；
+ * 此处只做格式闸门，两版共用同一组结构检查，对象与分类字段的细则由画板应用写入时保证。
  */
 export function validateFiles(files: ZipFile[]): null | string {
   const canvasFile = files.find((f) => f.relPath === "canvas.json");
@@ -54,8 +58,8 @@ export function validateFiles(files: ZipFile[]): null | string {
   if (!canvasData.format) {
     return 'canvas.json missing "format" field (not a html_canvas board)';
   }
-  if (canvasData.format !== "board/v1") {
-    return `canvas.json format must be "board/v1", got "${canvasData.format}"`;
+  if (!ACCEPTED_FORMATS.includes(canvasData.format)) {
+    return `canvas.json format must be "board/v1" or "board/v2", got "${canvasData.format}"`;
   }
 
   // 基础结构校验

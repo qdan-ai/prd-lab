@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input";
 
 interface Props {
   shareId: string;
+  /** 登入后回到的内容页（带链接原有的 `?v=`） */
+  contentHref: string;
 }
 
-export function ShareLoginForm({ shareId }: Props) {
+export function ShareLoginForm({ shareId, contentHref }: Props) {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -45,7 +47,7 @@ export function ShareLoginForm({ shareId }: Props) {
         }
         return;
       }
-      router.replace(`/share/${shareId}`);
+      router.replace(contentHref);
       router.refresh();
     } finally {
       setBusy(false);

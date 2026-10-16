@@ -99,7 +99,7 @@ export function CommandSwitcher() {
     if (!q) return data;
     return data.filter((p) => {
       if (p.name.toLowerCase().includes(q)) return true;
-      return p.versions.some((v) => v.name.toLowerCase().includes(q));
+      return p.kind !== "repo" && p.versions.some((v) => v.name.toLowerCase().includes(q));
     });
   }, [data, query]);
 
@@ -199,7 +199,7 @@ export function CommandSwitcher() {
                       >
                         <span className="flex-1 truncate">{p.name}</span>
                         <span className="text-[10px] text-ink-500 shrink-0 ml-2">
-                          {p.versions.length} 方案
+                          {p.kind === "repo" ? "G-canvas 仓库" : `${p.versions.length} 方案`}
                         </span>
                         {p.canManage ? (
                           <DropdownMenu>
@@ -269,25 +269,36 @@ export function CommandSwitcher() {
 
           {/* 右列：方案 */}
           <div className="flex-1 flex flex-col">
-            <VersionPanel
-              project={focusedProject}
-              onCreateVersion={() =>
-                focusedProject && startCreateVersion(focusedProject.id, focusedProject.name)
-              }
-              onPickVersion={(vid) => {
-                if (!focusedProject) return;
-                const url = `/projects/${focusedProject.id}/versions/${vid}`;
-                // 提前 prefetch + reset → router.push（客户端路由，比全页刷新快很多）
-                router.prefetch(url);
-                reset();
-                router.push(url);
-              }}
-              onRenameVersion={(v) => setRenameVersionTarget(v)}
-              onDeleteVersion={(v) =>
-                focusedProject &&
-                setDeleteVersionTarget({ version: v, projectId: focusedProject.id })
-              }
-            />
+            {focusedProject?.kind === "repo" ? (
+              <RepoPanel
+                onOpen={() => {
+                  const url = `/projects/${focusedProject.id}`;
+                  router.prefetch(url);
+                  reset();
+                  router.push(url);
+                }}
+              />
+            ) : (
+              <VersionPanel
+                project={focusedProject}
+                onCreateVersion={() =>
+                  focusedProject && startCreateVersion(focusedProject.id, focusedProject.name)
+                }
+                onPickVersion={(vid) => {
+                  if (!focusedProject) return;
+                  const url = `/projects/${focusedProject.id}/versions/${vid}`;
+                  // 提前 prefetch + reset → router.push（客户端路由，比全页刷新快很多）
+                  router.prefetch(url);
+                  reset();
+                  router.push(url);
+                }}
+                onRenameVersion={(v) => setRenameVersionTarget(v)}
+                onDeleteVersion={(v) =>
+                  focusedProject &&
+                  setDeleteVersionTarget({ version: v, projectId: focusedProject.id })
+                }
+              />
+            )}
           </div>
         </div>
       </DialogContent>
@@ -334,6 +345,7 @@ export function CommandSwitcher() {
       <DeleteProjectModal
         open={deleteProjectTarget !== null}
         target={deleteProjectTarget ? { id: deleteProjectTarget.id, name: deleteProjectTarget.name } : null}
+        isRepo={deleteProjectTarget?.kind === "repo"}
         // 删的是当前正在看的项目 → 回工作台；否则留在原页只刷新
         redirectTo={deleteProjectTarget?.id === currentPid ? "/projects" : undefined}
         onClose={() => setDeleteProjectTarget(null)}
@@ -392,6 +404,19 @@ function EmptyProjectsState({ onCreate }: { onCreate: () => void }) {
       <Button variant="primary" size="sm" onClick={onCreate} className="gap-1.5">
         <Plus size={14} />
         <span>新建项目</span>
+      </Button>
+    </div>
+  );
+}
+
+/** G-canvas 仓库项目：没有可选的方案，只给进入仓库项目页的入口。 */
+function RepoPanel({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
+      <div className="text-sm text-ink-700">G-canvas 仓库项目</div>
+      <p className="text-xs text-ink-500 leading-relaxed">内容由 G-canvas 推送维护，版本在项目页查看</p>
+      <Button variant="secondary" size="sm" onClick={onOpen} data-testid="switcher-open-repo">
+        打开项目页
       </Button>
     </div>
   );

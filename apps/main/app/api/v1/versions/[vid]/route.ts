@@ -4,6 +4,7 @@ import { getSession } from "@/lib/api/auth-guard";
 import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
+import { repoManagedResponse } from "@/lib/repo/route-helpers";
 
 type Ctx = { params: Promise<{ vid: string }> };
 
@@ -68,7 +69,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
 
   // 管理权校验（owner 或 team 项目管理员）
   const ownerRows = await db
-    .select({ ownerId: projects.ownerId, visibility: projects.visibility })
+    .select({ ownerId: projects.ownerId, visibility: projects.visibility, projectKind: projects.kind })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(
@@ -81,6 +82,8 @@ export async function PATCH(request: Request, { params }: Ctx) {
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
   if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
+  // 仓库项目只有一个内置方案（系统方案），由仓库式推送维护
+  if (ownerRows[0].projectKind === "repo") return repoManagedResponse("rename_version");
 
   try {
     await db
@@ -108,7 +111,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
   const { vid } = await params;
 
   const ownerRows = await db
-    .select({ ownerId: projects.ownerId, visibility: projects.visibility })
+    .select({ ownerId: projects.ownerId, visibility: projects.visibility, projectKind: projects.kind })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(
@@ -121,6 +124,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
   if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
+  if (ownerRows[0].projectKind === "repo") return repoManagedResponse("delete_version");
 
   await db
     .update(versions)

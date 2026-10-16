@@ -1,0 +1,10 @@
+{
+  "name": "gcanvas-viewer",
+  "gcanvasCommit": "42e78b0e0e12c203ee83fb755cf9e7c7efdf310d",
+  "builtAt": "2026-10-16T23:51:15.587Z",
+  "formats": [
+    "gcanvas-repo/1"
+  ],
+  "entry": "gcanvas-viewer.js",
+  "css": "gcanvas-viewer.css"
+}

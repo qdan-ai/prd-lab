@@ -64,7 +64,7 @@ export type TokenPayload = {
   origin?: string;
 };
 
-function signPayload(body: TokenPayload): string {
+function signPayload(body: TokenPayload | RepoTokenPayload): string {
   const payloadEncoded = base64urlEncode(Buffer.from(JSON.stringify(body), "utf8"));
   const sig = createHmac("sha256", getSecret()).update(payloadEncoded).digest();
   return `${payloadEncoded}.${base64urlEncode(sig)}`;
@@ -116,9 +116,12 @@ export type VerifyResult =
   | { valid: false; expired: false; reason: "malformed" | "bad_signature" | "snapshot_mismatch" }
   | { valid: false; expired: true; payload: TokenPayload };
 
-export function verifyToken(token: string, expectedSnapshotId: string): VerifyResult {
+/** 验签并解出原始 payload；快照令牌与仓库令牌共用。 */
+function decodeSigned(
+  token: string,
+): { ok: true; raw: Record<string, unknown> } | { ok: false; reason: "malformed" | "bad_signature" } {
   const parts = token.split(".");
-  if (parts.length !== 2) return { valid: false, expired: false, reason: "malformed" };
+  if (parts.length !== 2) return { ok: false, reason: "malformed" };
   const payloadEncoded = parts[0]!;
   const sigEncoded = parts[1]!;
 
@@ -127,21 +130,28 @@ export function verifyToken(token: string, expectedSnapshotId: string): VerifyRe
   try {
     providedSig = base64urlDecode(sigEncoded);
   } catch {
-    return { valid: false, expired: false, reason: "malformed" };
+    return { ok: false, reason: "malformed" };
   }
   if (
     providedSig.length !== expectedSig.length ||
     !timingSafeEqual(providedSig, expectedSig)
   ) {
-    return { valid: false, expired: false, reason: "bad_signature" };
+    return { ok: false, reason: "bad_signature" };
   }
 
-  let raw: Partial<TokenPayload>;
   try {
-    raw = JSON.parse(base64urlDecode(payloadEncoded).toString("utf8"));
+    const raw: unknown = JSON.parse(base64urlDecode(payloadEncoded).toString("utf8"));
+    if (typeof raw !== "object" || raw === null) return { ok: false, reason: "malformed" };
+    return { ok: true, raw: raw as Record<string, unknown> };
   } catch {
-    return { valid: false, expired: false, reason: "malformed" };
+    return { ok: false, reason: "malformed" };
   }
+}
+
+export function verifyToken(token: string, expectedSnapshotId: string): VerifyResult {
+  const decoded = decodeSigned(token);
+  if (!decoded.ok) return { valid: false, expired: false, reason: decoded.reason };
+  const raw = decoded.raw as Partial<TokenPayload>;
 
   if (
     typeof raw.snapshotId !== "string" ||
@@ -167,5 +177,92 @@ export function verifyToken(token: string, expectedSnapshotId: string): VerifyRe
     return { valid: false, expired: true, payload };
   }
 
+  return { valid: true, expired: false, payload };
+}
+
+// ---- 仓库级令牌（repo-push）----
+//
+// 作用对象是整个仓库项目（预览站 /r/<repoId>/…），payload 用 repoId 代替 snapshotId：
+//   { repoId, sub, exp, kind, origin? }
+// 与快照令牌同一密钥、同一编码，但互不通用：仓库令牌没有 snapshotId，verifyToken 判 malformed；
+// 快照令牌没有 repoId，verifyRepoToken 判 malformed。
+
+export type RepoTokenPayload = {
+  repoId: string;
+  sub: string; // user.id 或 `${share_id}:${pv}`
+  exp: number;
+  kind: TokenKind;
+  origin?: string;
+};
+
+export type VerifyRepoResult =
+  | { valid: true; expired: false; payload: RepoTokenPayload }
+  | { valid: false; expired: false; reason: "malformed" | "bad_signature" | "repo_mismatch" }
+  | { valid: false; expired: true; payload: RepoTokenPayload };
+
+export function issueRepoToken(
+  payload: { repoId: string; sessionUserId: string; origin?: string },
+  ttlSeconds = DEFAULT_TTL_SECONDS,
+): string {
+  return signPayload({
+    repoId: payload.repoId,
+    sub: payload.sessionUserId,
+    exp: Math.floor(Date.now() / 1000) + ttlSeconds,
+    kind: "user",
+    ...(payload.origin ? { origin: payload.origin } : {}),
+  });
+}
+
+export function issueRepoShareToken(
+  payload: { repoId: string; shareSessionId: string; origin?: string },
+  ttlSeconds = DEFAULT_TTL_SECONDS,
+): string {
+  return signPayload({
+    repoId: payload.repoId,
+    sub: payload.shareSessionId,
+    exp: Math.floor(Date.now() / 1000) + ttlSeconds,
+    kind: "share",
+    ...(payload.origin ? { origin: payload.origin } : {}),
+  });
+}
+
+/** 预览站换 cookie 时把交接令牌重签成会话令牌（保 repoId / sub / kind / origin，只刷 exp）。 */
+export function reissueRepoToken(payload: RepoTokenPayload, ttlSeconds: number): string {
+  return signPayload({
+    repoId: payload.repoId,
+    sub: payload.sub,
+    exp: Math.floor(Date.now() / 1000) + ttlSeconds,
+    kind: payload.kind,
+    ...(payload.origin ? { origin: payload.origin } : {}),
+  });
+}
+
+export function verifyRepoToken(token: string, expectedRepoId: string): VerifyRepoResult {
+  const decoded = decodeSigned(token);
+  if (!decoded.ok) return { valid: false, expired: false, reason: decoded.reason };
+  const raw = decoded.raw;
+
+  if (
+    typeof raw.repoId !== "string" ||
+    typeof raw.sub !== "string" ||
+    typeof raw.exp !== "number" ||
+    (raw.kind !== "user" && raw.kind !== "share")
+  ) {
+    return { valid: false, expired: false, reason: "malformed" };
+  }
+  const payload: RepoTokenPayload = {
+    repoId: raw.repoId,
+    sub: raw.sub,
+    exp: raw.exp,
+    kind: raw.kind,
+    ...(typeof raw.origin === "string" ? { origin: raw.origin } : {}),
+  };
+
+  if (payload.repoId !== expectedRepoId) {
+    return { valid: false, expired: false, reason: "repo_mismatch" };
+  }
+  if (payload.exp < Math.floor(Date.now() / 1000)) {
+    return { valid: false, expired: true, payload };
+  }
   return { valid: true, expired: false, payload };
 }

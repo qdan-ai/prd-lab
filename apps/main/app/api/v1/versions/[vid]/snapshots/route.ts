@@ -88,6 +88,7 @@ export async function POST(request: Request, { params }: Ctx) {
       projectId: versions.projectId,
       ownerId: projects.ownerId,
       visibility: projects.visibility,
+      projectKind: projects.kind,
     })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
@@ -96,6 +97,10 @@ export async function POST(request: Request, { params }: Ctx) {
   const versionRow = versionRows[0];
   if (!versionRow) return errorResponse("not_found");
   if (!canManageProject(versionRow, session)) return errorResponse("not_owner");
+  // 仓库项目只接受仓库式推送（/api/v1/repos/:pid/sync），zip 上传一律拒
+  if (versionRow.projectKind === "repo") {
+    return errorResponse("repo_managed", "该项目由 G-canvas 仓库式推送维护，不接受 zip 上传");
+  }
 
   // 2. Idempotency-Key 24h
   const idempotencyKey = request.headers.get("Idempotency-Key");

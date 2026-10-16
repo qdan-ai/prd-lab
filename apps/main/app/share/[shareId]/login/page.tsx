@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, shareLinks } from "@prd-lab/core";
+import { repoProjectIdOfVersion } from "@prd-lab/core/repo";
 import { getShareSession } from "@/lib/share/share-session";
+import { versionQuery } from "@/lib/repo/share-entry";
 import { ShareLoginForm } from "./share-login-form";
 
 type Props = {
   params: Promise<{ shareId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 /**
@@ -14,15 +17,22 @@ type Props = {
  * SSR：先校验 shareId 存在 + 未撤销，再渲染表单。
  * - 不存在 → 404
  * - 已撤销 → 410
- * - 无密码 → 仅当 getShareSession 判定可放行时重定向到内容页；若链接已失效
- *   （snapshot/version/project 归档）则渲染终态页，避免与内容页相互 redirect 成死循环
- * - 有密码 → 渲染密码表单（提交 POST /share/[shareId]/api/login）
+ * - 已能放行（无密码，或密码 cookie 仍有效）→ 重定向到内容页
+ * - 链接已失效（方案 / 项目归档）→ 渲染终态页（内容页对失效链接会跳回这里，不能再跳回去，否则成死循环）
+ * - 有密码且未登入 → 渲染密码表单（提交 POST /share/[shareId]/api/login），登入后回内容页
+ * `?v=`（仓库项目的版本号）与 `?k=`（锁版本链接的版本 key）原样带回内容页，访客输完密码仍落到链接指定的版本。
+ * 仓库项目的链接分享的是整个项目，提示语说「该项目」；普通方案链接说「该版本」。
  */
-export default async function ShareLoginPage({ params }: Props) {
+export default async function ShareLoginPage({ params, searchParams }: Props) {
   const { shareId } = await params;
+  const { v, k } = await searchParams;
+  const contentHref = `/share/${shareId}${versionQuery(
+    typeof v === "string" ? v : null,
+    typeof k === "string" ? k : null,
+  )}`;
 
   const rows = await db
-    .select({ revokedAt: shareLinks.revokedAt, passwordHash: shareLinks.passwordHash })
+    .select({ revokedAt: shareLinks.revokedAt, passwordHash: shareLinks.passwordHash, versionId: shareLinks.versionId })
     .from(shareLinks)
     .where(eq(shareLinks.id, shareId))
     .limit(1);
@@ -34,19 +44,18 @@ export default async function ShareLoginPage({ params }: Props) {
   if (rows[0].revokedAt !== null) {
     return <ShareErrorPanel title="分享已撤销" message="该分享链接已被项目所有者撤销，无法再访问。" />;
   }
-  if (rows[0].passwordHash === null) {
-    // 无密码链接本应直接看内容页。但仅当内容页确会放行（getShareSession=ok）时才跳转；
-    // 链接失效（归档）时 getShareSession 返 not_found，内容页会再跳回这里 → 死循环，
-    // 故此处直接渲染终态页（与内容页归档文案一致），不跳转。
-    const session = await getShareSession(shareId);
-    if (session.kind === "ok") {
-      redirect(`/share/${shareId}`);
-    }
-    if (session.kind === "revoked") {
-      return <ShareErrorPanel title="分享已撤销" message="该分享链接已被项目所有者撤销，无法再访问。" />;
-    }
-    return <ShareErrorPanel title="链接已失效" message="该版本已被删除，请联系项目方。" />;
+  const session = await getShareSession(shareId);
+  if (session.kind === "ok") {
+    redirect(contentHref);
   }
+  if (session.kind === "revoked") {
+    return <ShareErrorPanel title="分享已撤销" message="该分享链接已被项目所有者撤销，无法再访问。" />;
+  }
+  if (session.kind === "not_found") {
+    return <ShareErrorPanel title="链接已失效" message="分享的内容已被删除，请联系项目方。" />;
+  }
+
+  const isRepo = (await repoProjectIdOfVersion(rows[0].versionId)) !== null;
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-ink-50">
@@ -55,9 +64,9 @@ export default async function ShareLoginPage({ params }: Props) {
           PRD-Lab · 分享访问
         </h1>
         <p className="text-[12px] text-ink-500 mb-6 leading-[1.55]">
-          输入访问密码以查看该版本。
+          {isRepo ? "输入访问密码以查看该项目。" : "输入访问密码以查看该版本。"}
         </p>
-        <ShareLoginForm shareId={shareId} />
+        <ShareLoginForm shareId={shareId} contentHref={contentHref} />
       </div>
     </main>
   );

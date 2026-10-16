@@ -34,6 +34,21 @@ describe("validateFiles", () => {
     expect(validateFiles(files)).toBeNull();
   });
 
+  it("接受合法 board/v2 格式", () => {
+    const files = [mockFile("canvas.json", JSON.stringify({ format: "board/v2", objects: [], elements: [] }))];
+    expect(validateFiles(files)).toBeNull();
+  });
+
+  it("board/v2 同样要求 elements 数组", () => {
+    const files = [mockFile("canvas.json", JSON.stringify({ format: "board/v2", objects: [] }))];
+    expect(validateFiles(files)).toContain("elements array");
+  });
+
+  it("拒绝未知的 board 版本（board/v3）", () => {
+    const files = [mockFile("canvas.json", JSON.stringify({ format: "board/v3", elements: [] }))];
+    expect(validateFiles(files)).toContain('format must be "board/v1"');
+  });
+
   it("拒绝缺 canvas.json 的 zip", () => {
     const files = [mockFile("blocks/welcome.html", "<div>hi</div>")];
     const err = validateFiles(files);
@@ -137,6 +152,17 @@ describe("computeMetadata", () => {
       mockFile("canvas.json", JSON.stringify({ format: "board/v1", elements: [] })),
     ];
     expect(computeMetadata(withNeither)).toMatchObject({ hasBlocks: false, hasStyles: false });
+  });
+});
+
+describe("gcanvas-v2-board 夹具", () => {
+  const dir = resolve(__dirname, "../fixtures/gcanvas-v2-board");
+  const load = (rel: string) => mockFile(rel, readFileSync(resolve(dir, rel), "utf-8"));
+
+  it("validateFiles 通过，computeMetadata 统计到元素与 blocks", () => {
+    const files = [load("canvas.json"), load("blocks/login.html"), load("blocks/terms.html")];
+    expect(validateFiles(files)).toBeNull();
+    expect(computeMetadata(files)).toMatchObject({ hasBlocks: true, elementCount: 3 });
   });
 });
 

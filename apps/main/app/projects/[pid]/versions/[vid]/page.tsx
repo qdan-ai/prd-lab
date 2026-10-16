@@ -21,7 +21,7 @@ type Params = Promise<{ pid: string; vid: string }>;
 /**
  * Version page SSR（5 分支，S9 后中央渲染文件列表而非画板）：
  *   ① 未登入 → redirect /login
- *   ② 已登入但无权 / 项目方案不存在 → 404
+ *   ② 已登入但无权 / 项目方案不存在 → 404；G-canvas 仓库项目 → 302 到仓库项目页
  *   ③ vid 存在但 ?snapshot=v{seq} 不存在 → 302 到默认（去 query）
  *   ④ seq 存在但 archived → 302 + ?notice=snapshot-archived
  *   ⑤ 正常 SSR；无 query 时默认渲染最新（seq 最大的活跃 snapshot）
@@ -60,6 +60,8 @@ export default async function VersionPage({
   const canRead =
     row.project.visibility === "team" || row.project.ownerId === session.user.id;
   if (!canRead) notFound();
+  // 仓库项目没有可操作的方案页：内置方案只由 G-canvas 推送维护，统一落到仓库项目页
+  if (row.project.kind === "repo") redirect(`/projects/${pid}`);
 
   // 管理员可管理 team 项目（与 owner 同权：上传/删快照/分享/导出）。规则统一走 canManageProject，与后端同源。
   const canManage = canManageProject(

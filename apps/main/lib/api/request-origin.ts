@@ -12,15 +12,22 @@
  *   3. new URL(request.url).origin 兜底（单测直调路径，行为与改造前一致）
  */
 export function requestOrigin(request: Request): string {
+  return headersOrigin(request.headers) ?? new URL(request.url).origin;
+}
+
+/**
+ * 只凭请求头求浏览器视角 origin（取值优先级同上的 1、2 两步）；都没有时返回 null。
+ * 供拿不到 Request 对象的 Server Component（如分享页）使用。
+ */
+export function headersOrigin(headers: Headers): string | null {
   const fromEnv = process.env.APP_ORIGIN;
   if (fromEnv) return fromEnv.replace(/\/+$/, "");
 
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const host = headers.get("x-forwarded-host") ?? headers.get("host");
   if (host) {
-    const proto = request.headers.get("x-forwarded-proto") ?? "http";
+    const proto = headers.get("x-forwarded-proto") ?? "http";
     // 多级代理时两头都可能是逗号分隔列表，取第一跳
     return `${proto.split(",")[0]!.trim()}://${host.split(",")[0]!.trim()}`;
   }
-
-  return new URL(request.url).origin;
+  return null;
 }

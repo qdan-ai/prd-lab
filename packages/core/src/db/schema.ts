@@ -43,6 +43,12 @@ import {
  *   S19：share_links 绑定改回 version（方案级分享，访客可切换方案内所有版本）
  *        - snapshot_id → version_id；生成列/唯一索引同步改名
  *        - 删除从未消费的 allow_external_api / external_api_allowlist
+ *   repo-push：G-canvas 仓库式推送
+ *        - projects + kind（upload / repo）
+ *        - + repo_state（一仓库一行：系统方案、上线标记、最近推送）
+ *        - + repo_versions（版本图元数据，一行对应系统方案下的一个快照）
+ *        - + repo_blobs（项目内按内容指纹登记已上传文件，MinIO 键 projects/<pid>/blobs/<sha256>）
+ *   repo-push 字段对齐（迁移 0005）：repo_versions + manifest（机器清单）；repo_state + summary（项目简介）
  */
 
 const uuidPk = () =>
@@ -76,6 +82,8 @@ export const projects = mysqlTable(
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     visibility: mysqlEnum("visibility", ["private", "team"]).notNull().default("private"),
+    // upload = 普通项目（zip 上传 / prd push）；repo = G-canvas 仓库项目（仓库式推送，见 repo_state）
+    kind: mysqlEnum("kind", ["upload", "repo"]).notNull().default("upload"),
     createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
     archivedAt: datetimeFsp("archived_at"),
     // 生成列：archived_at IS NULL 时等于 name，否则 NULL；NULL 不参与 UNIQUE → 等价 partial unique
@@ -246,3 +254,84 @@ export const apiTokens = mysqlTable(
 
 export type ApiToken = typeof apiTokens.$inferSelect;
 export type NewApiToken = typeof apiTokens.$inferInsert;
+
+// ---- repo_state（仓库项目状态，一仓库一行）----
+// 仓库项目 = projects.kind='repo'；其快照、文件、分享链接挂在 version_id 指向的系统方案下。
+export const repoState = mysqlTable("repo_state", {
+  projectId: varchar("project_id", { length: 36 })
+    .primaryKey()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  versionId: varchar("version_id", { length: 36 })
+    .notNull()
+    .unique()
+    .references(() => versions.id, { onDelete: "cascade" }),
+  format: varchar("format", { length: 32 }),
+  onlineKey: varchar("online_key", { length: 128 }),
+  onlinePeriods: json("online_periods"),
+  // 项目简介：G-canvas 推送时带上（sync.project.summary），访客页与主站项目页显示
+  summary: text("summary"),
+  lastPushedAt: datetimeFsp("last_pushed_at"),
+  lastPushedBy: varchar("last_pushed_by", { length: 36 }).references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
+});
+
+export type RepoState = typeof repoState.$inferSelect;
+export type NewRepoState = typeof repoState.$inferInsert;
+
+// ---- repo_versions（版本图元数据，可变；内容在 snapshot_id 指向的不可变快照里）----
+// key = 本机稳定身份（封版提交号；草稿由服务端按内容派生），版本号 number 只用于显示与 ?v=。
+// 撤回 = withdrawn_at 非空（软删，访客不可见，可恢复）。
+export const repoVersions = mysqlTable(
+  "repo_versions",
+  {
+    id: uuidPk(),
+    projectId: varchar("project_id", { length: 36 })
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    key: varchar("key", { length: 128 }).notNull(),
+    snapshotId: varchar("snapshot_id", { length: 36 })
+      .notNull()
+      .references(() => snapshots.id, { onDelete: "cascade" }),
+    kind: mysqlEnum("kind", ["version", "baseline", "draft", "hidden"]).notNull(),
+    number: varchar("number", { length: 64 }),
+    name: varchar("name", { length: 255 }),
+    summary: text("summary"),
+    line: varchar("line", { length: 64 }),
+    parentKey: varchar("parent_key", { length: 128 }),
+    patchOf: varchar("patch_of", { length: 128 }),
+    sealedAt: datetimeFsp("sealed_at"),
+    changes: json("changes"),
+    specDocs: json("spec_docs"),
+    // 机器清单（prdlab-change/1）：随新版本推来，校验通过才存；已存的不再改写
+    manifest: json("manifest"),
+    withdrawnAt: datetimeFsp("withdrawn_at"),
+    createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
+    updatedAt: datetimeFsp("updated_at").notNull().default(nowDefault()),
+  },
+  (t) => [
+    unique("repo_versions_project_key_unique").on(t.projectId, t.key),
+    index("repo_versions_snapshot_idx").on(t.snapshotId),
+  ],
+);
+
+export type RepoVersion = typeof repoVersions.$inferSelect;
+export type NewRepoVersion = typeof repoVersions.$inferInsert;
+
+// ---- repo_blobs（项目内已上传文件登记；先写 MinIO 再登记，登记即对象存在）----
+export const repoBlobs = mysqlTable(
+  "repo_blobs",
+  {
+    projectId: varchar("project_id", { length: 36 })
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    sha256: char("sha256", { length: 64 }).notNull(),
+    sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
+    createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.sha256] })],
+);
+
+export type RepoBlob = typeof repoBlobs.$inferSelect;
+export type NewRepoBlob = typeof repoBlobs.$inferInsert;

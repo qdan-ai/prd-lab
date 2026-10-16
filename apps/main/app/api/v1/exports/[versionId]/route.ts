@@ -20,6 +20,7 @@ import {
 import { getSession } from "@/lib/api/auth-guard";
 import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
+import { repoManagedResponse } from "@/lib/repo/route-helpers";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -31,6 +32,7 @@ type Ctx = { params: Promise<{ versionId: string }> };
  *
  * S9 简化：纯文件 zip 打包（取最新活跃 snapshot），无评论合并 / SDK 剥离 / vendor 兜底。
  * 附 meta.json 含 archived_snapshots[] 元数据 + README.md 简短说明。
+ * 仓库项目的内置方案下混着各版本、草稿与起点的快照，「最新一个」没有意义 → 409 repo_managed。
  */
 export async function GET(_: Request, { params }: Ctx) {
   const session = await getSession();
@@ -43,6 +45,7 @@ export async function GET(_: Request, { params }: Ctx) {
       projectName: projects.name,
       ownerId: projects.ownerId,
       visibility: projects.visibility,
+      projectKind: projects.kind,
     })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
@@ -53,6 +56,7 @@ export async function GET(_: Request, { params }: Ctx) {
   const row = rows[0];
   if (!row) return errorResponse("not_found");
   if (!canManageProject(row, session)) return errorResponse("not_owner");
+  if (row.projectKind === "repo") return repoManagedResponse("export");
 
   const snapRows = await db
     .select()

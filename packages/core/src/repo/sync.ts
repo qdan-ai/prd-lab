@@ -397,7 +397,7 @@ function rowCount(result: unknown): number {
 }
 
 /**
- * 版本与草稿须是 html-canvas 能打开的画板（canvas.json 且 format=board/v1）；
+ * 版本与草稿须是 html-canvas 能打开的画板（canvas.json 且 format=board/v1 或 board/v2）；
  * 起点不强制，能通过就同样标 html-canvas。
  */
 async function checkRenderer(

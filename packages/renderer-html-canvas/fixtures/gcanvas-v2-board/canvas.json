@@ -1,0 +1,14 @@
+{
+  "_readme": "Maintained by hcanvas CLI — do not edit by hand. See AGENTS.md.",
+  "title": "board/v2 对象分类夹具",
+  "format": "board/v2",
+  "objects": [
+    { "id": "o-aaaaaa", "kind": "page", "name": "登录页" },
+    { "id": "o-bbbbbb", "kind": "overlay", "name": "协议弹层", "note": "首次登录时出现" }
+  ],
+  "elements": [
+    { "id": "e1", "type": "html", "src": "blocks/login.html", "x": 0, "y": 0, "w": 375, "h": 667, "object": "o-aaaaaa", "state": 1 },
+    { "id": "e2", "type": "html", "src": "blocks/login-error.html", "x": 440, "y": 0, "w": 375, "h": 667, "object": "o-aaaaaa", "state": 2, "partial": true },
+    { "id": "e3", "type": "html", "src": "blocks/terms.html", "x": 880, "y": 0, "w": 375, "h": 400, "object": "o-bbbbbb", "state": 1 }
+  ]
+}

@@ -66,11 +66,16 @@ export async function POST(request: Request, { params }: Ctx) {
   return Response.json({ share: shareView(request, share) }, { status: 201 });
 }
 
-function shareView(request: Request, share: { shareId: string; hasPassword: boolean; createdAt: Date }) {
+function shareView(
+  request: Request,
+  share: { shareId: string; hasPassword: boolean; passwordVersion: number; createdAt: Date },
+) {
   return {
     shareId: share.shareId,
     url: shareUrl(requestOrigin(request), share.shareId),
     hasPassword: share.hasPassword,
+    /** 改密码 +1，建链接时为 1；本机记下的密码据此判断是否过期 */
+    passwordVersion: share.passwordVersion,
     createdAt: share.createdAt,
   };
 }

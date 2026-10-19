@@ -30,6 +30,7 @@ export const errorCodes = {
   blobs_missing: { status: 409 }, // sync 引用了未上传的文件，details.missing 列出
   unsupported_format: { status: 400 }, // 清单 format 不认识
   discussions_not_allowed: { status: 400 }, // 文件路径在 docs/discussions/ 下，details.path
+  version_withdrawn: { status: 410 }, // 仓库版本已撤回，details.replacement 给同号的替代版本
 } as const;
 
 export type ErrorCode = keyof typeof errorCodes;

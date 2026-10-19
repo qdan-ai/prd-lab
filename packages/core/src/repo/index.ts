@@ -9,3 +9,4 @@ export * from "./resolve";
 export * from "./project";
 export * from "./sync";
 export * from "./read";
+export * from "./agent";

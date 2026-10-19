@@ -8,6 +8,7 @@ import {
   type RepoTokenPayload,
 } from "@prd-lab/core";
 import {
+  buildRepoAgentPrompt,
   findSnapshotFile,
   getRepoShare,
   getRepoView,
@@ -34,6 +35,7 @@ type Ctx = { params: Promise<{ pid: string; rest?: string[] }> };
  *   /r/:pid/repo.json        getRepo()：未撤回的版本图、上线标记、默认版本（带 ?v= 或 ?k= 时附 resolved）
  *   /r/:pid/files/:key       listFiles(key)
  *   /r/:pid/v/:key/<路径>    readText / fileUrl：某版本某文件原文
+ *   /r/:pid/agent-prompt     「复制给 AI」的提示词（?k=<key> 锁版本；没有访客链接 404）
  *
  * `?k=<key>` 是锁版本链接（主站 /r/<pid>/k/<key> 转来）：严格按 key，已撤回或不存在时不回落（resolveRepoVersion）。
  *
@@ -140,6 +142,22 @@ async function dispatch(
     const found = await lookupRepoKey(repo.id, rest[1]!);
     if (found.status !== "ok") return keyError(found.status);
     return json(200, { key: rest[1], files: await listSnapshotFiles(found.snapshotId) }, "private, no-cache");
+  }
+
+  if (rest.length === 1 && rest[0] === "agent-prompt") {
+    // 提示词里的主站地址只取自会话令牌里受签名保护的 claim；没有就无从拼出接口地址
+    if (!mainOrigin) return json(404, { error: "no_share", message: "没有可用的访客链接" });
+    const result = await buildRepoAgentPrompt(repo, mainOrigin, k);
+    switch (result.status) {
+      case "no_share":
+        return json(404, { error: "no_share", message: "项目还没有访客链接" });
+      case "version_not_found":
+        return keyError("not_found");
+      case "version_withdrawn":
+        return json(410, { error: "withdrawn", message: "该版本已被撤回", replacement: result.replacement });
+      case "ok":
+        return json(200, { hasPassword: result.hasPassword, version: result.version, prompt: result.prompt });
+    }
   }
 
   if (rest.length >= 3 && rest[0] === "v") {

@@ -137,12 +137,25 @@ export async function listRepoProjects(filter: { projectIds?: string[] } = {}) {
 /** 仓库项目当前的活跃分享链接（挂在系统方案上，一仓库最多一条）。 */
 export async function getRepoShare(versionId: string) {
   const rows = await db
-    .select({ id: shareLinks.id, passwordHash: shareLinks.passwordHash, createdAt: shareLinks.createdAt })
+    .select({
+      id: shareLinks.id,
+      passwordHash: shareLinks.passwordHash,
+      passwordVersion: shareLinks.passwordVersion,
+      createdAt: shareLinks.createdAt,
+    })
     .from(shareLinks)
     .where(and(eq(shareLinks.versionId, versionId), isNull(shareLinks.revokedAt)))
     .limit(1);
   const row = rows[0];
-  return row ? { shareId: row.id, hasPassword: row.passwordHash !== null, createdAt: row.createdAt } : null;
+  return row
+    ? {
+        shareId: row.id,
+        hasPassword: row.passwordHash !== null,
+        /** 改密码即 +1；本机记下的密码据此判断是否过期 */
+        passwordVersion: row.passwordVersion,
+        createdAt: row.createdAt,
+      }
+    : null;
 }
 
 /**

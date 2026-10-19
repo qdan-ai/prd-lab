@@ -1,9 +1,10 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { repoState, repoVersions, snapshotFiles, snapshots, users } from "../db/schema";
+import { buildAgentPrompt, type AgentPrompt } from "./agent";
 import { REPO_FORMAT } from "./manifest";
 import { type RepoProject, getRepoShare } from "./project";
-import { defaultVersionKey, type ResolveInput, type ResolvableVersion } from "./resolve";
+import { defaultVersionKey, resolveRepoVersion, type ResolveInput, type ResolvableVersion } from "./resolve";
 
 type VersionRow = {
   key: string;
@@ -203,4 +204,136 @@ export async function findSnapshotFile(snapshotId: string, path: string) {
     .where(and(eq(snapshotFiles.snapshotId, snapshotId), eq(snapshotFiles.relPath, path)))
     .limit(1);
   return rows[0] ?? null;
+}
+
+export type AgentVersion = {
+  key: string;
+  kind: "version" | "baseline" | "draft";
+  number: string | null;
+  name: string | null;
+  summary: string | null;
+  line: string | null;
+  parentKey: string | null;
+  patchOf: string | null;
+  sealedAt: string | null;
+  specDocs: string[] | null;
+  manifest: unknown;
+  snapshotId: string;
+};
+
+export type AgentVersionLookup =
+  | { status: "ok"; version: AgentVersion }
+  | { status: "withdrawn"; number: string | null; replacement: { key: string; number: string | null } | null }
+  | { status: "not_found" };
+
+/**
+ * 给 AI 取用的版本查找：同时限定项目与 key。起点 / 版本 / 草稿可取；hidden 视同不存在；
+ * 已撤回给「已撤回」与同版本号下封版最新的未撤回版本（替代版本），永不静默回落。
+ */
+export async function lookupAgentVersion(projectId: string, key: string): Promise<AgentVersionLookup> {
+  const rows = await db
+    .select({
+      key: repoVersions.key,
+      kind: repoVersions.kind,
+      number: repoVersions.number,
+      name: repoVersions.name,
+      summary: repoVersions.summary,
+      line: repoVersions.line,
+      parentKey: repoVersions.parentKey,
+      patchOf: repoVersions.patchOf,
+      sealedAt: repoVersions.sealedAt,
+      specDocs: repoVersions.specDocs,
+      manifest: repoVersions.manifest,
+      snapshotId: repoVersions.snapshotId,
+      withdrawnAt: repoVersions.withdrawnAt,
+    })
+    .from(repoVersions)
+    .where(and(eq(repoVersions.projectId, projectId), eq(repoVersions.key, key)))
+    .limit(1);
+  const r = rows[0];
+  if (!r || r.kind === "hidden") return { status: "not_found" };
+  if (r.withdrawnAt !== null) {
+    let replacement: { key: string; number: string | null } | null = null;
+    if (r.number !== null) {
+      const all = await loadVersionRows(projectId);
+      const resolved = resolveRepoVersion(toResolveInput(all, null), r.number);
+      const hit = resolved.notice === null ? all.find((v) => v.key === resolved.key) : undefined;
+      if (hit && hit.key !== r.key && hit.kind !== "draft") replacement = { key: hit.key, number: hit.number };
+    }
+    return { status: "withdrawn", number: r.number, replacement };
+  }
+  return {
+    status: "ok",
+    version: {
+      key: r.key,
+      kind: r.kind as AgentVersion["kind"],
+      number: r.number,
+      name: r.name,
+      summary: r.summary,
+      line: r.line,
+      parentKey: r.parentKey,
+      patchOf: r.patchOf,
+      sealedAt: iso(r.sealedAt),
+      specDocs: (r.specDocs as string[] | null) ?? null,
+      manifest: r.manifest ?? null,
+      snapshotId: r.snapshotId,
+    },
+  };
+}
+
+/** 某版本全部文件的对象存储位置（路径 → s3Key），打包按它逐个读。不对外暴露 s3Key。 */
+export async function listSnapshotFileLocations(snapshotId: string) {
+  return db
+    .select({ path: snapshotFiles.relPath, s3Key: snapshotFiles.s3Key })
+    .from(snapshotFiles)
+    .where(eq(snapshotFiles.snapshotId, snapshotId));
+}
+
+export type AgentPromptResult =
+  | { status: "no_share" }
+  | { status: "version_not_found" }
+  | { status: "version_withdrawn"; replacement: { key: string; number: string | null } | null }
+  | {
+      status: "ok";
+      projectName: string;
+      shareId: string;
+      hasPassword: boolean;
+      passwordVersion: number;
+      version: { key: string; number: string | null; name: string | null } | null;
+      prompt: AgentPrompt;
+    };
+
+/**
+ * 「复制给 AI」的提示词：G-canvas（个人令牌）与查看器（仓库会话）两个入口共用，说法不会分叉。
+ * 没有访客链接 → no_share；`key` 为 null = 不锁版本。密码占位 `{{PASSWORD}}` 留给调用方在本机或浏览器里填。
+ */
+export async function buildRepoAgentPrompt(
+  repo: RepoProject,
+  origin: string,
+  key: string | null,
+): Promise<AgentPromptResult> {
+  const share = await getRepoShare(repo.versionId);
+  if (!share) return { status: "no_share" };
+  let version: { key: string; number: string | null; name: string | null } | null = null;
+  if (key !== null) {
+    const found = await lookupAgentVersion(repo.id, key);
+    if (found.status === "not_found") return { status: "version_not_found" };
+    if (found.status === "withdrawn") return { status: "version_withdrawn", replacement: found.replacement };
+    version = { key: found.version.key, number: found.version.number, name: found.version.name };
+  }
+  return {
+    status: "ok",
+    projectName: repo.name,
+    shareId: share.shareId,
+    hasPassword: share.hasPassword,
+    passwordVersion: share.passwordVersion,
+    version,
+    prompt: buildAgentPrompt({
+      projectName: repo.name,
+      origin,
+      shareId: share.shareId,
+      version,
+      hasPassword: share.hasPassword,
+    }),
+  };
 }

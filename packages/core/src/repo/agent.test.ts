@@ -73,7 +73,7 @@ describe("readChangeManifest", () => {
 });
 
 describe("selectFiles · changes", () => {
-  it("spec + 改动涉及 + 关联本版需求的真相文档，其余不选", () => {
+  it("spec + 改动涉及 + 关联本版需求的知识库，其余不选", () => {
     const sel = selectFiles({ files: table, scope: "changes", manifest, specDocs: null });
     expect(sel.selected.map((x) => x.path)).toEqual([
       "blocks/home.html",

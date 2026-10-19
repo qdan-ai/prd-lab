@@ -9,7 +9,7 @@ import { checkRepoPath, CHANGE_MANIFEST_FORMAT } from "./manifest";
 
 export type AgentFile = { path: string; size: number; sha256: string; contentType: string };
 
-/** 文件在本版里的角色：spec > 真相文档 > 本版改动涉及 > 其他。 */
+/** 文件在本版里的角色：spec > 知识库 > 本版改动涉及 > 其他。 */
 export type FileRole = "spec" | "truth" | "change" | "other";
 
 export type PullScope = "changes" | "all" | "paths";
@@ -361,7 +361,7 @@ export type VersionDocInput = {
 
 const ROLE_LABEL: Record<FileRole, string> = {
   spec: "spec 文档",
-  truth: "真相文档",
+  truth: "知识库",
   change: "本版改动涉及的文件",
   other: "其他文件",
 };
@@ -553,7 +553,7 @@ export function buildAgentPrompt(input: AgentPromptInput): AgentPrompt {
       `2. 看这一版：${curl} "${root}/k/${kRef}"`,
       "   返回版本信息、改动清单摘要，以及两种范围各自的文件数与体积。",
       "3. 按开发的问题选一种拉法：",
-      "   - 只看本版改动：spec + 改动清单 + 本版改到的原型页面与文档 + 相关真相文档",
+      "   - 只看本版改动：spec + 改动清单 + 本版改到的原型页面与文档 + 相关知识库",
       `     ${curl} -o prd.zip "${root}/k/${kRef}/pull?scope=changes"`,
       "   - 整个版本：先看第 2 步的体积再拉；超过服务端上限会被拒，并告诉你怎么分批",
       `     ${curl} -o prd.zip "${root}/k/${kRef}/pull?scope=all"`,

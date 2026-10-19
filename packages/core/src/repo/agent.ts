@@ -248,14 +248,42 @@ export function formatBytes(n: number): string {
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
-/** 超限时给的分批建议：按顶层目录列出体积，提示用 paths 分批拉。 */
+/**
+ * 把文件切成若干「前缀」，每个前缀（目录或单个文件）合计不超过 limit：
+ * 先按顶层目录，超限的目录往下一层拆，直到按单个文件为止。
+ */
+function splitPrefixes(files: AgentFile[], limit: number, prefix = ""): { name: string; bytes: number }[] {
+  const byNext = new Map<string, AgentFile[]>();
+  for (const f of files) {
+    const rest = f.path.slice(prefix.length);
+    const i = rest.indexOf("/");
+    const name = i < 0 ? f.path : `${prefix}${rest.slice(0, i)}/`;
+    (byNext.get(name) ?? byNext.set(name, []).get(name)!).push(f);
+  }
+  const out: { name: string; bytes: number }[] = [];
+  for (const [name, group] of [...byNext.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    const bytes = sumBytes(group);
+    if (bytes > limit && name.endsWith("/")) out.push(...splitPrefixes(group, limit, name));
+    else out.push({ name, bytes });
+  }
+  return out;
+}
+
+/** 超限时的分批建议：把文件切成每批不超过 limit 的 paths 列表（目录太大就往下拆到单个文件）。 */
 export function batchAdvice(files: AgentFile[], limit = AGENT_PACK_MAX_BYTES): string {
-  const groups = topLevelGroups(files);
-  const list = groups
-    .slice(0, 12)
-    .map((g) => `${g.name} ${formatBytes(g.bytes)}`)
-    .join("、");
-  return `请用 paths 按目录分批拉取，每批不超过 ${formatBytes(limit)}。各目录体积：${list || "（无）"}`;
+  const batches: { names: string[]; bytes: number }[] = [];
+  for (const p of splitPrefixes(files, limit)) {
+    const last = batches[batches.length - 1];
+    if (last && last.bytes + p.bytes <= limit) {
+      last.names.push(p.name);
+      last.bytes += p.bytes;
+    } else batches.push({ names: [p.name], bytes: p.bytes });
+  }
+  const shown = batches.slice(0, 8).map(
+    (b, i) => `第 ${i + 1} 批（${formatBytes(b.bytes)}）：paths=${b.names.map(encodePathForQuery).join(",")}`,
+  );
+  const more = batches.length > shown.length ? `；其余 ${batches.length - shown.length} 批用 files 接口列出文件，按同样方式分批` : "";
+  return `请用 paths 分 ${batches.length} 批拉取，每批不超过 ${formatBytes(limit)}。${shown.join("；")}${more}`;
 }
 
 function topLevelGroups(files: AgentFile[]): { name: string; count: number; bytes: number }[] {
@@ -327,6 +355,8 @@ export type VersionDocInput = {
   manifest: ChangeManifestView | null;
   /** 版本记录里的 spec 路径（没有机器清单时划角色用） */
   specDocs: string[] | null;
+  /** 链接有密码：补拉命令带上登录 cookie */
+  hasPassword?: boolean;
 };
 
 const ROLE_LABEL: Record<FileRole, string> = {
@@ -416,7 +446,7 @@ export function renderVersionDoc(input: VersionDocInput): string {
       push(`### ${ROLE_LABEL[role]}：${of.length} 个，${formatBytes(sumBytes(of))}`, "");
       for (const g of topLevelGroups(of).slice(0, 20)) {
         push(`- ${g.name} ${g.count} 个文件，${formatBytes(g.bytes)}`);
-        push(`  补拉：curl -s -o more.zip "${input.root}/k/${v.key}/pull?paths=${encodePathForQuery(g.name)}"`);
+        push(`  补拉：${input.hasPassword ? "curl -s -b ./prd/.cookies" : "curl -s"} -o more.zip "${input.root}/k/${v.key}/pull?paths=${encodePathForQuery(g.name)}"`);
       }
       push("");
     }
@@ -463,11 +493,6 @@ export function renderPullRecord(input: VersionDocInput & { changeManifest: unkn
 /** 带密码那段文本里密码的占位符；只在本机或浏览器里替换，不往服务器发明文。 */
 export const PASSWORD_PLACEHOLDER = "{{PASSWORD}}";
 
-/** 把密码填进占位符。不用 String.replace：密码里的 `$&` 之类不能被当替换模式。 */
-export function fillPassword(template: string, password: string): string {
-  return template.split(PASSWORD_PLACEHOLDER).join(password);
-}
-
 export type AgentPromptInput = {
   projectName: string;
   /** 主站 origin，如 http://101.96.194.178 */
@@ -493,6 +518,7 @@ export function agentRoot(origin: string, shareId: string): string {
 export function buildAgentPrompt(input: AgentPromptInput): AgentPrompt {
   const root = agentRoot(input.origin, input.shareId);
   const k = input.version?.key ?? null;
+  const curl = input.hasPassword ? "curl -s -b ./prd/.cookies" : "curl -s";
   const projectDir = input.projectName.replace(/[\\/]/g, "_");
   const loginUrl = `${input.origin.replace(/\/+$/, "")}/share/${input.shareId}/api/login`;
   const target = input.version
@@ -523,16 +549,17 @@ export function buildAgentPrompt(input: AgentPromptInput): AgentPrompt {
       "只支持 http：请用命令行 curl，网页抓取工具会因强制 https 而失败。",
       ...(input.hasPassword ? passwordBlock(withPassword) : []),
       "",
-      `1. 看有哪些版本、哪版上线（需要时）：curl -s "${root}/versions"`,
-      `2. 看这一版：curl -s "${root}/k/${kRef}"`,
+      `1. 看有哪些版本、哪版上线（需要时）：${curl} "${root}/versions"`,
+      `2. 看这一版：${curl} "${root}/k/${kRef}"`,
       "   返回版本信息、改动清单摘要，以及两种范围各自的文件数与体积。",
       "3. 按开发的问题选一种拉法：",
       "   - 只看本版改动：spec + 改动清单 + 本版改到的原型页面与文档 + 相关真相文档",
-      `     curl -s -o prd.zip "${root}/k/${kRef}/pull?scope=changes"`,
+      `     ${curl} -o prd.zip "${root}/k/${kRef}/pull?scope=changes"`,
       "   - 整个版本：先看第 2 步的体积再拉；超过服务端上限会被拒，并告诉你怎么分批",
-      `     curl -s -o prd.zip "${root}/k/${kRef}/pull?scope=all"`,
+      `     ${curl} -o prd.zip "${root}/k/${kRef}/pull?scope=all"`,
       `   - 指定文件：pull?paths=<路径1>,<路径2>（可写目录前缀；路径里有逗号时重复写 paths=）；单个文件也可直接取原文 "${root}/k/${kRef}/raw/<路径>"`,
       `   解压到 ${dir}（用你所在系统可用的解压方式）。`,
+      "   解压失败时，prd.zip 里其实是 JSON 错误说明（401 / 413 / 429 时 curl 退出码仍为 0）：打开它，照其中的 next 做。",
       "   目录里的 PRD-VERSION.md 是本版说明：改了什么、这次拉了哪些、没拉哪些（带体积）、怎么补拉。",
       "4. 和上一版的差异：PRD-VERSION.md 里的改动清单就是本版相对上一版的改动；要逐行对比，把上一版也拉下来自己比。",
       "5. 不要把 ./prd/ 提交进代码仓库，除非开发要求。",

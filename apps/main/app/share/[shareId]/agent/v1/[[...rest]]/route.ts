@@ -34,7 +34,7 @@ import {
 } from "@prd-lab/core/repo";
 import { requestOrigin } from "@/lib/api/request-origin";
 import { getShareSession } from "@/lib/share/share-session";
-import { createZipStream, packSlots, PACK_RETRY_AFTER_SECONDS } from "@/lib/agent/pack";
+import { createZipStream, packConfig, packSlots, PACK_RETRY_AFTER_SECONDS } from "@/lib/agent/pack";
 import { agentError, agentHeaders, agentJson, agentText } from "@/lib/agent/respond";
 
 export const runtime = "nodejs";
@@ -59,7 +59,24 @@ const MAX_PAGE = 500;
  * 鉴权沿用访客链接：getShareSession（撤销 → 410，无密码放行，有密码按 cookie 与密码版本号）。
  * 选文件只能从「本版实际文件表」里选。全部回应 private, no-store。
  */
-export async function GET(request: Request, { params }: Ctx) {
+export async function GET(request: Request, ctx: Ctx) {
+  return handle(request, ctx, false);
+}
+
+/**
+ * HEAD：同样的鉴权与检查，只回响应头。不申请打包名额、不建压缩流、不读对象存储，
+ * 状态码与 GET 一致（401 / 404 / 410 / 413 …），成功时 pull 回 200 + zip 头。
+ */
+export async function HEAD(request: Request, ctx: Ctx) {
+  return handle(request, ctx, true);
+}
+
+async function handle(request: Request, { params }: Ctx, head: boolean): Promise<Response> {
+  const res = await dispatch(request, { params }, head);
+  return head && res.body !== null ? new Response(null, { status: res.status, headers: res.headers }) : res;
+}
+
+async function dispatch(request: Request, { params }: Ctx, head: boolean): Promise<Response> {
   const { shareId, rest = [] } = await params;
   const origin = requestOrigin(request);
 
@@ -107,7 +124,7 @@ export async function GET(request: Request, { params }: Ctx) {
   }
   if (rest.length === 1 && rest[0] === "versions") return versionsResponse(repo, url);
   if (rest[0] === "k" && rest.length >= 2) {
-    return versionResponse({ repo, root, key: rest[1]!, tail: rest.slice(2), url, request });
+    return versionResponse({ repo, root, key: rest[1]!, tail: rest.slice(2), url, request, head });
   }
   return agentError(404, "not_found", "没有这个地址", `接口用法见 ${root}/README.md`);
 }
@@ -156,7 +173,15 @@ async function versionsResponse(repo: RepoProject, url: URL): Promise<Response> 
   });
 }
 
-type VersionCtx = { repo: RepoProject; root: string; key: string; tail: string[]; url: URL; request: Request };
+type VersionCtx = {
+  repo: RepoProject;
+  root: string;
+  key: string;
+  tail: string[];
+  url: URL;
+  request: Request;
+  head: boolean;
+};
 
 async function versionResponse(c: VersionCtx): Promise<Response> {
   if (!isValidKey(c.key)) return notFoundVersion(c.root);
@@ -265,10 +290,11 @@ async function rawResponse(c: VersionCtx, v: AgentVersion, relPath: string): Pro
   if (!file) {
     return agentError(404, "file_not_found", "本版没有这个文件", `用 ${c.root}/k/${v.key}/files 查看本版文件路径`);
   }
-  const obj = await getObjectStream(file.s3Key);
+  const headers = agentHeaders({ "Content-Type": rawContentType(relPath, file.contentType) });
+  if (c.head) return new Response(null, { status: 200, headers });
+  const obj = await getObjectStream(file.s3Key, c.request.signal);
   const stream = obj.stream;
   c.request.signal.addEventListener("abort", () => stream.destroy(), { once: true });
-  const headers = agentHeaders({ "Content-Type": rawContentType(relPath, file.contentType) });
   if (typeof obj.contentLength === "number") headers["Content-Length"] = String(obj.contentLength);
   return new Response(Readable.toWeb(stream) as unknown as ReadableStream<Uint8Array>, { status: 200, headers });
 }
@@ -325,7 +351,15 @@ async function pullResponse(
     );
   }
 
-  const release = packSlots.tryAcquire();
+  const zipHeaders = agentHeaders({
+    "Content-Type": "application/zip",
+    "Content-Disposition": `attachment; filename="prd-${v.key.slice(0, 8)}-${selection.scope}.zip"`,
+  });
+  if (c.head) return new Response(null, { status: 200, headers: zipHeaders });
+
+  // 小下载（原始大小之和不超过 freeBytes）不占名额；更大的全站限同时数
+  const cfg = packConfig();
+  const release = selection.totalBytes <= cfg.freeBytes ? () => {} : packSlots.tryAcquire();
   if (!release) {
     return agentError(
       429,
@@ -337,7 +371,11 @@ async function pullResponse(
   }
 
   try {
-    const [locations, { view }] = await Promise.all([listSnapshotFileLocations(v.snapshotId), getRepoView(c.repo)]);
+    const [locations, { view }, share] = await Promise.all([
+      listSnapshotFileLocations(v.snapshotId),
+      getRepoView(c.repo),
+      getRepoShare(c.repo.versionId),
+    ]);
     const keyOf = new Map(locations.map((l) => [l.path, l.s3Key]));
     const doc = {
       projectName: c.repo.name,
@@ -357,6 +395,7 @@ async function pullResponse(
       allFiles: files,
       manifest,
       specDocs: v.specDocs,
+      hasPassword: share?.hasPassword ?? false,
     };
     const stream = createZipStream({
       entries: selection.selected.map((f) => ({ path: f.path, s3Key: keyOf.get(f.path)! })),
@@ -364,17 +403,11 @@ async function pullResponse(
         { name: "PRD-VERSION.md", content: renderVersionDoc(doc) },
         { name: "prd-manifest.json", content: renderPullRecord({ ...doc, changeManifest: v.manifest }) },
       ],
-      open: async (s3Key) => (await getObjectStream(s3Key)).stream,
+      open: async (s3Key, signal) => (await getObjectStream(s3Key, signal)).stream,
       signal: c.request.signal,
       release,
     });
-    return new Response(stream, {
-      status: 200,
-      headers: agentHeaders({
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="prd-${v.key.slice(0, 8)}-${selection.scope}.zip"`,
-      }),
-    });
+    return new Response(stream, { status: 200, headers: zipHeaders });
   } catch (e) {
     release();
     throw e;

@@ -75,13 +75,19 @@ export async function getObjectBuffer(key: string): Promise<Buffer> {
 }
 
 /** 拉对象为 stream（preview 子资源反代用） */
-export async function getObjectStream(key: string): Promise<{
+export async function getObjectStream(
+  key: string,
+  signal?: AbortSignal,
+): Promise<{
   stream: Readable;
   contentType?: string;
   contentLength?: number;
 }> {
   const client = getS3Client();
-  const res = await client.send(new GetObjectCommand({ Bucket: getBucketName(), Key: key }));
+  const res = await client.send(
+    new GetObjectCommand({ Bucket: getBucketName(), Key: key }),
+    signal ? { abortSignal: signal } : undefined,
+  );
   if (!res.Body) throw new Error("empty body");
   return {
     stream: res.Body as Readable,

@@ -5,7 +5,6 @@ import {
   buildAgentPrompt,
   checkPackBudget,
   fileRoles,
-  fillPassword,
   normalizeRequestPath,
   PASSWORD_PLACEHOLDER,
   rawContentType,
@@ -201,10 +200,19 @@ describe("fileRoles / scopeSummaries / 预检", () => {
     expect(checkPackBudget(AGENT_PACK_MAX_BYTES + 1)).toMatchObject({ ok: false, limit: AGENT_PACK_MAX_BYTES });
   });
 
-  it("分批建议按顶层目录列体积", () => {
-    const advice = batchAdvice(table);
-    expect(advice).toContain("assets/");
-    expect(advice).toContain("paths");
+  it("分批建议：每批不超过上限；单个目录超限就往下拆到单个文件，不原地打转", () => {
+    const big = ["a", "b", "c"].map((n) => f(`assets/${n}.bin`, 60));
+    const advice = batchAdvice([...big, f("docs/x.md", 10)], 100);
+    expect(advice).toContain("分 3 批");
+    for (const n of ["a", "b", "c"]) expect(advice).toContain(`paths=assets/${n}.bin`);
+    expect(advice).not.toMatch(/paths=assets\/[,；]/);
+    for (const m of advice.matchAll(/（([\d.]+) B）/g)) expect(Number(m[1])).toBeLessThanOrEqual(100);
+  });
+
+  it("分批建议：小目录合并成一批；目录超限才展开", () => {
+    const advice = batchAdvice([f("a/x", 40), f("b/y", 40), f("c/z", 40)], 100);
+    expect(advice).toContain("分 2 批");
+    expect(advice).toContain("paths=a/,b/");
   });
 });
 
@@ -269,6 +277,11 @@ describe("renderVersionDoc", () => {
     const sel = selectFiles({ files: table, scope: "paths", paths: ["x/y.md"], manifest, specDocs: null });
     expect(renderVersionDoc(baseDoc({ selection: sel }))).toContain("- x/y.md");
   });
+  it("链接有密码时补拉命令带 cookie", () => {
+    const md = renderVersionDoc(baseDoc({ hasPassword: true }));
+    expect(md).toContain('补拉：curl -s -b ./prd/.cookies -o more.zip');
+    expect(renderVersionDoc(baseDoc())).toContain('补拉：curl -s -o more.zip');
+  });
   it("拉全部时没有「没拉的」", () => {
     const sel = selectFiles({ files: table, scope: "all", manifest, specDocs: null });
     expect(renderVersionDoc(baseDoc({ selection: sel }))).toContain("本版文件已全部拉取");
@@ -315,15 +328,20 @@ describe("buildAgentPrompt", () => {
     expect(p.plain).toContain("本次未指定版本");
     expect(p.plain).toContain("没有上线版用最新");
   });
+  it("提示词：解压失败时看 JSON 错误说明；有密码时每条 curl 都带 cookie，无密码不带", () => {
+    const open = buildAgentPrompt(promptIn).plain;
+    expect(open).toContain("prd.zip 里其实是 JSON 错误说明");
+    expect(open).not.toContain("-b ./prd/.cookies\" \"");
+    expect(open).not.toMatch(/curl -s -b [^\n]*pull/);
+    const locked = buildAgentPrompt({ ...promptIn, hasPassword: true });
+    for (const t of [locked.plain, locked.withPassword!]) {
+      expect(t).toMatch(/curl -s -b \.\/prd\/\.cookies -o prd\.zip "[^"]*pull\?scope=changes"/);
+      expect(t).toMatch(/curl -s -b \.\/prd\/\.cookies "[^"]*\/versions"/);
+    }
+  });
   it("项目名里的斜杠不会变成路径层级", () => {
     const p = buildAgentPrompt({ ...promptIn, projectName: "a/b\\c" });
     expect(p.plain).toContain("./prd/a_b_c/");
-  });
-  it("fillPassword 原样填入，$ 与引号不被当成替换模式", () => {
-    const p = buildAgentPrompt({ ...promptIn, hasPassword: true });
-    const filled = fillPassword(p.withPassword!, `a$&b"c$'d`);
-    expect(filled).toContain(`\na$&b"c$'d\n`);
-    expect(filled).not.toContain(PASSWORD_PLACEHOLDER);
   });
   it("README 复用同一模板并带接口一览", () => {
     const md = renderAgentReadme({ projectName: "P", origin: "http://h", shareId: "s", hasPassword: false });

@@ -5,8 +5,25 @@ import * as archiverMod from "archiver";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ZipArchive = (archiverMod as any).ZipArchive as new (opts?: { zlib?: { level?: number } }) => any;
 
-/** 全站同时打包的上限；无密码链接任何人都能反复请求，单包体积上限挡不住并发。 */
-export const PACK_MAX_CONCURRENT = 2;
+/** 小下载不占名额的体积线（原始大小之和，字节）。环境变量 PRDLAB_AGENT_PACK_FREE_BYTES 可调。 */
+export const PACK_FREE_BYTES_DEFAULT = 20 * 1024 * 1024;
+/** 更大的下载全站同时打包的上限；无密码链接任何人都能反复请求，单包体积上限挡不住并发。环境变量 PRDLAB_AGENT_PACK_MAX_CONCURRENT 可调。 */
+export const PACK_MAX_CONCURRENT_DEFAULT = 4;
+
+function envNumber(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+}
+
+/** 每次读取环境变量，改配置重启即生效。 */
+export function packConfig(): { freeBytes: number; maxConcurrent: number } {
+  return {
+    freeBytes: envNumber("PRDLAB_AGENT_PACK_FREE_BYTES", PACK_FREE_BYTES_DEFAULT),
+    maxConcurrent: Math.max(1, envNumber("PRDLAB_AGENT_PACK_MAX_CONCURRENT", PACK_MAX_CONCURRENT_DEFAULT)),
+  };
+}
 /** 打包名额满时建议客户端等待的秒数。 */
 export const PACK_RETRY_AFTER_SECONDS = 5;
 /** 单次打包的最长时间：慢读端不能无限期占着全站仅有的名额。 */
@@ -17,7 +34,11 @@ export const PACK_ZLIB_LEVEL = 1;
 /** 并发名额：tryAcquire 拿到的 release 可重复调用，只生效一次。 */
 export class PackSlots {
   private used = 0;
-  constructor(readonly max: number) {}
+  constructor(private readonly limit: number | (() => number)) {}
+
+  get max(): number {
+    return typeof this.limit === "function" ? this.limit() : this.limit;
+  }
 
   get active(): number {
     return this.used;
@@ -37,7 +58,7 @@ export class PackSlots {
 
 // 挂在 globalThis 上：Next 可能把不同路由打成各自的模块实例，名额要全进程共用一份
 const globalSlots = globalThis as unknown as { __prdAgentPackSlots?: PackSlots };
-export const packSlots: PackSlots = (globalSlots.__prdAgentPackSlots ??= new PackSlots(PACK_MAX_CONCURRENT));
+export const packSlots: PackSlots = (globalSlots.__prdAgentPackSlots ??= new PackSlots(() => packConfig().maxConcurrent));
 
 export type PackEntry = { path: string; s3Key: string };
 export type PackExtra = { name: string; content: string };
@@ -46,8 +67,8 @@ export type ZipStreamOptions = {
   entries: PackEntry[];
   /** 放在 zip 最前面的说明文件（PRD-VERSION.md 等） */
   extras: PackExtra[];
-  /** 从对象存储按流读一个对象；同一时刻最多打开一个 */
-  open: (s3Key: string) => Promise<Readable>;
+  /** 从对象存储按流读一个对象；同一时刻最多打开一个。signal 在中止、读端取消、超时、出错时触发，用来取消在途的存储读取 */
+  open: (s3Key: string, signal: AbortSignal) => Promise<Readable>;
   /** 客户端断开时触发：停读、停压、释放名额 */
   signal?: AbortSignal;
   /** 压缩流结束（正常、出错、中止）后调用一次，用来归还并发名额；可重复调用安全 */
@@ -87,10 +108,14 @@ export function createZipStream(opts: ZipStreamOptions): ReadableStream<Uint8Arr
   };
 
   let deadline: ReturnType<typeof setTimeout> | null = null;
+  const storageAbort = new AbortController();
   const stop = (err?: Error) => {
     if (stopped) return;
     stopped = true;
     if (deadline) clearTimeout(deadline);
+    // 取消存储读取会让在途的对象流以 AbortError 结束；先挂空处理器，免得无人监听的 error 事件拖垮进程
+    current?.on("error", () => {});
+    storageAbort.abort();
     settleWeb(err ?? new Error("zip stream aborted"));
     if (waiter) {
       const w = waiter;
@@ -138,7 +163,7 @@ export function createZipStream(opts: ZipStreamOptions): ReadableStream<Uint8Arr
       }
       for (const e of opts.entries) {
         if (stopped) return;
-        const stream = await opts.open(e.s3Key);
+        const stream = await opts.open(e.s3Key, storageAbort.signal);
         if (stopped) {
           stream.destroy();
           return;

@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { PassThrough, Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { parseAndValidateZip } from "../../../../packages/core/src/zip-utils";
-import { createZipStream, PackSlots, type PackEntry } from "./pack";
+import { createZipStream, PackSlots, packConfig, type PackEntry } from "./pack";
 
 const tick = (ms = 20) => new Promise((r) => setTimeout(r, ms));
 
@@ -19,9 +19,10 @@ async function collect(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
 
 /** 假对象存储：记录每个对象何时被打开、是否被销毁。 */
 function fakeStore(contents: Record<string, Buffer | (() => Readable)>) {
-  const log = { opened: [] as string[], destroyed: [] as string[], live: 0, maxLive: 0 };
-  const open = async (key: string): Promise<Readable> => {
+  const log = { signals: [] as Array<AbortSignal | undefined>, opened: [] as string[], destroyed: [] as string[], live: 0, maxLive: 0 };
+  const open = async (key: string, signal?: AbortSignal): Promise<Readable> => {
     log.opened.push(key);
+    log.signals.push(signal);
     const src = contents[key];
     if (src === undefined) throw new Error(`no object ${key}`);
     const stream = typeof src === "function" ? src() : Readable.from([src]);
@@ -50,6 +51,36 @@ describe("PackSlots", () => {
     expect(slots.active).toBe(1);
     expect(slots.tryAcquire()).not.toBeNull();
     b();
+  });
+});
+
+describe("packConfig", () => {
+  it("默认：20 MB 以内不占名额，更大的全站 4 个；环境变量可调，非法值回默认", () => {
+    const keep = { ...process.env };
+    try {
+      delete process.env.PRDLAB_AGENT_PACK_FREE_BYTES;
+      delete process.env.PRDLAB_AGENT_PACK_MAX_CONCURRENT;
+      expect(packConfig()).toEqual({ freeBytes: 20 * 1024 * 1024, maxConcurrent: 4 });
+      process.env.PRDLAB_AGENT_PACK_FREE_BYTES = "0";
+      process.env.PRDLAB_AGENT_PACK_MAX_CONCURRENT = "7";
+      expect(packConfig()).toEqual({ freeBytes: 0, maxConcurrent: 7 });
+      process.env.PRDLAB_AGENT_PACK_FREE_BYTES = "abc";
+      process.env.PRDLAB_AGENT_PACK_MAX_CONCURRENT = "-1";
+      expect(packConfig()).toEqual({ freeBytes: 20 * 1024 * 1024, maxConcurrent: 4 });
+    } finally {
+      for (const k of ["PRDLAB_AGENT_PACK_FREE_BYTES", "PRDLAB_AGENT_PACK_MAX_CONCURRENT"]) {
+        if (keep[k] === undefined) delete process.env[k];
+        else process.env[k] = keep[k];
+      }
+    }
+  });
+  it("PackSlots 的上限可以是函数（每次取最新配置）", () => {
+    let n = 1;
+    const slots = new PackSlots(() => n);
+    expect(slots.tryAcquire()).not.toBeNull();
+    expect(slots.tryAcquire()).toBeNull();
+    n = 2;
+    expect(slots.tryAcquire()).not.toBeNull();
   });
 });
 
@@ -241,5 +272,43 @@ describe("createZipStream", () => {
     await tick(50);
     expect(slots.active).toBe(0);
     expect(store.log.opened).toEqual(["s3/a"]);
+  });
+
+  it("中止时把取消信号传给在途的对象存储读取（signal / 读端取消 / 超时 / 出错各一次）", async () => {
+    const hang = () => {
+      const p = new PassThrough();
+      p.write(Buffer.alloc(1024, 1));
+      return p;
+    };
+    const run = async (how: "signal" | "cancel" | "timeout") => {
+      const store = fakeStore({ "s3/a": hang });
+      const ctrl = new AbortController();
+      const stream = createZipStream({
+        entries: [entry("a")],
+        extras: [],
+        open: store.open,
+        signal: ctrl.signal,
+        release: () => {},
+        maxMs: how === "timeout" ? 100 : undefined,
+      });
+      const reader = stream.getReader();
+      void reader.read().catch(() => {});
+      await tick(50);
+      const sig = store.log.signals[0]!;
+      expect(sig.aborted).toBe(false);
+      if (how === "signal") ctrl.abort();
+      if (how === "cancel") await reader.cancel();
+      await tick(how === "timeout" ? 200 : 50);
+      expect(sig.aborted).toBe(true);
+      await reader.cancel().catch(() => {});
+    };
+    await run("signal");
+    await run("cancel");
+    await run("timeout");
+
+    const store = fakeStore({});
+    const stream = createZipStream({ entries: [entry("missing")], extras: [], open: store.open, release: () => {} });
+    await expect(collect(stream)).rejects.toThrow();
+    expect(store.log.signals).toHaveLength(1);
   });
 });

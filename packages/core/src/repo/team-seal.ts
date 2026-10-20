@@ -496,8 +496,8 @@ export async function deleteGuestDraft(projectId: string, userId: string, applie
 }
 
 /**
- * 主线在某个 rev 时最新的版本：这个 rev 及以前最后一次封版封出的版本；在它之前团队还没封过版时，
- * 是之后第一次封版的父版本，或（之后也没封过）团队主线现在记着的最新版本（开启时的初值）。
+ * 主线在某个 rev 时最新的版本：这个 rev 之后第一次封版的父版本（封版时父版本必须是当时最新的版本）；
+ * 之后还没封过版时，是团队主线现在记着的最新版本。
  */
 async function basedOnAt(
   conn: Conn,
@@ -505,10 +505,7 @@ async function basedOnAt(
   rev: number,
   history: Array<{ rev: number; reason: string; versionKey: string | null }>,
 ): Promise<string | null> {
-  const seals = history.filter((h) => h.reason === "seal" && h.versionKey);
-  const before = seals.filter((h) => h.rev <= rev);
-  if (before.length > 0) return before[before.length - 1]!.versionKey;
-  const after = seals.find((h) => h.rev > rev);
+  const after = history.find((h) => h.reason === "seal" && h.versionKey && h.rev > rev);
   if (after) {
     const versions = await loadTeamVersionRecords(conn, projectId);
     return versions.find((x) => x.key === after.versionKey)?.record.parentKey ?? null;

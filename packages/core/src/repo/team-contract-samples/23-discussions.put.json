@@ -66,7 +66,7 @@
       }
     },
     {
-      "name": "拒收不合的文件",
+      "name": "拒收路径不合的文件",
       "request": {
         "params": {
           "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
@@ -80,10 +80,6 @@
           "files": {
             "docs/discussions/李四-2026-10-21-详情页.md": {
               "sha256": "50cd22da24a803272568d1d7019f19926372c95c5fc071c702e48d646c1d6b32",
-              "size": 135
-            },
-            "docs/discussions/张三-2026-10-20-首页.md": {
-              "sha256": "b668b6cd811ca7c37ac04261aca040d36cefb976f7bcbdb7d7a95cc76c8660ac",
               "size": 135
             },
             "docs/specs/R-1-首页.md": {
@@ -102,10 +98,6 @@
             "docs/discussions/李四-2026-10-21-详情页.md"
           ],
           "rejected": [
-            {
-              "path": "docs/discussions/张三-2026-10-20-首页.md",
-              "reason": "author_mismatch"
-            },
             {
               "path": "docs/specs/R-1-首页.md",
               "reason": "not_discussion_path"

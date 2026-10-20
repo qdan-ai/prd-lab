@@ -88,8 +88,9 @@ function patchLineTip(line: string, versions: Array<{ key: string; record: TeamV
 // ---------------------------------------------------------------------------
 
 /**
- * 一个事务里，按契约的顺序核对：`expectedRev`（主线，`head_moved`）→ 新版本的父版本就是这条线现在最新的版本
- * （`version_parent_moved`）→ `appliedStateRev`（`state_changed`）→ 版本号没被占用（`number_duplicate`）；
+ * 一个事务里，按契约的顺序核对：新版本的父版本就是这条线现在最新的版本（`version_parent_moved`：别人刚封了版，
+ * 草稿作废）→ `expectedRev`（主线，`head_moved`：只是有人合入，先拉取，草稿保留）→ `appliedStateRev`
+ * （`state_changed`）→ 版本号没被占用（`number_duplicate`）；
  * 都过了才建版本（团队快照 + 访客快照）、主线前进一格并记封出的版本、`state_rev` 加一、清掉我在这条线上的
  * 「正在封版」、记封版事件（团队状态据此给出 `sealer`）、存操作结果。补丁线没有团队主线，不核 rev。
  */
@@ -132,9 +133,6 @@ export async function sealLine(
           .from(teamLines)
           .where(and(eq(teamLines.projectId, projectId), eq(teamLines.line, MAIN)));
         if (!head) throw new TeamError("team_not_ready", "先在 G-canvas 里开启团队协作");
-        if (head.rev !== input.expectedRev) {
-          throw new TeamError("head_moved", "head_moved", { line, rev: head.rev, headSnapshotId: head.headSnapshotId });
-        }
       }
       const versions = await loadTeamVersionRecords(tx, projectId);
       const latest = head ? (head.baseVersionKey ?? null) : patchLineTip(line, versions);
@@ -146,6 +144,9 @@ export async function sealLine(
           line,
           latest: { key: hit.key, number: hit.record.number, sealer: hit.sealer, sealedAt: hit.record.sealedAt },
         });
+      }
+      if (head && head.rev !== input.expectedRev) {
+        throw new TeamError("head_moved", "head_moved", { line, rev: head.rev, headSnapshotId: head.headSnapshotId });
       }
       if (input.appliedStateRev !== state.stateRev) throw await stateChanged(locked);
       const taken = versions.find((x) => x.record.number === v.record.number && !x.record.withdrawnAt);

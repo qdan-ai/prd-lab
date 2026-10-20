@@ -438,6 +438,8 @@ export const teamLineHistory = mysqlTable(
       .references(() => snapshots.id, { onDelete: "restrict" }),
     reason: mysqlEnum("reason", ["init", "merge", "seal"]).notNull(),
     mrId: varchar("mr_id", { length: 36 }),
+    // 这一档对应的封版提交号；拉取时本机分支前进到它
+    versionKey: char("version_key", { length: 40 }),
     byUserId: varchar("by_user_id", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
     at: datetimeFsp("at").notNull().default(nowDefault()),
   },

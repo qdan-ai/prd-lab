@@ -60,6 +60,7 @@ CREATE TABLE `team_line_history` (
 	`snapshot_id` varchar(36) NOT NULL,
 	`reason` enum('init','merge','seal') NOT NULL,
 	`mr_id` varchar(36),
+	`version_key` char(40),
 	`by_user_id` varchar(36),
 	`at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 	CONSTRAINT `team_line_history_project_id_line_rev_pk` PRIMARY KEY(`project_id`,`line`,`rev`)

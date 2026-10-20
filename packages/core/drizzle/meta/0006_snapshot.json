@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "faf3d00f-ff54-4d7e-a902-c50625451bfb",
+  "id": "2e7e861d-132b-4156-9800-d9bd49072ca9",
   "prevId": "9f14633e-a391-46ec-aebb-4651cdbb9b59",
   "tables": {
     "api_tokens": {
@@ -1797,6 +1797,13 @@
         "mr_id": {
           "name": "mr_id",
           "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "version_key": {
+          "name": "version_key",
+          "type": "char(40)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

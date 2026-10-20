@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
-import { db, notTeamVersion, projects, snapshotInAudience, snapshots, versions } from "@prd-lab/core";
+import { db, notTeamVersion, projects, snapshots, versions } from "@prd-lab/core";
 import { auth, signOut } from "@/auth";
 import { isAdminName } from "@/lib/auth/admins";
 import { canManageProject } from "@/lib/api/owner-check";
@@ -94,7 +94,7 @@ export default async function VersionPage({
         archivedAt: snapshots.archivedAt,
       })
       .from(snapshots)
-      .where(and(eq(snapshots.versionId, vid), eq(snapshots.seqNo, targetSeq), snapshotInAudience("guest")))
+      .where(and(eq(snapshots.versionId, vid), eq(snapshots.seqNo, targetSeq)))
       .limit(1);
     const t = target[0];
     if (!t) {
@@ -114,7 +114,7 @@ export default async function VersionPage({
         versionLabel: snapshots.versionLabel,
       })
       .from(snapshots)
-      .where(and(eq(snapshots.versionId, vid), isNull(snapshots.archivedAt), snapshotInAudience("guest")))
+      .where(and(eq(snapshots.versionId, vid), isNull(snapshots.archivedAt)))
       .orderBy(desc(snapshots.seqNo))
       .limit(1);
     if (latest[0]) viewingSnapshot = latest[0];

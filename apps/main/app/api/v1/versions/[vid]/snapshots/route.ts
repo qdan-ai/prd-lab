@@ -5,6 +5,7 @@ import {
   idempotencyKeys,
   notTeamVersion,
   projects,
+  snapshotInAudience,
   snapshotFiles,
   snapshots,
   uploadFile,
@@ -67,7 +68,7 @@ export async function GET(_: Request, { params }: Ctx) {
     })
     .from(snapshots)
     .innerJoin(users, eq(snapshots.uploaderId, users.id))
-    .where(and(eq(snapshots.versionId, vid), isNull(snapshots.archivedAt)))
+    .where(and(eq(snapshots.versionId, vid), isNull(snapshots.archivedAt), snapshotInAudience("guest")))
     .orderBy(desc(snapshots.seqNo));
 
   return Response.json(rows);

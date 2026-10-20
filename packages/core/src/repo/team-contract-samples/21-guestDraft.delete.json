@@ -1,0 +1,52 @@
+{
+  "endpoint": "guestDraft.delete",
+  "cases": [
+    {
+      "name": "撤下访客草稿",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "query": {
+          "appliedStateRev": "4"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "stateRev": 5
+        }
+      }
+    },
+    {
+      "name": "成员不能撤",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "query": {
+          "appliedStateRev": "4"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_code": "forbidden_role",
+          "message": "需要管理员权限",
+          "details": {
+            "required": "admin",
+            "actual": "member"
+          }
+        }
+      }
+    }
+  ]
+}

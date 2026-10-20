@@ -1,0 +1,501 @@
+{
+  "endpoint": "lines.advance",
+  "cases": [
+    {
+      "name": "合入成功",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "line": "main"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "opId": "op-4c2e8a1f-3b5d-4f9e-8c7a-1d6b3e5f9a72",
+          "expectedRev": 2,
+          "mrId": "f1e2d3c4-0000-4000-8000-000000000005",
+          "files": {
+            "canvas.json": {
+              "sha256": "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776",
+              "size": 502,
+              "gitMode": "100644",
+              "gitOid": "dd112c51ffce03d13f5f5becece5e2e790e82f17"
+            },
+            "blocks/home.html": {
+              "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+              "size": 106,
+              "gitMode": "100644",
+              "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+            },
+            "styles/main.css": {
+              "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd",
+              "size": 24,
+              "gitMode": "100644",
+              "gitOid": "b7f4dfe3b06761e1bb6c72e2b3c71c3dd12ceb41"
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45,
+              "gitMode": "100644",
+              "gitOid": "15607950e4440f0681fa4e6d8b7b66aabf43673c"
+            },
+            "blocks/detail.html": {
+              "sha256": "60773503b066d0b5a2ece240240d8b48147bd58fdd1e5fb0a470cc5aa9f4222d",
+              "size": 66,
+              "gitMode": "100644",
+              "gitOid": "399a23d00242624918c1aa6699d9102494bb1d51"
+            },
+            "tools/export.sh": {
+              "sha256": "6fd817db6f311109a3b90fa8258c1e5f78fbb9988fb8126ff3dbb51239444176",
+              "size": 22,
+              "gitMode": "100755",
+              "gitOid": "5dd0fe2cdc6466f7efae079d818eec6f2872c322"
+            },
+            "docs/knowledge/行情.md": {
+              "sha256": "943a3c98d08599a91249ac1b3f845ddad845a19e09dea8d4caaf816f33597708",
+              "size": 44,
+              "gitMode": "100644",
+              "gitOid": "51f237fec11d44f823c546f4b4082745b3ccc838"
+            }
+          },
+          "renumberMap": {
+            "elements": {
+              "b3": "b5"
+            },
+            "files": {
+              "blocks/news.html": "blocks/news-2.html"
+            },
+            "states": {
+              "o-k3m9tp": {
+                "2": 3
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "line": {
+            "line": "main",
+            "rev": 3,
+            "headSnapshotId": "a0b1c2d3-0000-4000-8000-000000000103",
+            "baseVersionKey": "1a9a3702dab11233137e094bcc9bb91d71258b8b",
+            "updatedAt": "2026-10-21T07:00:00.000Z",
+            "updatedBy": {
+              "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+              "name": "李四",
+              "removed": false
+            }
+          },
+          "mr": {
+            "id": "f1e2d3c4-0000-4000-8000-000000000005",
+            "seq": 5,
+            "line": "main",
+            "author": {
+              "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+              "name": "王五",
+              "removed": false
+            },
+            "title": "首页加资讯区",
+            "itemCount": 1,
+            "status": "merged",
+            "withdrawReason": null,
+            "baseRev": 2,
+            "mergedRev": 3,
+            "createdAt": "2026-10-21T06:00:00.000Z",
+            "decidedAt": "2026-10-21T07:00:00.000Z",
+            "decidedBy": {
+              "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+              "name": "李四",
+              "removed": false
+            },
+            "returnNote": null
+          }
+        }
+      }
+    },
+    {
+      "name": "响应丢了，同一操作号重试",
+      "replayOf": "合入成功",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "line": "main"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "opId": "op-4c2e8a1f-3b5d-4f9e-8c7a-1d6b3e5f9a72",
+          "expectedRev": 2,
+          "mrId": "f1e2d3c4-0000-4000-8000-000000000005",
+          "files": {
+            "canvas.json": {
+              "sha256": "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776",
+              "size": 502,
+              "gitMode": "100644",
+              "gitOid": "dd112c51ffce03d13f5f5becece5e2e790e82f17"
+            },
+            "blocks/home.html": {
+              "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+              "size": 106,
+              "gitMode": "100644",
+              "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+            },
+            "styles/main.css": {
+              "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd",
+              "size": 24,
+              "gitMode": "100644",
+              "gitOid": "b7f4dfe3b06761e1bb6c72e2b3c71c3dd12ceb41"
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45,
+              "gitMode": "100644",
+              "gitOid": "15607950e4440f0681fa4e6d8b7b66aabf43673c"
+            },
+            "blocks/detail.html": {
+              "sha256": "60773503b066d0b5a2ece240240d8b48147bd58fdd1e5fb0a470cc5aa9f4222d",
+              "size": 66,
+              "gitMode": "100644",
+              "gitOid": "399a23d00242624918c1aa6699d9102494bb1d51"
+            },
+            "tools/export.sh": {
+              "sha256": "6fd817db6f311109a3b90fa8258c1e5f78fbb9988fb8126ff3dbb51239444176",
+              "size": 22,
+              "gitMode": "100755",
+              "gitOid": "5dd0fe2cdc6466f7efae079d818eec6f2872c322"
+            },
+            "docs/knowledge/行情.md": {
+              "sha256": "943a3c98d08599a91249ac1b3f845ddad845a19e09dea8d4caaf816f33597708",
+              "size": 44,
+              "gitMode": "100644",
+              "gitOid": "51f237fec11d44f823c546f4b4082745b3ccc838"
+            }
+          },
+          "renumberMap": {
+            "elements": {
+              "b3": "b5"
+            },
+            "files": {
+              "blocks/news.html": "blocks/news-2.html"
+            },
+            "states": {
+              "o-k3m9tp": {
+                "2": 3
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "line": {
+            "line": "main",
+            "rev": 3,
+            "headSnapshotId": "a0b1c2d3-0000-4000-8000-000000000103",
+            "baseVersionKey": "1a9a3702dab11233137e094bcc9bb91d71258b8b",
+            "updatedAt": "2026-10-21T07:00:00.000Z",
+            "updatedBy": {
+              "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+              "name": "李四",
+              "removed": false
+            }
+          },
+          "mr": {
+            "id": "f1e2d3c4-0000-4000-8000-000000000005",
+            "seq": 5,
+            "line": "main",
+            "author": {
+              "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+              "name": "王五",
+              "removed": false
+            },
+            "title": "首页加资讯区",
+            "itemCount": 1,
+            "status": "merged",
+            "withdrawReason": null,
+            "baseRev": 2,
+            "mergedRev": 3,
+            "createdAt": "2026-10-21T06:00:00.000Z",
+            "decidedAt": "2026-10-21T07:00:00.000Z",
+            "decidedBy": {
+              "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+              "name": "李四",
+              "removed": false
+            },
+            "returnNote": null
+          }
+        }
+      }
+    },
+    {
+      "name": "主线已前进",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "line": "main"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "opId": "op-7a6b5c4d-3e2f-4a1b-9c8d-7e6f5a4b3c2d",
+          "expectedRev": 2,
+          "mrId": "f1e2d3c4-0000-4000-8000-000000000005",
+          "files": {
+            "canvas.json": {
+              "sha256": "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776",
+              "size": 502,
+              "gitMode": "100644",
+              "gitOid": "dd112c51ffce03d13f5f5becece5e2e790e82f17"
+            },
+            "blocks/home.html": {
+              "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+              "size": 106,
+              "gitMode": "100644",
+              "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+            },
+            "styles/main.css": {
+              "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd",
+              "size": 24,
+              "gitMode": "100644",
+              "gitOid": "b7f4dfe3b06761e1bb6c72e2b3c71c3dd12ceb41"
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45,
+              "gitMode": "100644",
+              "gitOid": "15607950e4440f0681fa4e6d8b7b66aabf43673c"
+            },
+            "blocks/detail.html": {
+              "sha256": "60773503b066d0b5a2ece240240d8b48147bd58fdd1e5fb0a470cc5aa9f4222d",
+              "size": 66,
+              "gitMode": "100644",
+              "gitOid": "399a23d00242624918c1aa6699d9102494bb1d51"
+            },
+            "tools/export.sh": {
+              "sha256": "6fd817db6f311109a3b90fa8258c1e5f78fbb9988fb8126ff3dbb51239444176",
+              "size": 22,
+              "gitMode": "100755",
+              "gitOid": "5dd0fe2cdc6466f7efae079d818eec6f2872c322"
+            },
+            "docs/knowledge/行情.md": {
+              "sha256": "943a3c98d08599a91249ac1b3f845ddad845a19e09dea8d4caaf816f33597708",
+              "size": 44,
+              "gitMode": "100644",
+              "gitOid": "51f237fec11d44f823c546f4b4082745b3ccc838"
+            }
+          },
+          "renumberMap": {
+            "elements": {
+              "b3": "b5"
+            },
+            "files": {
+              "blocks/news.html": "blocks/news-2.html"
+            },
+            "states": {
+              "o-k3m9tp": {
+                "2": 3
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "head_moved",
+          "message": "head_moved",
+          "details": {
+            "line": "main",
+            "rev": 3,
+            "headSnapshotId": "a0b1c2d3-0000-4000-8000-000000000103"
+          }
+        }
+      }
+    },
+    {
+      "name": "请求已不是待审",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "line": "main"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "opId": "op-2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f",
+          "expectedRev": 2,
+          "mrId": "f1e2d3c4-0000-4000-8000-000000000005",
+          "files": {
+            "canvas.json": {
+              "sha256": "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776",
+              "size": 502,
+              "gitMode": "100644",
+              "gitOid": "dd112c51ffce03d13f5f5becece5e2e790e82f17"
+            },
+            "blocks/home.html": {
+              "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+              "size": 106,
+              "gitMode": "100644",
+              "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+            },
+            "styles/main.css": {
+              "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd",
+              "size": 24,
+              "gitMode": "100644",
+              "gitOid": "b7f4dfe3b06761e1bb6c72e2b3c71c3dd12ceb41"
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45,
+              "gitMode": "100644",
+              "gitOid": "15607950e4440f0681fa4e6d8b7b66aabf43673c"
+            },
+            "blocks/detail.html": {
+              "sha256": "60773503b066d0b5a2ece240240d8b48147bd58fdd1e5fb0a470cc5aa9f4222d",
+              "size": 66,
+              "gitMode": "100644",
+              "gitOid": "399a23d00242624918c1aa6699d9102494bb1d51"
+            },
+            "tools/export.sh": {
+              "sha256": "6fd817db6f311109a3b90fa8258c1e5f78fbb9988fb8126ff3dbb51239444176",
+              "size": 22,
+              "gitMode": "100755",
+              "gitOid": "5dd0fe2cdc6466f7efae079d818eec6f2872c322"
+            },
+            "docs/knowledge/行情.md": {
+              "sha256": "943a3c98d08599a91249ac1b3f845ddad845a19e09dea8d4caaf816f33597708",
+              "size": 44,
+              "gitMode": "100644",
+              "gitOid": "51f237fec11d44f823c546f4b4082745b3ccc838"
+            }
+          },
+          "renumberMap": {
+            "elements": {
+              "b3": "b5"
+            },
+            "files": {
+              "blocks/news.html": "blocks/news-2.html"
+            },
+            "states": {
+              "o-k3m9tp": {
+                "2": 3
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "mr_not_open",
+          "message": "mr_not_open",
+          "details": {
+            "status": "withdrawn"
+          }
+        }
+      }
+    },
+    {
+      "name": "成员不能合入",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "line": "main"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "opId": "op-4c2e8a1f-3b5d-4f9e-8c7a-1d6b3e5f9a72",
+          "expectedRev": 2,
+          "mrId": "f1e2d3c4-0000-4000-8000-000000000005",
+          "files": {
+            "canvas.json": {
+              "sha256": "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776",
+              "size": 502,
+              "gitMode": "100644",
+              "gitOid": "dd112c51ffce03d13f5f5becece5e2e790e82f17"
+            },
+            "blocks/home.html": {
+              "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+              "size": 106,
+              "gitMode": "100644",
+              "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+            },
+            "styles/main.css": {
+              "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd",
+              "size": 24,
+              "gitMode": "100644",
+              "gitOid": "b7f4dfe3b06761e1bb6c72e2b3c71c3dd12ceb41"
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45,
+              "gitMode": "100644",
+              "gitOid": "15607950e4440f0681fa4e6d8b7b66aabf43673c"
+            },
+            "blocks/detail.html": {
+              "sha256": "60773503b066d0b5a2ece240240d8b48147bd58fdd1e5fb0a470cc5aa9f4222d",
+              "size": 66,
+              "gitMode": "100644",
+              "gitOid": "399a23d00242624918c1aa6699d9102494bb1d51"
+            },
+            "tools/export.sh": {
+              "sha256": "6fd817db6f311109a3b90fa8258c1e5f78fbb9988fb8126ff3dbb51239444176",
+              "size": 22,
+              "gitMode": "100755",
+              "gitOid": "5dd0fe2cdc6466f7efae079d818eec6f2872c322"
+            },
+            "docs/knowledge/行情.md": {
+              "sha256": "943a3c98d08599a91249ac1b3f845ddad845a19e09dea8d4caaf816f33597708",
+              "size": 44,
+              "gitMode": "100644",
+              "gitOid": "51f237fec11d44f823c546f4b4082745b3ccc838"
+            }
+          },
+          "renumberMap": {
+            "elements": {
+              "b3": "b5"
+            },
+            "files": {
+              "blocks/news.html": "blocks/news-2.html"
+            },
+            "states": {
+              "o-k3m9tp": {
+                "2": 3
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_code": "forbidden_role",
+          "message": "需要管理员权限",
+          "details": {
+            "required": "admin",
+            "actual": "member"
+          }
+        }
+      }
+    }
+  ]
+}

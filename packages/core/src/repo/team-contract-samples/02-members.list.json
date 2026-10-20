@@ -1,0 +1,71 @@
+{
+  "endpoint": "members.list",
+  "cases": [
+    {
+      "name": "成员表（不含已移除）",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "members": [
+            {
+              "user": {
+                "id": "3f1c9a52-6d2e-4b8a-9c71-0e5d4a2b7f10",
+                "name": "张三",
+                "removed": false
+              },
+              "role": "lead",
+              "addedAt": "2026-10-21T01:00:00.000Z",
+              "removedAt": null
+            },
+            {
+              "user": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "role": "admin",
+              "addedAt": "2026-10-21T01:10:00.000Z",
+              "removedAt": null
+            },
+            {
+              "user": {
+                "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+                "name": "王五",
+                "removed": false
+              },
+              "role": "member",
+              "addedAt": "2026-10-21T01:11:00.000Z",
+              "removedAt": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "不是成员",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A"
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "error_code": "not_found",
+          "message": "not_found"
+        }
+      }
+    }
+  ]
+}

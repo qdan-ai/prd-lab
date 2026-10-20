@@ -1,0 +1,61 @@
+{
+  "endpoint": "blobs.missing",
+  "cases": [
+    {
+      "name": "查缺（含没有对象号的）",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "sha256": [
+            "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+            "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776"
+          ],
+          "requireGitOid": true
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "missing": [
+            "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e"
+          ]
+        }
+      }
+    },
+    {
+      "name": "指纹不合法",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A"
+        },
+        "body": {
+          "sha256": [
+            "XYZ"
+          ]
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "error_code": "validation_error",
+          "message": "sha256 must be 64 lowercase hex",
+          "details": {
+            "invalid": [
+              "XYZ"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

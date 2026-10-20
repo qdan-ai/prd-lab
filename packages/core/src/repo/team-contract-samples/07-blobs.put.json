@@ -1,0 +1,53 @@
+{
+  "endpoint": "blobs.put",
+  "cases": [
+    {
+      "name": "上传一个文件",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "Content-Type": "application/octet-stream"
+        },
+        "bodyBase64": "PG1haW4+PGgxPummlumhtTwvaDE+PHNlY3Rpb24gY2xhc3M9InF1b3RlIj7ooYzmg4U8L3NlY3Rpb24+PHNlY3Rpb24gY2xhc3M9Im5ld3MiPui1hOiurzwvc2VjdGlvbj48L21haW4+Cg=="
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+          "existed": false,
+          "sizeBytes": 106,
+          "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+        }
+      }
+    },
+    {
+      "name": "字节与指纹不符",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "sha256": "d9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "Content-Type": "application/octet-stream"
+        },
+        "bodyBase64": "PG1haW4+PGgxPummlumhtTwvaDE+PHNlY3Rpb24gY2xhc3M9InF1b3RlIj7ooYzmg4U8L3NlY3Rpb24+PHNlY3Rpb24gY2xhc3M9Im5ld3MiPui1hOiurzwvc2VjdGlvbj48L21haW4+Cg=="
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "error_code": "validation_error",
+          "message": "digest_mismatch",
+          "details": {
+            "expected": "d9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa",
+            "actual": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e"
+          }
+        }
+      }
+    }
+  ]
+}

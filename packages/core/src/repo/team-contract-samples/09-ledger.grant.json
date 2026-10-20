@@ -1,0 +1,110 @@
+{
+  "endpoint": "ledger.grant",
+  "cases": [
+    {
+      "name": "合入方领新号",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "ids": {
+            "elements": {
+              "b": 5,
+              "t": 4,
+              "a": 1
+            },
+            "states": {
+              "o-k3m9tp": 2,
+              "o-7wqz4d": 1
+            }
+          },
+          "want": {
+            "elements": {
+              "b": 1
+            },
+            "states": {
+              "o-k3m9tp": 1
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ids": {
+            "elements": {
+              "b": 6,
+              "t": 4,
+              "a": 1
+            },
+            "states": {
+              "o-k3m9tp": 3,
+              "o-7wqz4d": 1
+            }
+          },
+          "granted": {
+            "elements": {
+              "b": {
+                "from": 6,
+                "to": 6
+              }
+            },
+            "states": {
+              "o-k3m9tp": {
+                "from": 3,
+                "to": 3
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "一次领太多",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "ids": {
+            "elements": {
+              "b": 5,
+              "t": 4,
+              "a": 1
+            },
+            "states": {
+              "o-k3m9tp": 2,
+              "o-7wqz4d": 1
+            }
+          },
+          "want": {
+            "elements": {
+              "b": 5000
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "error_code": "validation_error",
+          "message": "want_too_many",
+          "details": {
+            "max": 1000
+          }
+        }
+      }
+    }
+  ]
+}

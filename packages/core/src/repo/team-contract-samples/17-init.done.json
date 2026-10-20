@@ -1,0 +1,82 @@
+{
+  "endpoint": "init.done",
+  "cases": [
+    {
+      "name": "开启完成",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "initId": "b7c8d9e0-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+          "versionKeys": [
+            "550b73d7401efb72818e7012f0a3f76610499088",
+            "1a9a3702dab11233137e094bcc9bb91d71258b8b",
+            "a138ee5d70f8942a05f44b9e6e9f25bfef2445c5"
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "teamReadyAt": "2026-10-21T01:00:00.000Z",
+          "line": {
+            "line": "main",
+            "rev": 1,
+            "headSnapshotId": "a0b1c2d3-0000-4000-8000-000000000101",
+            "baseVersionKey": "1a9a3702dab11233137e094bcc9bb91d71258b8b",
+            "updatedAt": "2026-10-21T01:00:00.000Z",
+            "updatedBy": {
+              "id": "3f1c9a52-6d2e-4b8a-9c71-0e5d4a2b7f10",
+              "name": "张三",
+              "removed": false
+            }
+          },
+          "stateRev": 0
+        }
+      }
+    },
+    {
+      "name": "还有版本没传",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "initId": "b7c8d9e0-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+          "versionKeys": [
+            "550b73d7401efb72818e7012f0a3f76610499088",
+            "1a9a3702dab11233137e094bcc9bb91d71258b8b",
+            "a138ee5d70f8942a05f44b9e6e9f25bfef2445c5"
+          ]
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "init_incomplete",
+          "message": "init_incomplete",
+          "details": {
+            "missingVersions": [
+              "a138ee5d70f8942a05f44b9e6e9f25bfef2445c5"
+            ],
+            "extraVersions": [],
+            "danglingParents": [],
+            "missingHead": true,
+            "missingIds": false
+          }
+        }
+      }
+    }
+  ]
+}

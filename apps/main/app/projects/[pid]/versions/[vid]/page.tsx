@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
-import { db, notTeamVersion, projects, snapshots, versions } from "@prd-lab/core";
+import { db, projects, snapshots, versions } from "@prd-lab/core";
 import { auth, signOut } from "@/auth";
 import { isAdminName } from "@/lib/auth/admins";
 import { canManageProject } from "@/lib/api/owner-check";
@@ -51,7 +51,6 @@ export default async function VersionPage({
         eq(projects.id, pid),
         isNull(versions.archivedAt),
         isNull(projects.archivedAt),
-        notTeamVersion(versions.id),
       ),
     )
     .limit(1);

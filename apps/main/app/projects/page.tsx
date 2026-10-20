@@ -1,5 +1,5 @@
 import { and, count, desc, eq, isNull, max, or } from "drizzle-orm";
-import { db, notTeamVersion, projects, snapshotInAudience, snapshots, versions } from "@prd-lab/core";
+import { db, projects, snapshots, versions } from "@prd-lab/core";
 import { repoProjectSummaries } from "@prd-lab/core/repo";
 import { auth, signOut } from "@/auth";
 import { isAdminName } from "@/lib/auth/admins";
@@ -71,12 +71,7 @@ export default async function ProjectsListPage({
           .from(snapshots)
           .innerJoin(versions, eq(versions.id, snapshots.versionId))
           .where(
-            and(
-              isNull(snapshots.archivedAt),
-              isNull(versions.archivedAt),
-              notTeamVersion(versions.id),
-              snapshotInAudience("guest"),
-            ),
+            and(isNull(snapshots.archivedAt), isNull(versions.archivedAt)),
           )
           .groupBy(versions.projectId);
   const snapshotCountByProject = new Map<string, number>();

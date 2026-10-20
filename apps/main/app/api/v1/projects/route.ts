@@ -202,7 +202,6 @@ async function getSwitcherView(session: Pick<Session, "userId" | "isAdmin">) {
         .where(
           and(
             isNull(snapshots.archivedAt),
-            snapshotInAudience("guest"),
             or(
               ...latestPairs.map((p) =>
                 and(eq(snapshots.versionId, p.versionId), eq(snapshots.seqNo, p.seqNo)),

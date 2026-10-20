@@ -818,7 +818,7 @@ export const DiscussionsPutResponse = t.obj({
   unchanged: t.bool(),
   accepted: t.list(RepoPath),
   rejected: t.list(
-    t.obj({ path: RepoPath, reason: t.oneOf(["not_discussion_path", "author_missing", "author_mismatch"]) }),
+    t.obj({ path: RepoPath, reason: t.oneOf(["not_discussion_path"]) }),
   ),
 });
 export const DiscussionsListResponse = t.obj({ authors: t.list(DiscussionAuthor) });
@@ -884,7 +884,7 @@ export const TEAM_ENDPOINTS = {
     path: "/api/v1/team/projects",
     body: null,
     response: TeamProjectsResponse,
-    errors: ["unauthorized"],
+    errors: ["unauthorized", "validation_error"],
   }),
 
   "members.list": ep({

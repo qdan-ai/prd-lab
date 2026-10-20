@@ -10,7 +10,8 @@ type Ctx = { params: Promise<{ pid: string; sha256: string }> };
 
 /**
  * PUT /api/v1/repos/:pid/blobs/:sha256   请求体 = 文件原始字节
- * 校验大小（≤ 20 MB）与指纹一致后存入本项目；已存在直接 200。
+ * 校验大小（≤ 20 MB）与指纹一致后存入本项目，并记下 git 对象号；已存在直接 200（还没有对象号的这次补上）。
+ * → { sha256, existed, sizeBytes, gitOid }
  */
 export async function PUT(request: Request, { params }: Ctx) {
   const session = await getSession();

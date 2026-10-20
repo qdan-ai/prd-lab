@@ -80,7 +80,9 @@ export async function requireTeamRole(
   if (!access) return errorResponse("not_found");
   // 已移除的成员得到 not_member（界面显示「你已不在团队」）；从没当过成员的人只得到 not_found
   if (access.role === null) return errorResponse(access.removed ? "not_member" : "not_found");
-  if (!roleAtLeast(access.role, minRole)) return errorResponse("forbidden_role");
+  if (!roleAtLeast(access.role, minRole)) {
+    return errorResponse("forbidden_role", "forbidden_role", { required: minRole, actual: access.role });
+  }
   return { repo: asRepoProject(row), role: access.role };
 }
 

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db/client";
 import { repoBlobs, repoState, repoVersions, snapshotFiles, snapshots, versions } from "../db/schema";
 import { getObjectBuffer, uploadFile } from "../s3";
@@ -16,6 +16,7 @@ import {
   type SyncManifest,
 } from "./manifest";
 import { RepoError, type RepoProject } from "./project";
+import { loadBlobInfo } from "./team-snapshot";
 
 const IN_CHUNK = 1000;
 
@@ -38,25 +39,40 @@ async function blobSizes(projectId: string, shas: string[]): Promise<Map<string,
   return found;
 }
 
-/** 本项目里还没登记的指纹（保持请求顺序、去重）。 */
-export async function findMissingBlobs(projectId: string, shas: string[]): Promise<string[]> {
+/**
+ * 本项目里还没登记的指纹（保持请求顺序、去重）。
+ * `requireGitOid`：已登记但还没有 git 对象号的也算缺（团队流程用，重传一次即补上对象号）。
+ */
+export async function findMissingBlobs(
+  projectId: string,
+  shas: string[],
+  opts: { requireGitOid?: boolean } = {},
+): Promise<string[]> {
   const bad = shas.filter((s) => !isValidSha256(s));
   if (bad.length > 0) {
     throw new RepoError("validation_error", "sha256 must be 64 lowercase hex", { invalid: bad.slice(0, 20) });
   }
-  const found = await blobSizes(projectId, shas);
-  return [...new Set(shas)].filter((s) => !found.has(s));
+  const found = await loadBlobInfo(projectId, shas);
+  return [...new Set(shas)].filter((s) => {
+    const row = found.get(s);
+    return !row || (opts.requireGitOid === true && row.gitOid === null);
+  });
+}
+
+/** git 对象号：`sha1("blob <字节数>\0" + 字节)`。 */
+export function gitBlobOid(bytes: Buffer): string {
+  return createHash("sha1").update(Buffer.concat([Buffer.from(`blob ${bytes.byteLength}\0`), bytes])).digest("hex");
 }
 
 /**
- * 登记一个文件：校验大小与指纹 → 写 MinIO → 登记 repo_blobs。
- * 已登记的直接返回 existed=true；中断在写对象与登记之间只会留下未登记对象，下次重传覆盖。
+ * 登记一个文件：校验大小与指纹 → 写 MinIO → 登记 repo_blobs（连同 git 对象号）。
+ * 已登记的直接返回 existed=true（还没有对象号的这次补上）；中断在写对象与登记之间只会留下未登记对象，下次重传覆盖。
  */
 export async function putBlob(
   projectId: string,
   sha256: string,
   bytes: Buffer,
-): Promise<{ existed: boolean; sizeBytes: number }> {
+): Promise<{ existed: boolean; sizeBytes: number; gitOid: string }> {
   if (!isValidSha256(sha256)) throw new RepoError("validation_error", "sha256 must be 64 lowercase hex");
   if (bytes.byteLength > REPO_LIMITS.maxFileBytes) {
     throw new RepoError("validation_error", "file_too_large", {
@@ -68,15 +84,23 @@ export async function putBlob(
   if (actual !== sha256) {
     throw new RepoError("validation_error", "digest_mismatch", { expected: sha256, actual });
   }
-  if ((await blobSizes(projectId, [sha256])).has(sha256)) {
-    return { existed: true, sizeBytes: bytes.byteLength };
+  const gitOid = gitBlobOid(bytes);
+  const existing = (await loadBlobInfo(projectId, [sha256])).get(sha256);
+  if (existing) {
+    if (existing.gitOid === null) {
+      await db
+        .update(repoBlobs)
+        .set({ gitOid })
+        .where(and(eq(repoBlobs.projectId, projectId), eq(repoBlobs.sha256, sha256), isNull(repoBlobs.gitOid)));
+    }
+    return { existed: true, sizeBytes: bytes.byteLength, gitOid };
   }
   await uploadFile(blobS3Key(projectId, sha256), bytes, "application/octet-stream");
   await db
     .insert(repoBlobs)
-    .values({ projectId, sha256, sizeBytes: bytes.byteLength })
-    .onDuplicateKeyUpdate({ set: { sha256: sql`${repoBlobs.sha256}` } });
-  return { existed: false, sizeBytes: bytes.byteLength };
+    .values({ projectId, sha256, sizeBytes: bytes.byteLength, gitOid })
+    .onDuplicateKeyUpdate({ set: { gitOid: sql`COALESCE(${repoBlobs.gitOid}, ${gitOid})` } });
+  return { existed: false, sizeBytes: bytes.byteLength, gitOid };
 }
 
 /** 一个需要新建快照的条目（新版本 / 新起点 / 新草稿），事务外准备好全部内容。 */

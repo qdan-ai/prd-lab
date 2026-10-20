@@ -4,6 +4,7 @@ import { repoState, repoVersions, snapshotFiles, snapshots, users } from "../db/
 import { buildAgentPrompt, type AgentPrompt } from "./agent";
 import { REPO_FORMAT } from "./manifest";
 import { type RepoProject, getRepoShare } from "./project";
+import { snapshotInAudience, type AudienceOpts } from "./team-guard";
 import { defaultVersionKey, resolveRepoVersion, type ResolveInput, type ResolvableVersion } from "./resolve";
 
 type VersionRow = {
@@ -43,7 +44,7 @@ async function loadVersionRows(projectId: string): Promise<VersionRow[]> {
     })
     .from(repoVersions)
     .innerJoin(snapshots, eq(repoVersions.snapshotId, snapshots.id))
-    .where(eq(repoVersions.projectId, projectId))
+    .where(and(eq(repoVersions.projectId, projectId), snapshotInAudience("guest")))
     // 按封版时间升序（草稿、起点没有封版时间，排最前）；同一次推送写入的行 created_at 相同，最后按 key 保证顺序稳定
     .orderBy(asc(repoVersions.sealedAt), asc(repoVersions.createdAt), asc(repoVersions.key));
 }
@@ -174,7 +175,8 @@ export async function lookupRepoKey(projectId: string, key: string): Promise<Rep
   const rows = await db
     .select({ snapshotId: repoVersions.snapshotId, withdrawnAt: repoVersions.withdrawnAt })
     .from(repoVersions)
-    .where(and(eq(repoVersions.projectId, projectId), eq(repoVersions.key, key)))
+    .innerJoin(snapshots, eq(repoVersions.snapshotId, snapshots.id))
+    .where(and(eq(repoVersions.projectId, projectId), eq(repoVersions.key, key), snapshotInAudience("guest")))
     .limit(1);
   const row = rows[0];
   if (!row) return { status: "not_found" };
@@ -182,8 +184,11 @@ export async function lookupRepoKey(projectId: string, key: string): Promise<Rep
   return { status: "ok", snapshotId: row.snapshotId };
 }
 
-/** RepoReader.listFiles：某版本的文件清单（路径升序）。 */
-export async function listSnapshotFiles(snapshotId: string) {
+/**
+ * RepoReader.listFiles：某版本的文件清单（路径升序）。
+ * 默认只认访客级快照；团队快照当不存在（返回空清单），团队接口显式传 `{ audience: "team" }`。
+ */
+export async function listSnapshotFiles(snapshotId: string, opts: AudienceOpts = {}) {
   const rows = await db
     .select({
       path: snapshotFiles.relPath,
@@ -192,16 +197,24 @@ export async function listSnapshotFiles(snapshotId: string) {
       contentType: snapshotFiles.contentType,
     })
     .from(snapshotFiles)
-    .where(eq(snapshotFiles.snapshotId, snapshotId));
+    .innerJoin(snapshots, eq(snapshotFiles.snapshotId, snapshots.id))
+    .where(and(eq(snapshotFiles.snapshotId, snapshotId), snapshotInAudience(opts.audience)));
   return rows.sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
 }
 
-/** RepoReader.readText / fileUrl：某版本某路径的文件位置。 */
-export async function findSnapshotFile(snapshotId: string, path: string) {
+/** RepoReader.readText / fileUrl：某版本某路径的文件位置。读者范围规则同 {@link listSnapshotFiles}。 */
+export async function findSnapshotFile(snapshotId: string, path: string, opts: AudienceOpts = {}) {
   const rows = await db
     .select({ s3Key: snapshotFiles.s3Key, contentType: snapshotFiles.contentType })
     .from(snapshotFiles)
-    .where(and(eq(snapshotFiles.snapshotId, snapshotId), eq(snapshotFiles.relPath, path)))
+    .innerJoin(snapshots, eq(snapshotFiles.snapshotId, snapshots.id))
+    .where(
+      and(
+        eq(snapshotFiles.snapshotId, snapshotId),
+        eq(snapshotFiles.relPath, path),
+        snapshotInAudience(opts.audience),
+      ),
+    )
     .limit(1);
   return rows[0] ?? null;
 }
@@ -248,7 +261,8 @@ export async function lookupAgentVersion(projectId: string, key: string): Promis
       withdrawnAt: repoVersions.withdrawnAt,
     })
     .from(repoVersions)
-    .where(and(eq(repoVersions.projectId, projectId), eq(repoVersions.key, key)))
+    .innerJoin(snapshots, eq(repoVersions.snapshotId, snapshots.id))
+    .where(and(eq(repoVersions.projectId, projectId), eq(repoVersions.key, key), snapshotInAudience("guest")))
     .limit(1);
   const r = rows[0];
   if (!r || r.kind === "hidden") return { status: "not_found" };
@@ -281,12 +295,13 @@ export async function lookupAgentVersion(projectId: string, key: string): Promis
   };
 }
 
-/** 某版本全部文件的对象存储位置（路径 → s3Key），打包按它逐个读。不对外暴露 s3Key。 */
-export async function listSnapshotFileLocations(snapshotId: string) {
+/** 某版本全部文件的对象存储位置（路径 → s3Key），打包按它逐个读。不对外暴露 s3Key。读者范围规则同 {@link listSnapshotFiles}。 */
+export async function listSnapshotFileLocations(snapshotId: string, opts: AudienceOpts = {}) {
   return db
     .select({ path: snapshotFiles.relPath, s3Key: snapshotFiles.s3Key })
     .from(snapshotFiles)
-    .where(eq(snapshotFiles.snapshotId, snapshotId));
+    .innerJoin(snapshots, eq(snapshotFiles.snapshotId, snapshots.id))
+    .where(and(eq(snapshotFiles.snapshotId, snapshotId), snapshotInAudience(opts.audience)));
 }
 
 export type AgentPromptResult =

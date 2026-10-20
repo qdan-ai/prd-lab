@@ -1,0 +1,50 @@
+{
+  "endpoint": "sealing.delete",
+  "cases": [
+    {
+      "name": "清掉正在封版",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "query": {
+          "line": "main",
+          "deviceId": "dev-2b8e4f6a0c9d"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "缺参数",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "query": {
+          "line": "main",
+          "deviceId": "x"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "error_code": "validation_error",
+          "message": "invalid_device_id"
+        }
+      }
+    }
+  ]
+}

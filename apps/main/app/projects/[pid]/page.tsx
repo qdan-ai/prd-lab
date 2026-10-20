@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { db, projects, versions } from "@prd-lab/core";
-import { asRepoProject, findProjectForRepo, getRepoPushState } from "@prd-lab/core/repo";
+import { asRepoProject, findProjectForRepo, getRepoPushState, getTeamAccess } from "@prd-lab/core/repo";
 import { auth, signOut } from "@/auth";
 import { isAdminName } from "@/lib/auth/admins";
 import { canManageProject } from "@/lib/api/owner-check";
@@ -96,6 +96,9 @@ async function RepoProjectPage({
   const repo = asRepoProject(row);
   const push = await getRepoPushState(repo);
   const live = push.versions.filter((v) => !v.withdrawn);
+  const session = await auth();
+  const teamAccess = session?.user?.id ? await getTeamAccess(project.id, session.user.id) : null;
+  const showMembers = !!teamAccess?.enabled && !!teamAccess.role;
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -111,6 +114,7 @@ async function RepoProjectPage({
         systemVersionId={repo.versionId}
         summary={push.project.summary}
         canManage={canManage}
+        showMembers={showMembers}
         pushedAt={push.pushedAt}
         pushedBy={push.pushedBy}
         versions={live

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Copy, ExternalLink, Lock, LockOpen, MoreHorizontal, Share2, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Copy, ExternalLink, Lock, LockOpen, MoreHorizontal, Share2, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,8 @@ interface Props {
   /** 项目简介（G-canvas 推送时带上）；没有为 null */
   summary: string | null;
   canManage: boolean;
+  /** 已开启团队协作且当前用户是团队成员：显示「成员」入口 */
+  showMembers?: boolean;
   pushedAt: string | null;
   pushedBy: string | null;
   /** 访客可见的版本（未撤回），新的在前 */
@@ -51,6 +54,7 @@ export function RepoProjectView({
   systemVersionId,
   summary,
   canManage,
+  showMembers,
   pushedAt,
   pushedBy,
   versions,
@@ -118,6 +122,14 @@ export function RepoProjectView({
             <ExternalLink size={13} strokeWidth={2.25} />
             <span>在查看器中打开</span>
           </Button>
+          {showMembers ? (
+            <Button variant="secondary" size="md" asChild>
+              <Link href={`/projects/${project.id}/members`} data-testid="repo-members-link">
+                <Users size={13} strokeWidth={2.25} />
+                <span>成员</span>
+              </Link>
+            </Button>
+          ) : null}
           {canManage ? (
             <>
               <Button

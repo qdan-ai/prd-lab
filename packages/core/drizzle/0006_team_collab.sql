@@ -103,6 +103,7 @@ ALTER TABLE `repo_state` ADD `team_since` datetime(3);--> statement-breakpoint
 ALTER TABLE `repo_state` ADD `team_ready_at` datetime(3);--> statement-breakpoint
 ALTER TABLE `repo_state` ADD `state_rev` int DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE `repo_state` ADD `id_ledger` json;--> statement-breakpoint
+ALTER TABLE `repo_state` ADD `team_client_format` int DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE `repo_state` ADD `start_team_snapshot_id` varchar(36);--> statement-breakpoint
 ALTER TABLE `repo_versions` ADD `team_snapshot_id` varchar(36);--> statement-breakpoint
 ALTER TABLE `repo_versions` ADD `commit_raw_b64` mediumtext;--> statement-breakpoint

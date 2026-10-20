@@ -295,6 +295,8 @@ export const repoState = mysqlTable("repo_state", {
   // 版本记录、上线标记、访客草稿每改一次加一
   stateRev: int("state_rev").notNull().default(0),
   idLedger: json("id_ledger"),
+  // 团队里写入过的最高客户端格式版本
+  teamClientFormat: int("team_client_format").notNull().default(0),
   startTeamSnapshotId: varchar("start_team_snapshot_id", { length: 36 }).references(() => snapshots.id, {
     onDelete: "set null",
   }),

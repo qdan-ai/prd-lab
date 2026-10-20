@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "d01c0552-9aa8-473c-bcc5-23f280c7393d",
+  "id": "faf3d00f-ff54-4d7e-a902-c50625451bfb",
   "prevId": "9f14633e-a391-46ec-aebb-4651cdbb9b59",
   "tables": {
     "api_tokens": {
@@ -818,6 +818,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "team_client_format": {
+          "name": "team_client_format",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "start_team_snapshot_id": {
           "name": "start_team_snapshot_id",

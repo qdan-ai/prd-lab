@@ -65,7 +65,7 @@ export async function requireReadableRepo(
 /**
  * 团队接口的入口：取一个当前用户以不低于 `minRole` 的团队身份能进的仓库项目。
  *   1. 项目不存在 / 已归档 / 不是仓库项目 → not_found
- *   2. 不是主人，也不是未移除的成员 → not_found（防探测；不看 `visibility`，网站管理员也一样）
+ *   2. 不是主人，也不是未移除的成员 → 已移除的成员 403 not_member，其余 not_found（防探测；不看 `visibility`，网站管理员也一样）
  *   3. 角色低于 `minRole`（lead > admin > member）→ 403 forbidden_role
  * 不要求项目已开启团队协作：开启接口由负责人（主人）在开启前调用。
  */
@@ -77,7 +77,9 @@ export async function requireTeamRole(
   const row = await findProjectForRepo(pid);
   if (!row || row.kind !== "repo" || !row.versionId) return errorResponse("not_found");
   const access = await getTeamAccess(pid, session.userId);
-  if (!access || access.role === null) return errorResponse("not_found");
+  if (!access) return errorResponse("not_found");
+  // 已移除的成员得到 not_member（界面显示「你已不在团队」）；从没当过成员的人只得到 not_found
+  if (access.role === null) return errorResponse(access.removed ? "not_member" : "not_found");
   if (!roleAtLeast(access.role, minRole)) return errorResponse("forbidden_role");
   return { repo: asRepoProject(row), role: access.role };
 }

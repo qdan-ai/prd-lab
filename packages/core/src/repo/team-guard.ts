@@ -65,6 +65,8 @@ export type TeamAccess = {
   enabled: boolean;
   /** 当前用户在项目里的角色；主人恒为 lead；非成员与已移除成员为 null */
   role: TeamRole | null;
+  /** 曾经是成员、现已移除（从没当过成员为 false） */
+  removed: boolean;
 };
 
 /**
@@ -81,7 +83,7 @@ export async function getTeamAccess(projectId: string, userId: string): Promise<
   const row = rows[0];
   if (!row) return null;
   const enabled = row.teamVersionId !== null;
-  if (row.ownerId === userId) return { enabled, role: "lead" };
+  if (row.ownerId === userId) return { enabled, role: "lead", removed: false };
   const member = await db
     .select({ role: projectMembers.role })
     .from(projectMembers)
@@ -93,5 +95,11 @@ export async function getTeamAccess(projectId: string, userId: string): Promise<
       ),
     )
     .limit(1);
-  return { enabled, role: member[0]?.role ?? null };
+  if (member[0]) return { enabled, role: member[0].role, removed: false };
+  const past = await db
+    .select({ id: projectMembers.id })
+    .from(projectMembers)
+    .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, userId)))
+    .limit(1);
+  return { enabled, role: null, removed: past.length > 0 };
 }

@@ -33,6 +33,7 @@ export const errorCodes = {
   version_withdrawn: { status: 410 }, // 仓库版本已撤回，details.replacement 给同号的替代版本
   // ---- 多人协作 ----
   forbidden_role: { status: 403 }, // 是团队成员但角色不够（界面翻译成「需要管理员权限」）
+  not_member: { status: 403 }, // 曾是团队成员、现已移除（团队接口；界面显示「你已不在团队」）
   team_managed: { status: 409 }, // 团队项目的内容走团队接口，拒绝个人推送（sync）
 } as const;
 

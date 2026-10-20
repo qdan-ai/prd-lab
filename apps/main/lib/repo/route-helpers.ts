@@ -75,7 +75,7 @@ export async function requireTeamRole(
   minRole: TeamRole = "member",
 ): Promise<{ repo: RepoProject; role: TeamRole } | Response> {
   const row = await findProjectForRepo(pid);
-  if (!row || row.kind !== "repo" || !row.versionId) return errorResponse("not_found");
+  if (!row || !row.versionId) return errorResponse("not_found");
   const access = await getTeamAccess(pid, session.userId);
   if (!access) return errorResponse("not_found");
   // 已移除的成员得到 not_member（界面显示「你已不在团队」）；从没当过成员的人只得到 not_found

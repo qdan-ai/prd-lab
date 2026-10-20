@@ -7,6 +7,7 @@ import {
   index,
   int,
   json,
+  mediumtext,
   mysqlEnum,
   mysqlTable,
   primaryKey,
@@ -49,6 +50,9 @@ import {
  *        - + repo_versions（版本图元数据，一行对应系统方案下的一个快照）
  *        - + repo_blobs（项目内按内容指纹登记已上传文件，MinIO 键 projects/<pid>/blobs/<sha256>）
  *   repo-push 字段对齐（迁移 0005）：repo_versions + manifest（机器清单）；repo_state + summary（项目简介）
+ *   多人协作（迁移 0006）：团队内容挂在「团队方案」（repo_state.team_version_id）下，快照标 audience='team'；
+ *        + project_members / team_lines / team_line_history / merge_requests / team_sealing /
+ *          team_discussions / team_progress / team_events
  */
 
 const uuidPk = () =>
@@ -143,6 +147,8 @@ export const snapshots = mysqlTable(
     uploaderType: mysqlEnum("uploader_type", ["user", "mcp", "cli"]).notNull().default("user"),
     changeNote: text("change_note").notNull(),
     versionLabel: varchar("version_label", { length: 64 }),
+    // 读者范围：guest = 访客级内容（访客链接、分享页、预览站能读）；team = 团队内容，只经团队接口读
+    audience: mysqlEnum("audience", ["guest", "team"]).notNull().default("guest"),
     createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
     archivedAt: datetimeFsp("archived_at"),
     archivedBy: varchar("archived_by", { length: 36 }).references(() => users.id, {
@@ -178,6 +184,9 @@ export const snapshotFiles = mysqlTable(
     contentType: varchar("content_type", { length: 128 }).notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
     sha256: char("sha256", { length: 64 }).notNull(),
+    // 团队文件表才有：git 文件模式（如 100644）与对象号
+    gitMode: char("git_mode", { length: 6 }),
+    gitOid: char("git_oid", { length: 40 }),
   },
   (t) => [unique("snapshot_files_snapshot_relpath_unique").on(t.snapshotId, t.relPath)],
 );
@@ -275,6 +284,20 @@ export const repoState = mysqlTable("repo_state", {
     onDelete: "set null",
   }),
   createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
+  // ---- 团队协作（未开启时全为空）----
+  // 团队方案：不可分享的方案，团队快照挂在它下面；非空 = 项目已开启团队协作
+  teamVersionId: varchar("team_version_id", { length: 36 })
+    .unique()
+    .references(() => versions.id, { onDelete: "set null" }),
+  teamSince: datetimeFsp("team_since"),
+  // 上传完成时间；为空时不能加人、成员看不到
+  teamReadyAt: datetimeFsp("team_ready_at"),
+  // 版本记录、上线标记、访客草稿每改一次加一
+  stateRev: int("state_rev").notNull().default(0),
+  idLedger: json("id_ledger"),
+  startTeamSnapshotId: varchar("start_team_snapshot_id", { length: 36 }).references(() => snapshots.id, {
+    onDelete: "set null",
+  }),
 });
 
 export type RepoState = typeof repoState.$inferSelect;
@@ -306,6 +329,12 @@ export const repoVersions = mysqlTable(
     specDocs: json("spec_docs"),
     // 机器清单（prdlab-change/1）：随新版本推来，校验通过才存；已存的不再改写
     manifest: json("manifest"),
+    // 团队版本：团队方案下的快照、提交原文（base64）、完整版本记录（不含本机专属字段）；访客读取不读这三列
+    teamSnapshotId: varchar("team_snapshot_id", { length: 36 }).references(() => snapshots.id, {
+      onDelete: "set null",
+    }),
+    commitRawB64: mediumtext("commit_raw_b64"),
+    teamRecord: json("team_record"),
     withdrawnAt: datetimeFsp("withdrawn_at"),
     createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
     updatedAt: datetimeFsp("updated_at").notNull().default(nowDefault()),
@@ -328,6 +357,8 @@ export const repoBlobs = mysqlTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     sha256: char("sha256", { length: 64 }).notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
+    // 写入时算好的 git 对象号；核对团队文件表用它，不从对象存储重读
+    gitOid: char("git_oid", { length: 40 }),
     createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
   },
   (t) => [primaryKey({ columns: [t.projectId, t.sha256] })],
@@ -335,3 +366,203 @@ export const repoBlobs = mysqlTable(
 
 export type RepoBlob = typeof repoBlobs.$inferSelect;
 export type NewRepoBlob = typeof repoBlobs.$inferInsert;
+
+// ---- 多人协作（迁移 0006）----
+
+// project_members：团队成员。负责人恰好一位，同时是 projects.owner_id。
+// 移除只写 removed_at，行留着，供历史显示名字与「（已移除）」。
+export const projectMembers = mysqlTable(
+  "project_members",
+  {
+    id: uuidPk(),
+    projectId: varchar("project_id", { length: 36 })
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    role: mysqlEnum("role", ["lead", "admin", "member"]).notNull(),
+    addedBy: varchar("added_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+    addedAt: datetimeFsp("added_at").notNull().default(nowDefault()),
+    removedAt: datetimeFsp("removed_at"),
+    removedBy: varchar("removed_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+    // 生成列：未移除时等于 user_id，否则 NULL；配合唯一索引 = 「同一项目同一用户只有一行未移除」
+    userIdActive: varchar("user_id_active", { length: 36 }).generatedAlwaysAs(
+      sql`(CASE WHEN \`removed_at\` IS NULL THEN \`user_id\` END)`,
+    ),
+  },
+  (t) => [
+    uniqueIndex("project_members_project_user_active_unique").on(t.projectId, t.userIdActive),
+    index("project_members_user_idx").on(t.userId),
+  ],
+);
+
+export type ProjectMember = typeof projectMembers.$inferSelect;
+export type NewProjectMember = typeof projectMembers.$inferInsert;
+
+// team_lines：团队主线（一期只有 main），每次推进 rev + 1
+export const teamLines = mysqlTable(
+  "team_lines",
+  {
+    projectId: varchar("project_id", { length: 36 })
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    line: varchar("line", { length: 64 }).notNull(),
+    rev: int("rev").notNull(),
+    headSnapshotId: varchar("head_snapshot_id", { length: 36 })
+      .notNull()
+      .references(() => snapshots.id, { onDelete: "restrict" }),
+    baseVersionKey: varchar("base_version_key", { length: 128 }),
+    updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+    updatedAt: datetimeFsp("updated_at").notNull().default(nowDefault()),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.line] })],
+);
+
+export type TeamLine = typeof teamLines.$inferSelect;
+export type NewTeamLine = typeof teamLines.$inferInsert;
+
+// team_line_history：每个 rev 的样子都留着（拉取读我的基准那一份，合入基于旧 rev 的请求读请求基于的那一份）
+export const teamLineHistory = mysqlTable(
+  "team_line_history",
+  {
+    projectId: varchar("project_id", { length: 36 })
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    line: varchar("line", { length: 64 }).notNull(),
+    rev: int("rev").notNull(),
+    snapshotId: varchar("snapshot_id", { length: 36 })
+      .notNull()
+      .references(() => snapshots.id, { onDelete: "restrict" }),
+    reason: mysqlEnum("reason", ["init", "merge", "seal"]).notNull(),
+    mrId: varchar("mr_id", { length: 36 }),
+    byUserId: varchar("by_user_id", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+    at: datetimeFsp("at").notNull().default(nowDefault()),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.line, t.rev] })],
+);
+
+export type TeamLineHistory = typeof teamLineHistory.$inferSelect;
+export type NewTeamLineHistory = typeof teamLineHistory.$inferInsert;
+
+// merge_requests：合并请求
+export const mergeRequests = mysqlTable(
+  "merge_requests",
+  {
+    id: uuidPk(),
+    projectId: varchar("project_id", { length: 36 })
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    seq: int("seq").notNull(),
+    line: varchar("line", { length: 64 }).notNull(),
+    authorId: varchar("author_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    note: text("note"),
+    items: json("items"),
+    snapshotId: varchar("snapshot_id", { length: 36 })
+      .notNull()
+      .references(() => snapshots.id, { onDelete: "restrict" }),
+    baseRev: int("base_rev").notNull(),
+    status: mysqlEnum("status", ["open", "merged", "returned", "withdrawn"]).notNull().default("open"),
+    withdrawReason: mysqlEnum("withdraw_reason", ["author", "member_removed"]),
+    returnNote: text("return_note"),
+    decidedBy: varchar("decided_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+    decidedAt: datetimeFsp("decided_at"),
+    mergedRev: int("merged_rev"),
+    createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
+    // 合入时的改号对照表；没有改号为空
+    renumberMap: json("renumber_map"),
+  },
+  (t) => [
+    unique("merge_requests_project_seq_unique").on(t.projectId, t.seq),
+    index("merge_requests_project_status_idx").on(t.projectId, t.status),
+  ],
+);
+
+export type MergeRequest = typeof mergeRequests.$inferSelect;
+export type NewMergeRequest = typeof mergeRequests.$inferInsert;
+
+// team_sealing：「正在封版」提示；seen_at 超过 30 分钟视为没有
+export const teamSealing = mysqlTable(
+  "team_sealing",
+  {
+    projectId: varchar("project_id", { length: 36 })
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    line: varchar("line", { length: 64 }).notNull(),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    deviceId: varchar("device_id", { length: 64 }).notNull(),
+    since: datetimeFsp("since").notNull().default(nowDefault()),
+    seenAt: datetimeFsp("seen_at").notNull().default(nowDefault()),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.line, t.userId, t.deviceId] })],
+);
+
+export type TeamSealing = typeof teamSealing.$inferSelect;
+export type NewTeamSealing = typeof teamSealing.$inferInsert;
+
+// team_discussions：讨论通道，每位作者最新一份（快照在团队方案下）
+export const teamDiscussions = mysqlTable(
+  "team_discussions",
+  {
+    projectId: varchar("project_id", { length: 36 })
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    authorId: varchar("author_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    snapshotId: varchar("snapshot_id", { length: 36 })
+      .notNull()
+      .references(() => snapshots.id, { onDelete: "restrict" }),
+    pushedAt: datetimeFsp("pushed_at").notNull().default(nowDefault()),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.authorId] })],
+);
+
+export type TeamDiscussion = typeof teamDiscussions.$inferSelect;
+export type NewTeamDiscussion = typeof teamDiscussions.$inferInsert;
+
+// team_progress：成员各设备的进度摘要（项名最多 50 个与总数），不存内容
+export const teamProgress = mysqlTable(
+  "team_progress",
+  {
+    projectId: varchar("project_id", { length: 36 })
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 36 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    deviceId: varchar("device_id", { length: 64 }).notNull(),
+    line: varchar("line", { length: 64 }).notNull(),
+    baseRev: int("base_rev").notNull(),
+    summary: json("summary"),
+    pushedAt: datetimeFsp("pushed_at").notNull().default(nowDefault()),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.userId, t.deviceId, t.line] })],
+);
+
+export type TeamProgress = typeof teamProgress.$inferSelect;
+export type NewTeamProgress = typeof teamProgress.$inferInsert;
+
+// team_events：操作留痕（开启、成员与角色、请求提交 / 撤回 / 合入 / 退回、封版、上线标记、访客草稿）
+export const teamEvents = mysqlTable(
+  "team_events",
+  {
+    id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+    projectId: varchar("project_id", { length: 36 })
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    actorId: varchar("actor_id", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+    type: varchar("type", { length: 64 }).notNull(),
+    payload: json("payload"),
+    at: datetimeFsp("at").notNull().default(nowDefault()),
+  },
+  (t) => [index("team_events_project_idx").on(t.projectId, t.id)],
+);
+
+export type TeamEvent = typeof teamEvents.$inferSelect;
+export type NewTeamEvent = typeof teamEvents.$inferInsert;

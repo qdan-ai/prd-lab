@@ -43,6 +43,13 @@
       "when": 1792085058417,
       "tag": "0005_repo_manifest_summary",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1792524485843,
+      "tag": "0006_team_collab",
+      "breakpoints": true
     }
   ]
 }

@@ -669,7 +669,8 @@ export const RefreshRequest = t.obj({
 });
 export const StateQuery = t.obj({
   line: t.opt(LineId),
-  baseRev: t.opt(IntText(/^[1-9][0-9]*$/)),
+  /** 取这个 rev 之后的历史；0 = 从 rev 1 起的全部历史 */
+  baseRev: t.opt(IntText(/^(0|[1-9][0-9]*)$/)),
   appliedStateRev: t.opt(IntText(/^(0|[1-9][0-9]*)$/)),
 });
 

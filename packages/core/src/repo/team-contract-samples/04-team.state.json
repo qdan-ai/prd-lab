@@ -512,6 +512,544 @@
       }
     },
     {
+      "name": "从 rev 1 起的全部历史（baseRev=0）",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "query": {
+          "line": "main",
+          "baseRev": "0",
+          "appliedStateRev": "2"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "project": {
+            "id": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+            "name": "行情改版"
+          },
+          "me": {
+            "user": {
+              "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+              "name": "王五",
+              "removed": false
+            },
+            "role": "member"
+          },
+          "teamSince": "2026-10-21T00:55:00.000Z",
+          "teamReadyAt": "2026-10-21T01:00:00.000Z",
+          "minClientFormat": 1,
+          "stateRev": 3,
+          "lines": [
+            {
+              "line": "main",
+              "rev": 3,
+              "headSnapshotId": "a0b1c2d3-0000-4000-8000-000000000103",
+              "baseVersionKey": "1a9a3702dab11233137e094bcc9bb91d71258b8b",
+              "updatedAt": "2026-10-21T07:00:00.000Z",
+              "updatedBy": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              }
+            }
+          ],
+          "history": [
+            {
+              "line": "main",
+              "rev": 1,
+              "reason": "init",
+              "snapshotId": "a0b1c2d3-0000-4000-8000-000000000101",
+              "mrId": null,
+              "versionKey": null,
+              "by": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "at": "2026-10-21T06:00:00.000Z"
+            },
+            {
+              "line": "main",
+              "rev": 2,
+              "reason": "merge",
+              "snapshotId": "a0b1c2d3-0000-4000-8000-000000000102",
+              "mrId": "f1e2d3c4-0000-4000-8000-000000000004",
+              "versionKey": null,
+              "by": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "at": "2026-10-21T06:30:00.000Z"
+            },
+            {
+              "line": "main",
+              "rev": 3,
+              "reason": "merge",
+              "snapshotId": "a0b1c2d3-0000-4000-8000-000000000103",
+              "mrId": "f1e2d3c4-0000-4000-8000-000000000005",
+              "versionKey": null,
+              "by": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "at": "2026-10-21T07:00:00.000Z"
+            }
+          ],
+          "records": {
+            "versions": [
+              {
+                "key": "550b73d7401efb72818e7012f0a3f76610499088",
+                "record": {
+                  "key": "550b73d7401efb72818e7012f0a3f76610499088",
+                  "number": "v1.0",
+                  "name": "",
+                  "summary": "",
+                  "line": "main",
+                  "parentKey": null,
+                  "patchOf": null,
+                  "kind": "normal",
+                  "sealedAt": "2026-10-10T02:00:00.000Z",
+                  "compareTo": {
+                    "start": true
+                  },
+                  "changes": {
+                    "format": "gcanvas-changes/1",
+                    "organizedBy": "ai",
+                    "groups": [
+                      {
+                        "id": "R-1",
+                        "derivedFrom": [],
+                        "specDocs": [
+                          "docs/specs/R-1-首页.md"
+                        ],
+                        "title": "首页行情",
+                        "description": "",
+                        "items": [
+                          {
+                            "item": "page:b1",
+                            "kind": "page",
+                            "change": "modified",
+                            "label": "首页",
+                            "note": "",
+                            "elementIds": [
+                              "b1"
+                            ],
+                            "paths": []
+                          }
+                        ],
+                        "truthDocs": [],
+                        "discussions": [
+                          "docs/discussions/张三-2026-10-20-首页.md"
+                        ]
+                      }
+                    ],
+                    "stats": {
+                      "pagesAdded": 0,
+                      "pagesModified": 1,
+                      "pagesDeleted": 0,
+                      "docs": 1
+                    }
+                  },
+                  "specDocs": [
+                    "docs/specs/R-1-首页.md"
+                  ],
+                  "discussionDocs": [
+                    "docs/discussions/张三-2026-10-20-首页.md"
+                  ]
+                },
+                "commitRaw": "dHJlZSA5YmQ2YTgxYzQyMDQ1YTIxMTBkYzMxZjU1NGZmOGE1MjgyOTc3MTZhCnBhcmVudCA0NTVlODRmMzcwOWZhODg4N2Y1MDA1MTI5Yzg5ODM1ZTkzMGIwNmFkCmF1dGhvciBHLWNhbnZhcyA8Z2NhbnZhc0Bsb2NhbD4gMTc5MTU5NzYwMCArMDgwMApjb21taXR0ZXIgRy1jYW52YXMgPGdjYW52YXNAbG9jYWw+IDE3OTE1OTc2MDAgKzA4MDAKCuWwgeeJiCB2MS4wCg==",
+                "teamSnapshotId": "a0b1c2d3-0000-4000-8000-000000000010",
+                "sealer": null,
+                "pushedAt": "2026-10-21T01:00:00.000Z"
+              },
+              {
+                "key": "1a9a3702dab11233137e094bcc9bb91d71258b8b",
+                "record": {
+                  "key": "1a9a3702dab11233137e094bcc9bb91d71258b8b",
+                  "number": "v1.1",
+                  "name": "",
+                  "summary": "",
+                  "line": "main",
+                  "parentKey": "550b73d7401efb72818e7012f0a3f76610499088",
+                  "patchOf": null,
+                  "kind": "normal",
+                  "sealedAt": "2026-10-18T07:30:00.000Z",
+                  "compareTo": {
+                    "key": "550b73d7401efb72818e7012f0a3f76610499088"
+                  },
+                  "changes": {
+                    "format": "gcanvas-changes/1",
+                    "organizedBy": "ai",
+                    "groups": [
+                      {
+                        "id": "R-1",
+                        "derivedFrom": [],
+                        "specDocs": [
+                          "docs/specs/R-1-首页.md"
+                        ],
+                        "title": "个股详情",
+                        "description": "",
+                        "items": [
+                          {
+                            "item": "page:b2",
+                            "kind": "page",
+                            "change": "modified",
+                            "label": "个股详情",
+                            "note": "",
+                            "elementIds": [
+                              "b2"
+                            ],
+                            "paths": []
+                          }
+                        ],
+                        "truthDocs": [],
+                        "discussions": [
+                          "docs/discussions/张三-2026-10-20-首页.md"
+                        ]
+                      }
+                    ],
+                    "stats": {
+                      "pagesAdded": 0,
+                      "pagesModified": 1,
+                      "pagesDeleted": 0,
+                      "docs": 1
+                    }
+                  },
+                  "specDocs": [
+                    "docs/specs/R-1-首页.md"
+                  ],
+                  "discussionDocs": [
+                    "docs/discussions/张三-2026-10-20-首页.md"
+                  ],
+                  "truth": {
+                    "state": "updated"
+                  }
+                },
+                "commitRaw": "dHJlZSAwYTM3ZDBhNmM2YWIwNjg2MjMwZWUwOTY1NzdmZmMxYmFlOWNhYmRjCnBhcmVudCA1NTBiNzNkNzQwMWVmYjcyODE4ZTcwMTJmMGEzZjc2NjEwNDk5MDg4CmF1dGhvciBHLWNhbnZhcyA8Z2NhbnZhc0Bsb2NhbD4gMTc5MjMwODYwMCArMDgwMApjb21taXR0ZXIgRy1jYW52YXMgPGdjYW52YXNAbG9jYWw+IDE3OTIzMDg2MDAgKzA4MDAKCuWwgeeJiCB2MS4xCg==",
+                "teamSnapshotId": "a0b1c2d3-0000-4000-8000-000000000011",
+                "sealer": null,
+                "pushedAt": "2026-10-21T01:00:00.000Z"
+              },
+              {
+                "key": "a138ee5d70f8942a05f44b9e6e9f25bfef2445c5",
+                "record": {
+                  "key": "a138ee5d70f8942a05f44b9e6e9f25bfef2445c5",
+                  "number": "v1.0-fix1",
+                  "name": "",
+                  "summary": "",
+                  "line": "patch:550b73d7401efb72818e7012f0a3f76610499088",
+                  "parentKey": "550b73d7401efb72818e7012f0a3f76610499088",
+                  "patchOf": "550b73d7401efb72818e7012f0a3f76610499088",
+                  "kind": "normal",
+                  "sealedAt": "2026-10-19T02:00:00.000Z",
+                  "compareTo": {
+                    "key": "550b73d7401efb72818e7012f0a3f76610499088"
+                  },
+                  "changes": {
+                    "format": "gcanvas-changes/1",
+                    "organizedBy": "ai",
+                    "groups": [
+                      {
+                        "id": "R-1",
+                        "derivedFrom": [],
+                        "specDocs": [
+                          "docs/specs/R-1-首页.md"
+                        ],
+                        "title": "行情配色",
+                        "description": "",
+                        "items": [
+                          {
+                            "item": "page:b1",
+                            "kind": "page",
+                            "change": "modified",
+                            "label": "首页",
+                            "note": "",
+                            "elementIds": [
+                              "b1"
+                            ],
+                            "paths": []
+                          }
+                        ],
+                        "truthDocs": [],
+                        "discussions": [
+                          "docs/discussions/张三-2026-10-20-首页.md"
+                        ]
+                      }
+                    ],
+                    "stats": {
+                      "pagesAdded": 0,
+                      "pagesModified": 1,
+                      "pagesDeleted": 0,
+                      "docs": 1
+                    }
+                  },
+                  "specDocs": [
+                    "docs/specs/R-1-首页.md"
+                  ],
+                  "discussionDocs": [
+                    "docs/discussions/张三-2026-10-20-首页.md"
+                  ]
+                },
+                "commitRaw": "dHJlZSA1ZWY4MWI2MzY3ODkyYTU1ZjU1NWM3NTg2ZjAwMmI5YTM1YmQyMGFjCnBhcmVudCA1NTBiNzNkNzQwMWVmYjcyODE4ZTcwMTJmMGEzZjc2NjEwNDk5MDg4CmF1dGhvciBHLWNhbnZhcyA8Z2NhbnZhc0Bsb2NhbD4gMTc5MjM3NTIwMCArMDkwMApjb21taXR0ZXIgRy1jYW52YXMgPGdjYW52YXNAbG9jYWw+IDE3OTIzNzUyMDAgKzA5MDAKCuWwgeeJiCB2MS4wLWZpeDEK",
+                "teamSnapshotId": "a0b1c2d3-0000-4000-8000-000000000012",
+                "sealer": null,
+                "pushedAt": "2026-10-21T01:00:00.000Z"
+              }
+            ],
+            "online": {
+              "key": "1a9a3702dab11233137e094bcc9bb91d71258b8b",
+              "periods": [
+                {
+                  "key": "550b73d7401efb72818e7012f0a3f76610499088",
+                  "from": "2026-10-11T02:00:00.000Z",
+                  "to": "2026-10-18T09:00:00.000Z"
+                },
+                {
+                  "key": "1a9a3702dab11233137e094bcc9bb91d71258b8b",
+                  "from": "2026-10-18T09:00:00.000Z",
+                  "to": null
+                }
+              ]
+            },
+            "guestDraft": null
+          },
+          "start": {
+            "key": "455e84f3709fa8887f5005129c89835e930b06ad",
+            "commitRaw": "dHJlZSAyNGJiNmM3NGQ4OGQxYzUwM2M1NWRmZTEwMTk3OTlmZTk2MDNkZGY3CmF1dGhvciBHLWNhbnZhcyA8Z2NhbnZhc0Bsb2NhbD4gMTc5MDgxNjQwMCArMDgwMApjb21taXR0ZXIgRy1jYW52YXMgPGdjYW52YXNAbG9jYWw+IDE3OTA4MTY0MDAgKzA4MDAKCuW8gOWni+WJjeeahOagt+WtkAo=",
+            "snapshotId": "a0b1c2d3-0000-4000-8000-000000000001"
+          },
+          "ids": {
+            "elements": {
+              "b": 5,
+              "t": 4,
+              "a": 1
+            },
+            "states": {
+              "o-k3m9tp": 2,
+              "o-7wqz4d": 1
+            }
+          },
+          "sealing": [
+            {
+              "line": "main",
+              "user": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "deviceId": "dev-2b8e4f6a0c9d",
+              "since": "2026-10-21T07:05:00.000Z",
+              "seenAt": "2026-10-21T07:06:00.000Z"
+            }
+          ],
+          "openMrs": [
+            {
+              "id": "f1e2d3c4-0000-4000-8000-000000000006",
+              "seq": 6,
+              "line": "main",
+              "author": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "title": "个股详情加分时图",
+              "itemCount": 1,
+              "status": "open",
+              "withdrawReason": null,
+              "baseRev": 3,
+              "mergedRev": null,
+              "createdAt": "2026-10-21T07:02:00.000Z",
+              "decidedAt": null,
+              "decidedBy": null,
+              "returnNote": null
+            }
+          ],
+          "myMrs": [
+            {
+              "id": "f1e2d3c4-0000-4000-8000-000000000005",
+              "seq": 5,
+              "line": "main",
+              "author": {
+                "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+                "name": "王五",
+                "removed": false
+              },
+              "title": "首页加资讯区",
+              "itemCount": 1,
+              "status": "merged",
+              "withdrawReason": null,
+              "baseRev": 2,
+              "mergedRev": 3,
+              "createdAt": "2026-10-21T06:00:00.000Z",
+              "decidedAt": "2026-10-21T07:00:00.000Z",
+              "decidedBy": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "returnNote": null
+            },
+            {
+              "id": "f1e2d3c4-0000-4000-8000-000000000004",
+              "seq": 4,
+              "line": "main",
+              "author": {
+                "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+                "name": "王五",
+                "removed": false
+              },
+              "title": "首页配色",
+              "itemCount": 1,
+              "status": "returned",
+              "withdrawReason": null,
+              "baseRev": 1,
+              "mergedRev": null,
+              "createdAt": "2026-10-21T03:00:00.000Z",
+              "decidedAt": "2026-10-21T04:00:00.000Z",
+              "decidedBy": {
+                "id": "3f1c9a52-6d2e-4b8a-9c71-0e5d4a2b7f10",
+                "name": "张三",
+                "removed": false
+              },
+              "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交"
+            }
+          ],
+          "myMergedSinceBase": [
+            {
+              "id": "f1e2d3c4-0000-4000-8000-000000000005",
+              "seq": 5,
+              "baseRev": 2,
+              "mergedRev": 3,
+              "snapshotId": "a0b1c2d3-0000-4000-8000-000000000205",
+              "renumberMap": {
+                "elements": {
+                  "b3": "b5"
+                },
+                "files": {
+                  "blocks/news.html": "blocks/news-2.html"
+                },
+                "states": {
+                  "o-k3m9tp": {
+                    "2": 3
+                  }
+                }
+              }
+            }
+          ],
+          "members": [
+            {
+              "user": {
+                "id": "3f1c9a52-6d2e-4b8a-9c71-0e5d4a2b7f10",
+                "name": "张三",
+                "removed": false
+              },
+              "role": "lead",
+              "addedAt": "2026-10-21T01:00:00.000Z",
+              "removedAt": null
+            },
+            {
+              "user": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "role": "admin",
+              "addedAt": "2026-10-21T01:10:00.000Z",
+              "removedAt": null
+            },
+            {
+              "user": {
+                "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+                "name": "王五",
+                "removed": false
+              },
+              "role": "member",
+              "addedAt": "2026-10-21T01:11:00.000Z",
+              "removedAt": null
+            },
+            {
+              "user": {
+                "id": "e9b1c3d5-7f2a-4e6b-8c0d-4f6a8b0c2e46",
+                "name": "赵六",
+                "removed": true
+              },
+              "role": "member",
+              "addedAt": "2026-10-21T01:12:00.000Z",
+              "removedAt": "2026-10-21T05:00:00.000Z"
+            }
+          ],
+          "progress": [
+            {
+              "user": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "deviceId": "dev-2b8e4f6a0c9d",
+              "line": "main",
+              "baseRev": 3,
+              "changed": {
+                "items": [
+                  "个股详情"
+                ],
+                "total": 1
+              },
+              "pushedAt": "2026-10-21T07:06:00.000Z"
+            },
+            {
+              "user": {
+                "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+                "name": "王五",
+                "removed": false
+              },
+              "deviceId": "dev-5d1c7e3a9f2b",
+              "line": "main",
+              "baseRev": 2,
+              "changed": {
+                "items": [
+                  "首页",
+                  "styles/main.css"
+                ],
+                "total": 2
+              },
+              "pushedAt": "2026-10-21T07:08:00.000Z"
+            }
+          ],
+          "discussions": [
+            {
+              "author": {
+                "id": "3f1c9a52-6d2e-4b8a-9c71-0e5d4a2b7f10",
+                "name": "张三",
+                "removed": false
+              },
+              "snapshotId": "a0b1c2d3-0000-4000-8000-000000000302",
+              "contentDigest": "17acb3daecd595f7ab0a04bb7928af712a334aa2df2156ec10acfa691183b5ca",
+              "pushedAt": "2026-10-21T00:58:00.000Z"
+            },
+            {
+              "author": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "snapshotId": "a0b1c2d3-0000-4000-8000-000000000301",
+              "contentDigest": "0e1b1b2d4f6ed8becebee529d51efbc8045e26bb4494cb2c677b6746de12f668",
+              "pushedAt": "2026-10-21T06:30:00.000Z"
+            }
+          ]
+        }
+      }
+    },
+    {
       "name": "开启没完成",
       "request": {
         "params": {

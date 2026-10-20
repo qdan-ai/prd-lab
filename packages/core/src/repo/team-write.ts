@@ -97,18 +97,23 @@ export async function recordTeamEvent(
 }
 
 /**
- * 普通文件表（团队封版的访客部分、访客草稿，事务外核对）：路径合法、不含 `docs/discussions/`
- * （`discussions_not_allowed`）、每个文件都已上传（`blobs_missing`）、合计不超单版上限。
+ * 普通文件表（团队封版的访客部分、访客草稿，事务外核对）：路径合法、不含 `docs/discussions/`、
+ * 每个文件都已上传（`blobs_missing`）、合计不超单版上限。
  * 返回文件列表与指纹 → 已登记的大小。
  */
 export async function verifyPlainFiles(
   projectId: string,
   table: PlainFiles,
+  opts: { discussions: "error_code" | "validation" },
 ): Promise<{ files: Array<{ path: string; sha256: string }>; sizes: Map<string, number> }> {
   const files = Object.entries(table).map(([path, f]) => ({ path, sha256: f.sha256 }));
   for (const f of files) {
     const bad = checkRepoPath(f.path);
-    if (bad?.code === "discussions_not_allowed") throw new TeamError("discussions_not_allowed", bad.message, bad.details);
+    if (bad?.code === "discussions_not_allowed") {
+      // 访客草稿（接口 21）有专门的错误码；封版（接口 15）的错误清单里没有，按请求不合法回
+      if (opts.discussions === "error_code") throw new TeamError("discussions_not_allowed", bad.message, bad.details);
+      throw validationError("discussions_not_allowed", { path: f.path });
+    }
     if (bad) throw validationError("invalid_path", { path: f.path });
   }
   const info = await loadBlobInfo(

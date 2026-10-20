@@ -114,7 +114,7 @@ export async function sealLine(
     { key: v.key, files: v.files },
     ...(input.head ? [{ files: input.head.files }] : []),
   ]);
-  const guest = await verifyPlainFiles(projectId, v.guest.files);
+  const guest = await verifyPlainFiles(projectId, v.guest.files, { discussions: "validation" });
   const renderer = await guestRenderer(projectId, v.key, guest.files, guest.sizes);
   const guestDigest = contentDigest(guest.files);
   const manifest =
@@ -379,7 +379,7 @@ export async function putGuestDraft(
   input: GuestDraftPutRequest,
   clientFormat: number,
 ): Promise<TeamReply> {
-  const guest = await verifyPlainFiles(projectId, input.files);
+  const guest = await verifyPlainFiles(projectId, input.files, { discussions: "error_code" });
   const renderer = await guestRenderer(projectId, "guest-draft", guest.files, guest.sizes);
   const digest = contentDigest(guest.files);
   return db.transaction(async (tx) => {

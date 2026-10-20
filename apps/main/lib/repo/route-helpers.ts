@@ -1,4 +1,12 @@
-import { asRepoProject, findProjectForRepo, RepoError, type RepoProject } from "@prd-lab/core/repo";
+import {
+  asRepoProject,
+  findProjectForRepo,
+  getTeamAccess,
+  RepoError,
+  roleAtLeast,
+  type RepoProject,
+  type TeamRole,
+} from "@prd-lab/core/repo";
 import type { Session } from "@/lib/api/auth-guard";
 import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
@@ -12,31 +20,68 @@ export function repoErrorResponse(e: unknown): Response {
 /**
  * 取一个当前用户能管理（推送）的仓库项目。
  * 不存在 / 已归档 / 私有且不是 owner → not_found（防探测）；可读但不可管 → not_owner；普通项目 → not_repo。
+ *
+ * 已开启团队协作的项目改按团队角色判：
+ *   - 不是成员（含网站管理员、已移除成员）→ not_owner；是成员但角色低于 `teamMin`（默认 member）→ forbidden_role。
+ *   - 主人恒为负责人。
  */
 export async function requireManagedRepo(
   pid: string,
   session: Pick<Session, "userId" | "isAdmin">,
+  opts: { teamMin?: TeamRole } = {},
 ): Promise<RepoProject | Response> {
   const repo = await requireReadableRepo(pid, session);
   if (repo instanceof Response) return repo;
+  const access = await getTeamAccess(pid, session.userId);
+  if (access?.enabled) {
+    if (access.role === null) return errorResponse("not_owner");
+    if (!roleAtLeast(access.role, opts.teamMin ?? "member")) return errorResponse("forbidden_role");
+    return repo;
+  }
   if (!canManageProject(repo, session)) return errorResponse("not_owner");
   return repo;
 }
 
-/** 取一个当前用户能读的仓库项目（team 可见或 owner）。先判可读再判类型，无权者只得到 not_found。 */
+/**
+ * 取一个当前用户能读的仓库项目（team 可见、owner 或团队成员）。先判可读再判类型，无权者只得到 not_found。
+ * 可读只代表能看访客级内容；团队内容走 {@link requireTeamRole}。
+ */
 export async function requireReadableRepo(
   pid: string,
   session: Pick<Session, "userId">,
 ): Promise<RepoProject | Response> {
   const row = await findProjectForRepo(pid);
   if (!row) return errorResponse("not_found");
-  const canRead = row.visibility === "team" || row.ownerId === session.userId;
+  let canRead = row.visibility === "team" || row.ownerId === session.userId;
+  if (!canRead) canRead = (await getTeamAccess(pid, session.userId))?.role != null;
   if (!canRead) return errorResponse("not_found");
   try {
     return asRepoProject(row);
   } catch (e) {
     return repoErrorResponse(e);
   }
+}
+
+/**
+ * 团队接口的入口：取一个当前用户以不低于 `minRole` 的团队身份能进的仓库项目。
+ *   1. 项目不存在 / 已归档 / 不是仓库项目 → not_found
+ *   2. 不是主人，也不是未移除的成员 → 已移除的成员 403 not_member，其余 not_found（防探测；不看 `visibility`，网站管理员也一样）
+ *   3. 角色低于 `minRole`（lead > admin > member）→ 403 forbidden_role
+ * 不要求项目已开启团队协作：开启接口由负责人（主人）在开启前调用。
+ */
+export async function requireTeamRole(
+  pid: string,
+  session: Pick<Session, "userId">,
+  minRole: TeamRole = "member",
+): Promise<{ repo: RepoProject; role: TeamRole } | Response> {
+  const row = await findProjectForRepo(pid);
+  if (!row || !row.versionId) return errorResponse("not_found");
+  const access = await getTeamAccess(pid, session.userId);
+  if (!access) return errorResponse("not_found");
+  // 已移除的成员得到 not_member（界面显示「你已不在团队」）；从没当过成员的人只得到 not_found
+  if (access.role === null) return errorResponse(access.removed ? "not_member" : "not_found");
+  if (!roleAtLeast(access.role, minRole)) return errorResponse("forbidden_role");
+  return { repo: asRepoProject(row), role: access.role };
 }
 
 /** 主站分享页地址（项目级链接）。 */

@@ -3,6 +3,7 @@ import {
   db,
   issueToken,
   projects,
+  snapshotInAudience,
   snapshots,
   versions,
   PREVIEW_HANDOFF_TTL_SECONDS,
@@ -31,7 +32,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ sid
     .from(snapshots)
     .innerJoin(versions, eq(snapshots.versionId, versions.id))
     .innerJoin(projects, eq(versions.projectId, projects.id))
-    .where(and(eq(snapshots.id, sid), isNull(versions.archivedAt), isNull(projects.archivedAt)))
+    .where(
+      and(
+        eq(snapshots.id, sid),
+        isNull(versions.archivedAt),
+        isNull(projects.archivedAt),
+        snapshotInAudience("guest"),
+      ),
+    )
     .limit(1);
   const row = rows[0];
   if (!row) return errorResponse("not_found");

@@ -1,5 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { db, generateShareId, hashPassword, shareLinks, projects, versions } from "@prd-lab/core";
+import { db, generateShareId, hashPassword, notTeamVersion, shareLinks, projects, versions } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
 import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
@@ -25,7 +25,9 @@ export async function GET(_: Request, { params }: Ctx) {
     })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
-    .where(and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt)))
+    .where(
+      and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt), notTeamVersion(versions.id)),
+    )
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
   if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
@@ -79,7 +81,9 @@ export async function POST(request: Request, { params }: Ctx) {
     })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
-    .where(and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt)))
+    .where(
+      and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt), notTeamVersion(versions.id)),
+    )
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
   if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");

@@ -16,7 +16,7 @@ export async function GET(request: Request, { params }: Ctx) {
   const session = await getSession();
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
-  const repo = await requireManagedRepo(pid, session);
+  const repo = await requireManagedRepo(pid, session, { teamMin: "admin" });
   if (repo instanceof Response) return repo;
 
   const result = await buildRepoAgentPrompt(repo, requestOrigin(request), new URL(request.url).searchParams.get("k"));

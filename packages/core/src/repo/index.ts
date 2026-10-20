@@ -10,3 +10,4 @@ export * from "./project";
 export * from "./sync";
 export * from "./read";
 export * from "./agent";
+export * from "./team-guard";

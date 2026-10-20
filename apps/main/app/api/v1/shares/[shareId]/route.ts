@@ -1,5 +1,5 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { db, hashPassword, projects, shareLinks, versions } from "@prd-lab/core";
+import { db, hashPassword, notTeamVersion, projects, shareLinks, versions } from "@prd-lab/core";
 import { getSession, type Session } from "@/lib/api/auth-guard";
 import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
@@ -108,7 +108,7 @@ async function loadShareForOwner(
     .from(shareLinks)
     .innerJoin(versions, eq(shareLinks.versionId, versions.id))
     .innerJoin(projects, eq(versions.projectId, projects.id))
-    .where(eq(shareLinks.id, shareId))
+    .where(and(eq(shareLinks.id, shareId), notTeamVersion(versions.id)))
     .limit(1);
   const row = rows[0];
   if (!row) return { kind: "error", code: "share_not_found" };

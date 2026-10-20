@@ -490,8 +490,11 @@ async function loadStart(projectId: string, startSnapshotId: string | null): Pro
   return { key: r.key, commitRaw: r.commitRaw, snapshotId: startSnapshotId };
 }
 
-/** 版本记录、上线标记、访客草稿。 */
-async function loadTeamRecords(
+/**
+ * 版本记录、上线标记、访客草稿（团队状态的 `records`，也是 `state_changed` 的 `details.records`）。
+ * 读已提交的数据：在持有 repo_state 行锁的写事务里调用时，读到的就是锁内看到的现状。
+ */
+export async function loadTeamRecords(
   projectId: string,
   ownerId: string,
   st: typeof repoState.$inferSelect,

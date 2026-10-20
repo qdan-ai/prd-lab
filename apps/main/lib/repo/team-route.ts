@@ -27,6 +27,16 @@ export function handleTeamError(e: unknown): Response {
   return repoErrorResponse(e);
 }
 
+/** 执行一次团队写操作：回复（含按操作号存下的业务错误）原样写成响应，抛出的业务错误写成错误体。 */
+export async function teamReply(run: () => Promise<{ status: number; body: unknown }>): Promise<Response> {
+  try {
+    const reply = await run();
+    return Response.json(reply.body, { status: reply.status });
+  } catch (e) {
+    return handleTeamError(e);
+  }
+}
+
 export function validationResponse(reason: string, details?: Record<string, unknown>): Response {
   return errorResponse("validation_error", reason, details);
 }
@@ -118,4 +128,13 @@ export async function requireTeamInitOwner(
   if (repo instanceof Response) return repo;
   if (repo.ownerId !== session.userId) return errorResponse("not_owner");
   return repo;
+}
+
+/** 路径里的线参数：`main` 或 `patch:<key>`（客户端整段 encodeURIComponent）。 */
+export function lineParam(raw: string): string {
+  try {
+    return raw.includes("%") ? decodeURIComponent(raw) : raw;
+  } catch {
+    return raw;
+  }
 }

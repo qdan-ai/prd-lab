@@ -52,7 +52,8 @@ export async function lockRepoState(tx: Tx, projectId: string) {
 }
 
 /**
- * 在团队方案下建一份快照（audience = team）并写入文件表，返回快照号。
+ * 在一个方案下建一份快照并写入文件表，返回快照号。缺省是团队方案下的团队快照（audience = team）；
+ * 团队封版的访客部分、团队发布的访客草稿传 `audience: "guest"`（挂内置方案）与渲染器判定结果。
  * 调用方在持有 repo_state 行锁的事务里调用（序号取方案内最大值加一）。
  * 文件大小以已登记的文件为准；调用方已确认全部指纹都已登记。
  */
@@ -65,6 +66,8 @@ export async function insertTeamSnapshot(
     files: TeamSnapshotFile[];
     sizes: Map<string, number>;
     changeNote: string;
+    audience?: "guest" | "team";
+    renderer?: { rendererName: string | null; rendererMetadata: Record<string, unknown> | null };
   },
 ): Promise<string> {
   const id = randomUUID();
@@ -83,7 +86,9 @@ export async function insertTeamSnapshot(
     uploaderId: input.uploaderId,
     uploaderType: "user",
     changeNote: input.changeNote,
-    audience: "team",
+    audience: input.audience ?? "team",
+    rendererName: input.renderer?.rendererName ?? null,
+    rendererMetadata: input.renderer?.rendererMetadata ?? null,
   });
   for (const part of chunks(input.files, 500)) {
     await tx.insert(snapshotFiles).values(

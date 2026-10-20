@@ -214,9 +214,11 @@ export async function syncRepo(repo: RepoProject, userId: string, manifest: Sync
   // ---- 事务内：落库 ----
   return db.transaction(async (tx) => {
     const locked = await tx.execute(
-      sql`SELECT project_id FROM ${repoState} WHERE project_id = ${repo.id} FOR UPDATE`,
+      sql`SELECT project_id, team_version_id FROM ${repoState} WHERE project_id = ${repo.id} FOR UPDATE`,
     );
     if (rowCount(locked) === 0) throw new RepoError("not_repo");
+    // 团队项目的版本记录只经团队接口写；入口检查之后才开始的开启，在这里拦下
+    if (firstRow(locked)?.team_version_id) throw new RepoError("team_managed");
     await tx.execute(sql`SELECT id FROM ${versions} WHERE id = ${repo.versionId} FOR UPDATE`);
 
     const now = new Date();
@@ -420,13 +422,31 @@ function rowCount(result: unknown): number {
   return Array.isArray(rows) ? rows.length : 0;
 }
 
+function firstRow(result: unknown): Record<string, unknown> | undefined {
+  const rows = Array.isArray(result) ? result[0] : undefined;
+  return Array.isArray(rows) ? (rows[0] as Record<string, unknown> | undefined) : undefined;
+}
+
 /**
  * 版本与草稿须是 html-canvas 能打开的画板（canvas.json 且 format=board/v1 或 board/v2）；
  * 起点不强制，能通过就同样标 html-canvas。
  */
+/**
+ * 访客快照（团队封版的访客部分、团队发布的访客草稿）的渲染器判定：须是 html-canvas 能打开的画板，
+ * 否则 validation_error `renderer_requirements_unmet`。`sizes` 是指纹 → 已登记的大小。
+ */
+export async function guestRenderer(
+  projectId: string,
+  key: string,
+  files: ManifestFile[],
+  sizes: Map<string, number>,
+): Promise<{ rendererName: string | null; rendererMetadata: Record<string, unknown> | null }> {
+  return checkRenderer(projectId, { key, role: "version", files }, sizes, new Map());
+}
+
 async function checkRenderer(
   projectId: string,
-  p: Omit<PreparedEntry, "sizes" | "rendererName" | "rendererMetadata">,
+  p: Pick<PreparedEntry, "key" | "role" | "files">,
   sizes: Map<string, number>,
   canvasCache: Map<string, Buffer>,
 ): Promise<{ rendererName: string | null; rendererMetadata: Record<string, unknown> | null }> {

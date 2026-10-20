@@ -305,9 +305,8 @@ export const TeamListedFile = t.obj({
 
 /** 编号账（形状同 `meta.json` 的 `ids`）：每项的值 = 已发出去的最大号；并入一律取较大值 */
 export const IdLedger = t.obj({ elements: t.dict(ElementPrefix, PosInt), states: t.dict(ObjectId, PosInt) });
+/** 要领几个号（`want` 形状同 G-canvas `IdRequest`） */
 const WantCount = t.int({ min: 1, max: TEAM_LIMITS.ledgerMaxWant });
-/** 领到的一段号，首尾都含 */
-export const IdRange = t.obj({ from: PosInt, to: PosInt });
 
 // ---------------------------------------------------------------------------
 // 版本
@@ -699,7 +698,11 @@ export const LedgerRequest = t.obj({
 export const LedgerResponse = t.obj({
   /** 并入并领号之后的团队编号账 */
   ids: IdLedger,
-  granted: t.obj({ elements: t.dict(ElementPrefix, IdRange), states: t.dict(ObjectId, IdRange) }),
+  /** 领到的号（形状同 G-canvas `IdGrant`）：前缀 → 完整元素编号、对象编号 → 状态号，各按从小到大 */
+  granted: t.obj({
+    elements: t.dict(ElementPrefix, t.list(ElementId, { min: 1, max: TEAM_LIMITS.ledgerMaxWant })),
+    states: t.dict(ObjectId, t.list(PosInt, { min: 1, max: TEAM_LIMITS.ledgerMaxWant })),
+  }),
 });
 
 export const MrSubmitRequest = t.obj({
@@ -1194,7 +1197,6 @@ export type TeamFiles = Infer<typeof TeamFiles>;
 export type PlainFiles = Infer<typeof PlainFiles>;
 export type TeamListedFile = Infer<typeof TeamListedFile>;
 export type IdLedger = Infer<typeof IdLedger>;
-export type IdRange = Infer<typeof IdRange>;
 export type UserRef = Infer<typeof UserRef>;
 export type TeamVersionRecord = Infer<typeof TeamVersionRecord>;
 export type TeamVersion = Infer<typeof TeamVersion>;

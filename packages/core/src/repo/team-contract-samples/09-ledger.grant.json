@@ -50,16 +50,14 @@
           },
           "granted": {
             "elements": {
-              "b": {
-                "from": 6,
-                "to": 6
-              }
+              "b": [
+                "b6"
+              ]
             },
             "states": {
-              "o-k3m9tp": {
-                "from": 3,
-                "to": 3
-              }
+              "o-k3m9tp": [
+                3
+              ]
             }
           }
         }

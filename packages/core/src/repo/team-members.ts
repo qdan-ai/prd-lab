@@ -93,11 +93,19 @@ export async function updateMemberRole(
   role: "admin" | "member",
 ): Promise<Member> {
   return db.transaction(async (tx) => {
+    // 与团队写入串行：降级之后，在途的管理员写入再进来会被角色判断拦下
+    await lockRepoState(tx, projectId);
     const target = await activeMember(projectId, targetUserId, tx);
     if (!target) throw new TeamError("not_found");
     if (target.role === "lead") throw new TeamError("lead_fixed", "负责人不能改角色或移除");
     if (target.role !== role) {
       await tx.update(projectMembers).set({ role }).where(eq(projectMembers.id, target.id));
+      // 降为成员后不再有封版权限：清掉他的「正在封版」
+      if (role === "member") {
+        await tx
+          .delete(teamSealing)
+          .where(and(eq(teamSealing.projectId, projectId), eq(teamSealing.userId, targetUserId)));
+      }
       await tx.insert(teamEvents).values({
         projectId,
         actorId,

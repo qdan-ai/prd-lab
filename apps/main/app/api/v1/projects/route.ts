@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, isNull, max, or, sql as drizzleSql } from "drizzle-orm";
-import { db, projects, snapshots, versions, users } from "@prd-lab/core";
+import { db, notTeamVersion, projects, snapshotInAudience, snapshots, versions, users } from "@prd-lab/core";
 import { getSession, type Session } from "@/lib/api/auth-guard";
 import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
@@ -133,7 +133,9 @@ async function getSwitcherView(session: Pick<Session, "userId" | "isAdmin">) {
       createdAt: versions.createdAt,
     })
     .from(versions)
-    .where(and(isNull(versions.archivedAt), inArray(versions.projectId, projectIds)))
+    .where(
+      and(isNull(versions.archivedAt), inArray(versions.projectId, projectIds), notTeamVersion(versions.id)),
+    )
     .orderBy(versions.seqNo);
 
   const versionsByProject = new Map<string, typeof allVersions>();
@@ -172,7 +174,9 @@ async function getSwitcherView(session: Pick<Session, "userId" | "isAdmin">) {
         latestSeq: max(snapshots.seqNo),
       })
       .from(snapshots)
-      .where(and(inArray(snapshots.versionId, versionIds), isNull(snapshots.archivedAt)))
+      .where(
+        and(inArray(snapshots.versionId, versionIds), isNull(snapshots.archivedAt), snapshotInAudience("guest")),
+      )
       .groupBy(snapshots.versionId);
     for (const c of counts) {
       agg.activeCount.set(c.versionId, c.activeCount);
@@ -198,6 +202,7 @@ async function getSwitcherView(session: Pick<Session, "userId" | "isAdmin">) {
         .where(
           and(
             isNull(snapshots.archivedAt),
+            snapshotInAudience("guest"),
             or(
               ...latestPairs.map((p) =>
                 and(eq(snapshots.versionId, p.versionId), eq(snapshots.seqNo, p.seqNo)),

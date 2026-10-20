@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { db, shareLinks, snapshots, users, versions } from "@prd-lab/core";
+import { db, shareLinks, snapshotInAudience, snapshots, users, versions } from "@prd-lab/core";
 import { getShareSession } from "@/lib/share/share-session";
 import { headersOrigin } from "@/lib/api/request-origin";
 import { repoShareEntryUrl, versionQuery } from "@/lib/repo/share-entry";
@@ -74,7 +74,9 @@ export default async function SharePage({ params, searchParams }: Props) {
       })
       .from(snapshots)
       .innerJoin(users, eq(snapshots.uploaderId, users.id))
-      .where(and(eq(snapshots.versionId, session.versionId), isNull(snapshots.archivedAt)))
+      .where(
+        and(eq(snapshots.versionId, session.versionId), isNull(snapshots.archivedAt), snapshotInAudience("guest")),
+      )
       .orderBy(desc(snapshots.seqNo)),
   ]);
   const versionName = versionRows[0]?.name ?? "";

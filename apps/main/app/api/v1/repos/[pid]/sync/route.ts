@@ -1,4 +1,4 @@
-import { getRepoShare, parseSyncManifest, syncRepo } from "@prd-lab/core/repo";
+import { getRepoShare, getTeamAccess, parseSyncManifest, syncRepo } from "@prd-lab/core/repo";
 import { getSession } from "@/lib/api/auth-guard";
 import { errorResponse } from "@/lib/api/errors";
 import { requestOrigin } from "@/lib/api/request-origin";
@@ -20,6 +20,10 @@ export async function POST(request: Request, { params }: Ctx) {
   const { pid } = await params;
   const repo = await requireManagedRepo(pid, session);
   if (repo instanceof Response) return repo;
+  // 团队项目的内容走团队接口，不接受个人推送
+  if ((await getTeamAccess(pid, session.userId))?.enabled) {
+    return errorResponse("team_managed", "该项目已开启团队协作，请通过团队接口提交改动");
+  }
 
   let body: unknown;
   try {

@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
-import { db, snapshotFiles, snapshots } from "@prd-lab/core";
+import { db, snapshotFiles, snapshotInAudience, snapshots } from "@prd-lab/core";
 import { errorResponse } from "@/lib/api/errors";
 import { getShareSession } from "@/lib/share/share-session";
 
@@ -31,6 +31,7 @@ export async function GET(request: Request, { params }: Ctx) {
       and(
         eq(snapshots.versionId, session.versionId),
         isNull(snapshots.archivedAt),
+        snapshotInAudience("guest"),
         ...(sid ? [eq(snapshots.id, sid)] : []),
       ),
     )

@@ -1,5 +1,5 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
-import { db, projects, versions } from "@prd-lab/core";
+import { db, notTeamVersion, projects, versions } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
 import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
@@ -26,7 +26,7 @@ export async function GET(_: Request, { params }: Ctx) {
   const list = await db
     .select()
     .from(versions)
-    .where(and(eq(versions.projectId, pid), isNull(versions.archivedAt)))
+    .where(and(eq(versions.projectId, pid), isNull(versions.archivedAt), notTeamVersion(versions.id)))
     .orderBy(asc(versions.seqNo));
   return Response.json(list);
 }

@@ -16,7 +16,7 @@ export async function GET(request: Request, { params }: Ctx) {
   const session = await getSession();
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
-  const repo = await requireManagedRepo(pid, session);
+  const repo = await requireManagedRepo(pid, session, { teamMin: "admin" });
   if (repo instanceof Response) return repo;
 
   const share = await getRepoShare(repo.versionId);
@@ -31,7 +31,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const session = await getSession();
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
-  const repo = await requireManagedRepo(pid, session);
+  const repo = await requireManagedRepo(pid, session, { teamMin: "admin" });
   if (repo instanceof Response) return repo;
 
   let body: unknown;

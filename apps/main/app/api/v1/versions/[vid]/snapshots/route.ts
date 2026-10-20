@@ -3,6 +3,7 @@ import { and, desc, eq, isNull, sql as drizzleSql } from "drizzle-orm";
 import {
   db,
   idempotencyKeys,
+  notTeamVersion,
   projects,
   snapshotFiles,
   snapshots,
@@ -41,7 +42,9 @@ export async function GET(_: Request, { params }: Ctx) {
     })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
-    .where(and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt)))
+    .where(
+      and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt), notTeamVersion(versions.id)),
+    )
     .limit(1);
   const versionRow = versionRows[0];
   if (!versionRow) return errorResponse("not_found");
@@ -92,7 +95,9 @@ export async function POST(request: Request, { params }: Ctx) {
     })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
-    .where(and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt)))
+    .where(
+      and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt), notTeamVersion(versions.id)),
+    )
     .limit(1);
   const versionRow = versionRows[0];
   if (!versionRow) return errorResponse("not_found");

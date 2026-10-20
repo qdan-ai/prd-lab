@@ -3,6 +3,7 @@ import {
   db,
   issueShareToken,
   shareSessionId,
+  snapshotInAudience,
   snapshots,
   PREVIEW_HANDOFF_TTL_SECONDS,
 } from "@prd-lab/core";
@@ -51,6 +52,7 @@ export async function POST(request: Request, { params }: Ctx) {
         eq(snapshots.id, sid),
         eq(snapshots.versionId, session.versionId),
         isNull(snapshots.archivedAt),
+        snapshotInAudience("guest"),
       ),
     )
     .limit(1);

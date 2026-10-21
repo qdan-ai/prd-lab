@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { formatRelative } from "@/components/workbench/format";
 import { apiFetch, type ApiError } from "@/lib/api-client";
+import { removeConfirmText } from "./remove-text";
 
 type Role = "lead" | "admin" | "member";
 
@@ -259,7 +260,7 @@ export function TeamMembersView({ project, myRole, ready }: Props) {
           <div className="px-6 pt-6 pb-5">
             <DialogTitle className="text-[16px]">移除成员 {removing?.user.name}</DialogTitle>
             <DialogDescription className="text-[13px] text-ink-500 mt-1">
-              {removing?.user.name}将不能再拉取和提交这个项目；他已合入的内容、提交过的请求和讨论都会保留。
+              {removing ? removeConfirmText(removing.user.name, progressByUser.get(removing.user.id)?.changed.total ?? null) : null}
             </DialogDescription>
           </div>
           <div className="flex justify-end gap-2 px-6 py-4 border-t border-ink-150 bg-ink-50/40 rounded-b-[var(--radius-lg)]">

@@ -476,7 +476,7 @@ export const mergeRequests = mysqlTable(
     decidedAt: datetimeFsp("decided_at"),
     mergedRev: int("merged_rev"),
     createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
-    // 合入时的改号对照表；没有改号为空
+    // 合入时的改名对照表（元素号 → 块文件 / 便签文件名、状态号的原值与新值）；没有改名为空
     renumberMap: json("renumber_map"),
   },
   (t) => [

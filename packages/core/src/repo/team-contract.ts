@@ -552,6 +552,7 @@ export const TEAM_ERROR_STATUS = {
   lead_fixed: 409,
   init_incomplete: 409,
   head_moved: 409,
+  discussions_moved: 409,
   version_parent_moved: 409,
   state_changed: 409,
   number_duplicate: 409,
@@ -593,6 +594,8 @@ export const TEAM_ERROR_DETAILS: Record<TeamErrorCode, Shape<unknown> | "any" | 
     missingIds: t.bool(),
   }),
   head_moved: t.obj({ line: TeamLine, rev: Rev, headSnapshotId: RowId }),
+  /** 我的讨论现存那份的号（推送带的 `baseSnapshotId` 落后了） */
+  discussions_moved: t.obj({ snapshotId: RowId }),
   version_parent_moved: t.obj({
     line: LineId,
     latest: t.obj({
@@ -812,7 +815,11 @@ export const GuestDraftPutResponse = t.obj({ stateRev: StateRev, guestDraft: Gue
 export const GuestDraftDeleteQuery = t.obj({ appliedStateRev: IntText(/^(0|[1-9][0-9]*)$/) });
 export const GuestDraftDeleteResponse = t.obj({ stateRev: StateRev });
 
-export const DiscussionsPutRequest = t.obj({ files: PlainFiles });
+export const DiscussionsPutRequest = t.obj({
+  files: PlainFiles,
+  /** 这台电脑上次合进来的那份我的讨论；不带 = 没见过任何一份（只能新建）。与现存那份不同时回 `discussions_moved` */
+  baseSnapshotId: t.opt(RowId),
+});
 export const DiscussionsPutResponse = t.obj({
   snapshotId: RowId,
   /** 文件表指纹与上一份相同：没有建新快照，`snapshotId` 是原来那份 */
@@ -1175,7 +1182,7 @@ export const TEAM_ENDPOINTS = {
     formatGated: true,
     body: DiscussionsPutRequest,
     response: DiscussionsPutResponse,
-    errors: READ("blobs_missing"),
+    errors: READ("blobs_missing", "discussions_moved"),
   }),
   "discussions.list": ep({
     no: 23,

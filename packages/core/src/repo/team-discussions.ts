@@ -23,14 +23,17 @@ export function isDiscussionPath(path: string): boolean {
 
 /**
  * 整份替换我的讨论文件表（讨论通道），按推送者存：谁推的记在谁名下，别人推不进我的那份。
- * 只核路径：必须是 `docs/discussions/` 下单层的 `.md`，不合的文件拒收（`not_discussion_path`），其余照收。作者号由收方核。收下的那部分的内容指纹与我上一份相同
- * → 不建新快照（`unchanged`）。文件本体须已上传，缺的 → `blobs_missing`。
+ * 只核路径：必须是 `docs/discussions/` 下单层的 `.md`，不合的文件拒收（`not_discussion_path`），其余照收。作者号由收方核。
+ * 收下的那部分的内容指纹与我现存那份相同 → 不建新快照（`unchanged`，不看 `baseSnapshotId`）。
+ * 现存那份的快照号就是版本号：现存那份存在而 `baseSnapshotId` 不是它（含没带）→ `discussions_moved`（带现存号），
+ * 推送方先把现存那份合进来再推。文件本体须已上传，缺的 → `blobs_missing`。
  */
 export async function putDiscussions(
   repo: RepoProject,
   userId: string,
   files: PlainFiles,
   clientFormat: number,
+  baseSnapshotId?: string,
 ): Promise<DiscussionsPutResponse> {
   const rejected: Rejected[] = [];
   const candidates: Array<[string, { sha256: string; size: number }]> = [];
@@ -58,6 +61,9 @@ export async function putDiscussions(
     const acceptedPaths = accepted.map((a) => a.path);
     if (previous[0] && previous[0].digest === digest) {
       return { snapshotId: previous[0].snapshotId, unchanged: true, accepted: acceptedPaths, rejected };
+    }
+    if (previous[0] && previous[0].snapshotId !== baseSnapshotId) {
+      throw new TeamError("discussions_moved", "discussions moved", { snapshotId: previous[0].snapshotId });
     }
     const snapshotId = await insertTeamSnapshot(tx, {
       projectId: repo.id,

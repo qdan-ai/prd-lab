@@ -332,7 +332,8 @@
               "createdAt": "2026-10-21T07:02:00.000Z",
               "decidedAt": null,
               "decidedBy": null,
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "myMrs": [
@@ -358,7 +359,8 @@
                 "name": "李四",
                 "removed": false
               },
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             },
             {
               "id": "f1e2d3c4-0000-4000-8000-000000000004",
@@ -382,7 +384,8 @@
                 "name": "张三",
                 "removed": false
               },
-              "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交"
+              "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交",
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "myMergedSinceBase": [
@@ -393,18 +396,20 @@
               "mergedRev": 3,
               "snapshotId": "a0b1c2d3-0000-4000-8000-000000000205",
               "renumberMap": {
-                "elements": {
-                  "b3": "b5"
-                },
                 "files": {
-                  "blocks/news.html": "blocks/news-2.html"
+                  "b5": {
+                    "from": "blocks/news.html",
+                    "to": "blocks/news-2.html"
+                  }
                 },
                 "states": {
-                  "o-k3m9tp": {
-                    "2": 3
+                  "b5": {
+                    "from": 2,
+                    "to": 3
                   }
                 }
-              }
+              },
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "members": [
@@ -870,7 +875,8 @@
               "createdAt": "2026-10-21T07:02:00.000Z",
               "decidedAt": null,
               "decidedBy": null,
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "myMrs": [
@@ -896,7 +902,8 @@
                 "name": "李四",
                 "removed": false
               },
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             },
             {
               "id": "f1e2d3c4-0000-4000-8000-000000000004",
@@ -920,7 +927,8 @@
                 "name": "张三",
                 "removed": false
               },
-              "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交"
+              "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交",
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "myMergedSinceBase": [
@@ -931,18 +939,20 @@
               "mergedRev": 3,
               "snapshotId": "a0b1c2d3-0000-4000-8000-000000000205",
               "renumberMap": {
-                "elements": {
-                  "b3": "b5"
-                },
                 "files": {
-                  "blocks/news.html": "blocks/news-2.html"
+                  "b5": {
+                    "from": "blocks/news.html",
+                    "to": "blocks/news-2.html"
+                  }
                 },
                 "states": {
-                  "o-k3m9tp": {
-                    "2": 3
+                  "b5": {
+                    "from": 2,
+                    "to": 3
                   }
                 }
-              }
+              },
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "members": [

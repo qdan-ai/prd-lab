@@ -444,11 +444,13 @@ export const MrItem = t.obj({
   elementIds: t.list(ElementId, { max: TEAM_LIMITS.maxFilesPerTable }),
 });
 
-/** 合入方改号对照表：元素 旧号 → 新号；文件 旧路径 → 新路径；状态 对象 → 旧号 → 新号 */
-export const RenumberMap = t.obj({
-  elements: t.dict(ElementId, ElementId),
-  files: t.dict(RepoPath, RepoPath),
-  states: t.dict(ObjectId, t.dict(t.str({ re: /^[1-9][0-9]*$/ }), PosInt)),
+/**
+ * 合入方改名对照表（元素号在提交时已领过、团队里唯一，合入时只改块文件 / 便签文件名与状态号）：
+ * 元素号 → 自有文件的原路径与新路径、状态号的原值与新值。套的时候元素现在的值等于原值才改。
+ */
+export const MergeRenames = t.obj({
+  files: t.dict(ElementId, t.obj({ from: RepoPath, to: RepoPath })),
+  states: t.dict(ElementId, t.obj({ from: PosInt, to: PosInt })),
 });
 
 export const MrStatus = t.oneOf(["open", "merged", "returned", "withdrawn"]);
@@ -469,6 +471,8 @@ const mrSummaryFields = {
   decidedAt: t.nullable(IsoTime),
   decidedBy: t.nullable(UserRef),
   returnNote: t.nullable(t.str({ max: TEAM_LIMITS.returnNoteMax })),
+  /** 交这份请求的那台电脑（提交时带的设备号）；早先交的没有为 null */
+  deviceId: t.nullable(DeviceId),
 } as const;
 
 export const MrSummary = t.obj(mrSummaryFields);
@@ -477,7 +481,7 @@ export const MergedMrRenumber = t.obj({
   id: RowId,
   seq: PosInt,
   mergedRev: Rev,
-  renumberMap: t.nullable(RenumberMap),
+  renumberMap: t.nullable(MergeRenames),
 });
 
 export const MrDetail = t.obj({
@@ -486,8 +490,8 @@ export const MrDetail = t.obj({
   items: t.list(MrItem, { max: TEAM_LIMITS.mrMaxItems }),
   /** 请求的完整样子（接口 5 读） */
   snapshotId: RowId,
-  renumberMap: t.nullable(RenumberMap),
-  /** 同一作者、在这份请求基于的 rev 之后已合入的请求（按合入先后），合入前依次套它们的对照表 */
+  renumberMap: t.nullable(MergeRenames),
+  /** 同一作者从同一台电脑交的、在这份请求基于的 rev 之后已合入的请求（按合入先后）；这份请求没有设备号（早先交的）时为空 */
   priorSameAuthor: t.list(MergedMrRenumber),
 });
 
@@ -498,7 +502,9 @@ export const MyMergedMr = t.obj({
   baseRev: Rev,
   mergedRev: Rev,
   snapshotId: RowId,
-  renumberMap: t.nullable(RenumberMap),
+  renumberMap: t.nullable(MergeRenames),
+  /** 交这份请求的那台电脑；早先交的没有为 null */
+  deviceId: t.nullable(DeviceId),
 });
 
 /** 接口 4 的响应：一次刷新拿到的团队状态 */
@@ -717,6 +723,8 @@ export const MrSubmitRequest = t.obj({
   items: t.list(MrItem, { min: 1, max: TEAM_LIMITS.mrMaxItems }),
   title: t.str({ min: 1, max: TEAM_LIMITS.mrTitleMax }),
   note: t.str({ max: TEAM_LIMITS.mrNoteMax }),
+  /** 交请求的那台电脑（同 `team_progress` 的设备号）：合入时只把同一作者、同一台电脑交的请求当作前序 */
+  deviceId: DeviceId,
 });
 export const MrResponse = t.obj({ mr: MrSummary });
 export const MrListQuery = t.obj({
@@ -740,8 +748,8 @@ export const AdvanceRequest = t.obj({
   mrId: RowId,
   /** 合入后团队主线的完整样子 */
   files: TeamFiles,
-  /** 合入方改号对照表；没有改号为 null */
-  renumberMap: t.nullable(RenumberMap),
+  /** 合入方改名对照表；没有改名为 null */
+  renumberMap: t.nullable(MergeRenames),
 });
 export const AdvanceResponse = t.obj({ line: TeamLineHead, mr: MrSummary });
 
@@ -1220,7 +1228,7 @@ export type SealingEntry = Infer<typeof SealingEntry>;
 export type Progress = Infer<typeof Progress>;
 export type DiscussionAuthor = Infer<typeof DiscussionAuthor>;
 export type MrItem = Infer<typeof MrItem>;
-export type RenumberMap = Infer<typeof RenumberMap>;
+export type MergeRenames = Infer<typeof MergeRenames>;
 export type MrStatus = Infer<typeof MrStatus>;
 export type MrSummary = Infer<typeof MrSummary>;
 export type MrDetail = Infer<typeof MrDetail>;

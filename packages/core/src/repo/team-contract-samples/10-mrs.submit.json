@@ -65,7 +65,8 @@
             }
           ],
           "title": "首页加资讯区",
-          "note": "资讯区放在行情下面"
+          "note": "资讯区放在行情下面",
+          "deviceId": "dev-5d1c7e3a9f2b"
         }
       },
       "response": {
@@ -89,7 +90,8 @@
             "createdAt": "2026-10-21T06:00:00.000Z",
             "decidedAt": null,
             "decidedBy": null,
-            "returnNote": null
+            "returnNote": null,
+            "deviceId": "dev-5d1c7e3a9f2b"
           }
         }
       }
@@ -159,7 +161,8 @@
             }
           ],
           "title": "首页加资讯区",
-          "note": "资讯区放在行情下面"
+          "note": "资讯区放在行情下面",
+          "deviceId": "dev-5d1c7e3a9f2b"
         }
       },
       "response": {
@@ -183,7 +186,8 @@
             "createdAt": "2026-10-21T06:00:00.000Z",
             "decidedAt": null,
             "decidedBy": null,
-            "returnNote": null
+            "returnNote": null,
+            "deviceId": "dev-5d1c7e3a9f2b"
           }
         }
       }
@@ -252,7 +256,8 @@
             }
           ],
           "title": "首页加资讯区",
-          "note": "资讯区放在行情下面"
+          "note": "资讯区放在行情下面",
+          "deviceId": "dev-5d1c7e3a9f2b"
         }
       },
       "response": {
@@ -332,7 +337,8 @@
             }
           ],
           "title": "首页加资讯区",
-          "note": "资讯区放在行情下面"
+          "note": "资讯区放在行情下面",
+          "deviceId": "dev-5d1c7e3a9f2b"
         }
       },
       "response": {
@@ -411,7 +417,8 @@
             }
           ],
           "title": "首页加资讯区",
-          "note": "资讯区放在行情下面"
+          "note": "资讯区放在行情下面",
+          "deviceId": "dev-5d1c7e3a9f2b"
         }
       },
       "response": {

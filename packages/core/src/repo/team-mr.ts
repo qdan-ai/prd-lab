@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, gt, lt, ne, sql } from "drizzle-orm";
 import { db } from "../db/client";
 import { mergeRequests, teamLineHistory, teamLines, type MergeRequest } from "../db/schema";
-import type { MrDetail, MrItem, MrListResponse, MrSubmitRequest, RenumberMap } from "./team-contract";
+import type { MrDetail, MrItem, MrListResponse, MrSubmitRequest, MergeRenames } from "./team-contract";
 import { TeamError, validationError } from "./team-errors";
 import { noteClientFormat } from "./team-format";
 import { runTeamOp } from "./team-idempotency";
@@ -67,6 +67,7 @@ export async function submitMr(
         seq: Number(max?.maxSeq ?? 0) + 1,
         line: MAIN,
         authorId: userId,
+        deviceId: input.deviceId,
         title: input.title,
         note: input.note,
         items: input.items,
@@ -117,12 +118,17 @@ export async function listMrs(
   };
 }
 
-/** 详情：摘要 + 说明、改动项、完整样子的快照、改号对照表、同一作者在它基于的 rev 之后（它之前）已合入的请求。 */
+/**
+ * 详情：摘要 + 说明、改动项、完整样子的快照、改名对照表、同一作者从同一台电脑交的、在它基于的 rev 之后（它之前）已合入的请求。
+ * 同一作者在别的电脑交的不算（那台电脑的请求里没有这一台的改动，叠到出发点上会像改了回去）；
+ * 早先交的请求没有设备号，来源不明，前序请求为空。
+ */
 export async function getMr(projectId: string, ownerId: string, mrId: string): Promise<MrDetail> {
   const row = await findMr(db, projectId, mrId);
   const priorWhere = [
     eq(mergeRequests.projectId, projectId),
     eq(mergeRequests.authorId, row.authorId),
+    row.deviceId === null ? sql`false` : eq(mergeRequests.deviceId, row.deviceId),
     eq(mergeRequests.status, "merged"),
     ne(mergeRequests.id, row.id),
     gt(mergeRequests.mergedRev, row.baseRev),
@@ -144,12 +150,12 @@ export async function getMr(projectId: string, ownerId: string, mrId: string): P
     note: row.note ?? "",
     items: (row.items as MrItem[] | null) ?? [],
     snapshotId: row.snapshotId,
-    renumberMap: (row.renumberMap as RenumberMap | null) ?? null,
+    renumberMap: (row.renumberMap as MergeRenames | null) ?? null,
     priorSameAuthor: prior.map((p) => ({
       id: p.id,
       seq: p.seq,
       mergedRev: p.mergedRev!,
-      renumberMap: (p.renumberMap as RenumberMap | null) ?? null,
+      renumberMap: (p.renumberMap as MergeRenames | null) ?? null,
     })),
   };
 }

@@ -62,15 +62,16 @@
             }
           },
           "renumberMap": {
-            "elements": {
-              "b3": "b5"
-            },
             "files": {
-              "blocks/news.html": "blocks/news-2.html"
+              "b5": {
+                "from": "blocks/news.html",
+                "to": "blocks/news-2.html"
+              }
             },
             "states": {
-              "o-k3m9tp": {
-                "2": 3
+              "b5": {
+                "from": 2,
+                "to": 3
               }
             }
           }
@@ -113,7 +114,8 @@
               "name": "李四",
               "removed": false
             },
-            "returnNote": null
+            "returnNote": null,
+            "deviceId": "dev-5d1c7e3a9f2b"
           }
         }
       }
@@ -180,15 +182,16 @@
             }
           },
           "renumberMap": {
-            "elements": {
-              "b3": "b5"
-            },
             "files": {
-              "blocks/news.html": "blocks/news-2.html"
+              "b5": {
+                "from": "blocks/news.html",
+                "to": "blocks/news-2.html"
+              }
             },
             "states": {
-              "o-k3m9tp": {
-                "2": 3
+              "b5": {
+                "from": 2,
+                "to": 3
               }
             }
           }
@@ -231,7 +234,8 @@
               "name": "李四",
               "removed": false
             },
-            "returnNote": null
+            "returnNote": null,
+            "deviceId": "dev-5d1c7e3a9f2b"
           }
         }
       }
@@ -297,15 +301,16 @@
             }
           },
           "renumberMap": {
-            "elements": {
-              "b3": "b5"
-            },
             "files": {
-              "blocks/news.html": "blocks/news-2.html"
+              "b5": {
+                "from": "blocks/news.html",
+                "to": "blocks/news-2.html"
+              }
             },
             "states": {
-              "o-k3m9tp": {
-                "2": 3
+              "b5": {
+                "from": 2,
+                "to": 3
               }
             }
           }
@@ -385,15 +390,16 @@
             }
           },
           "renumberMap": {
-            "elements": {
-              "b3": "b5"
-            },
             "files": {
-              "blocks/news.html": "blocks/news-2.html"
+              "b5": {
+                "from": "blocks/news.html",
+                "to": "blocks/news-2.html"
+              }
             },
             "states": {
-              "o-k3m9tp": {
-                "2": 3
+              "b5": {
+                "from": 2,
+                "to": 3
               }
             }
           }
@@ -471,15 +477,16 @@
             }
           },
           "renumberMap": {
-            "elements": {
-              "b3": "b5"
-            },
             "files": {
-              "blocks/news.html": "blocks/news-2.html"
+              "b5": {
+                "from": "blocks/news.html",
+                "to": "blocks/news-2.html"
+              }
             },
             "states": {
-              "o-k3m9tp": {
-                "2": 3
+              "b5": {
+                "from": 2,
+                "to": 3
               }
             }
           }

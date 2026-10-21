@@ -42,7 +42,8 @@
               "name": "张三",
               "removed": false
             },
-            "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交"
+            "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交",
+            "deviceId": "dev-5d1c7e3a9f2b"
           }
         }
       }

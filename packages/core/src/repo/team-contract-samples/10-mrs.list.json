@@ -38,7 +38,8 @@
               "createdAt": "2026-10-21T07:02:00.000Z",
               "decidedAt": null,
               "decidedBy": null,
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "next": null
@@ -82,7 +83,8 @@
               "createdAt": "2026-10-21T07:02:00.000Z",
               "decidedAt": null,
               "decidedBy": null,
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             },
             {
               "id": "f1e2d3c4-0000-4000-8000-000000000005",
@@ -106,7 +108,8 @@
                 "name": "李四",
                 "removed": false
               },
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "next": "5"

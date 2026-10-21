@@ -14,7 +14,7 @@ import { lockTeamWrite, recordTeamEvent, type TeamReply } from "./team-write";
 /**
  * 合入（接口 13）：团队主线先到先得地前进一格。
  * 一个事务里：锁内复核操作者仍是管理员及以上 → 核对 `expectedRev` 等于现在的 rev（否则 `head_moved`）
- * → 请求仍待审（否则 `mr_not_open`）→ 存合入后的样子、主线 rev 加一、记历史、请求标已合入并存改号对照表、
+ * → 请求仍待审（否则 `mr_not_open`）→ 存合入后的样子、主线 rev 加一、记历史、请求标已合入并存改名对照表、
  * 存操作结果、记事件。同一操作号重试原样返回第一次的结果。
  */
 export async function advanceLine(

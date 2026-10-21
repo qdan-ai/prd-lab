@@ -462,6 +462,8 @@ export const mergeRequests = mysqlTable(
     authorId: varchar("author_id", { length: 36 })
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
+    // 交请求的那台电脑（G-canvas 的设备号）；早先交的没有，为空 = 来源不明
+    deviceId: varchar("device_id", { length: 64 }),
     title: varchar("title", { length: 255 }).notNull(),
     note: text("note"),
     items: json("items"),
@@ -476,7 +478,7 @@ export const mergeRequests = mysqlTable(
     decidedAt: datetimeFsp("decided_at"),
     mergedRev: int("merged_rev"),
     createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
-    // 合入时的改号对照表；没有改号为空
+    // 合入时的改名对照表（元素号 → 块文件 / 便签文件名、状态号的原值与新值）；没有改名为空
     renumberMap: json("renumber_map"),
   },
   (t) => [

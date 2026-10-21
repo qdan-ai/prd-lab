@@ -54,14 +54,12 @@
                 "seq": 2,
                 "mergedRev": 2,
                 "renumberMap": {
-                  "elements": {
-                    "b3": "b4"
-                  },
                   "files": {},
                   "states": {}
                 }
               }
-            ]
+            ],
+            "deviceId": "dev-5d1c7e3a9f2b"
           }
         }
       }

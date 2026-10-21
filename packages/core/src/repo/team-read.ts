@@ -41,6 +41,7 @@ import { TeamError, validationError } from "./team-errors";
 import { minClientFormatOf } from "./team-format";
 import { lockRepoState, loadSnapshotFiles, type Conn, type Tx } from "./team-snapshot";
 import type { TeamRole } from "./team-guard";
+import { lockTeamWrite } from "./team-write";
 
 /** 事件类型：团队版本封出（`actor_id` = 封版人，`payload = { key }`）。接口 15 写入，团队状态据此给出版本的 `sealer`。 */
 export const TEAM_EVENT_VERSION_SEALED = "version_sealed";
@@ -594,9 +595,8 @@ export async function refreshTeam(
   input: RefreshInput,
 ): Promise<TeamState> {
   await db.transaction(async (tx) => {
-    const state = await lockRepoState(tx, projectId);
-    if (!state) throw new TeamError("not_found");
-    if (!state.teamReadyAt) throw new TeamError("team_not_ready", "先在 G-canvas 里开启团队协作");
+    // 锁内复核：与移除成员串行，已移除的人什么都不写
+    const { state } = await lockTeamWrite(tx, projectId, me.userId, "member");
     await tx
       .update(repoState)
       .set({ idLedger: mergeLedgers(parseStoredLedger(state.idLedger), input.ids) })

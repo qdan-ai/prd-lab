@@ -15,7 +15,7 @@ export async function GET(request: Request, { params }: Ctx) {
 }
 
 /**
- * PUT …/team/discussions  { files }   整份替换我的讨论文件表；只收作者号（文件头 authorId）是本人的文件。
+ * PUT …/team/discussions  { files, baseSnapshotId? }   整份替换我的讨论文件表；baseSnapshotId 不是现存那份 → 409 discussions_moved。
  * 成员可用，格式头必带，有格式门槛。
  */
 export async function PUT(request: Request, { params }: Ctx) {
@@ -27,7 +27,7 @@ export async function PUT(request: Request, { params }: Ctx) {
   const body = checkBody(json, DiscussionsPutRequest);
   if (body instanceof Response) return body;
   try {
-    return Response.json(await putDiscussions(guard.repo, guard.session.userId, body.files, guard.format ?? 1));
+    return Response.json(await putDiscussions(guard.repo, guard.session.userId, body.files, guard.format ?? 1, body.baseSnapshotId));
   } catch (e) {
     return handleTeamError(e);
   }

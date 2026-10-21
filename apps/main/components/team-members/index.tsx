@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { formatRelative } from "@/components/workbench/format";
 import { apiFetch, type ApiError } from "@/lib/api-client";
-import { removeConfirmText } from "./remove-text";
+import { pendingText, removeConfirmText } from "./remove-text";
 
 type Role = "lead" | "admin" | "member";
 
@@ -360,7 +360,7 @@ function MemberRow({
 
 function ProgressCell({ progress, ready }: { progress: Progress | null; ready: boolean }) {
   if (!ready || !progress) return <span className="text-ink-400">还没有刷新过</span>;
-  const line = progress.line === "main" ? "团队主线" : "补丁线";
+  const line = progress.line === "main" ? "主线" : "补丁线";
   const { items, total } = progress.changed;
   return (
     <div className="space-y-0.5">
@@ -369,7 +369,7 @@ function ProgressCell({ progress, ready }: { progress: Progress | null; ready: b
         <span className="text-ink-300 mx-1.5">·</span>
         <span suppressHydrationWarning>{formatRelative(progress.pushedAt)}刷新</span>
         <span className="text-ink-300 mx-1.5">·</span>
-        {total === 0 ? "本地没有未提交的改动" : `本地 ${total} 项未提交`}
+        {pendingText(total)}
       </div>
       {total > 0 ? (
         <div className="text-[12px] text-ink-500 truncate" title={items.join("、")}>

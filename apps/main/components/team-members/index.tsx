@@ -57,6 +57,39 @@ interface Props {
   ready: boolean;
 }
 
+/** 成员页的标题区：返回项目 + 「项目名 · 成员」 */
+function MembersHeading({ project }: { project: { id: string; name: string } }) {
+  return (
+    <section>
+      <Link
+        href={`/projects/${project.id}`}
+        className="inline-flex items-center gap-1 text-[12px] text-ink-500 hover:text-ink-900"
+      >
+        <ArrowLeft size={12} strokeWidth={2.25} />
+        返回项目
+      </Link>
+      <h1 className="text-[20px] font-semibold tracking-tight text-ink-900 mt-2 truncate">
+        {project.name} <span className="text-ink-500 font-normal">· 成员</span>
+      </h1>
+    </section>
+  );
+}
+
+/** 从没开启过团队协作的项目，负责人打开成员页时看到的提示。 */
+export function TeamNotOpenedView({ project }: { project: { id: string; name: string } }) {
+  return (
+    <main className="max-w-[880px] mx-auto px-8 py-10 space-y-6" data-testid="team-members-page">
+      <MembersHeading project={project} />
+      <section
+        className="border border-ink-200 rounded-[var(--radius-lg)] p-5 text-[13px] text-ink-700"
+        data-testid="team-not-opened"
+      >
+        这个项目还没有开启团队协作，请在 G-canvas 里开启。
+      </section>
+    </main>
+  );
+}
+
 /** 项目页「成员」：成员表、添加 / 改角色 / 移除（负责人），以及每人的进度摘要。 */
 export function TeamMembersView({ project, myRole, ready }: Props) {
   const isLead = myRole === "lead";
@@ -137,18 +170,7 @@ export function TeamMembersView({ project, myRole, ready }: Props) {
 
   return (
     <main className="max-w-[880px] mx-auto px-8 py-10 space-y-6" data-testid="team-members-page">
-      <section>
-        <Link
-          href={`/projects/${project.id}`}
-          className="inline-flex items-center gap-1 text-[12px] text-ink-500 hover:text-ink-900"
-        >
-          <ArrowLeft size={12} strokeWidth={2.25} />
-          返回项目
-        </Link>
-        <h1 className="text-[20px] font-semibold tracking-tight text-ink-900 mt-2 truncate">
-          {project.name} <span className="text-ink-500 font-normal">· 成员</span>
-        </h1>
-      </section>
+      <MembersHeading project={project} />
 
       {!ready ? (
         <section

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { formatRelative } from "@/components/workbench/format";
 import { apiFetch, type ApiError } from "@/lib/api-client";
+import { removeConfirmText } from "./remove-text";
 
 type Role = "lead" | "admin" | "member";
 
@@ -55,6 +56,39 @@ interface Props {
   myRole: Role;
   /** G-canvas 里的开启是否已完成 */
   ready: boolean;
+}
+
+/** 成员页的标题区：返回项目 + 「项目名 · 成员」 */
+function MembersHeading({ project }: { project: { id: string; name: string } }) {
+  return (
+    <section>
+      <Link
+        href={`/projects/${project.id}`}
+        className="inline-flex items-center gap-1 text-[12px] text-ink-500 hover:text-ink-900"
+      >
+        <ArrowLeft size={12} strokeWidth={2.25} />
+        返回项目
+      </Link>
+      <h1 className="text-[20px] font-semibold tracking-tight text-ink-900 mt-2 truncate">
+        {project.name} <span className="text-ink-500 font-normal">· 成员</span>
+      </h1>
+    </section>
+  );
+}
+
+/** 从没开启过团队协作的项目，负责人打开成员页时看到的提示。 */
+export function TeamNotOpenedView({ project }: { project: { id: string; name: string } }) {
+  return (
+    <main className="max-w-[880px] mx-auto px-8 py-10 space-y-6" data-testid="team-members-page">
+      <MembersHeading project={project} />
+      <section
+        className="border border-ink-200 rounded-[var(--radius-lg)] p-5 text-[13px] text-ink-700"
+        data-testid="team-not-opened"
+      >
+        这个项目还没有开启团队协作，请在 G-canvas 里开启。
+      </section>
+    </main>
+  );
 }
 
 /** 项目页「成员」：成员表、添加 / 改角色 / 移除（负责人），以及每人的进度摘要。 */
@@ -137,18 +171,7 @@ export function TeamMembersView({ project, myRole, ready }: Props) {
 
   return (
     <main className="max-w-[880px] mx-auto px-8 py-10 space-y-6" data-testid="team-members-page">
-      <section>
-        <Link
-          href={`/projects/${project.id}`}
-          className="inline-flex items-center gap-1 text-[12px] text-ink-500 hover:text-ink-900"
-        >
-          <ArrowLeft size={12} strokeWidth={2.25} />
-          返回项目
-        </Link>
-        <h1 className="text-[20px] font-semibold tracking-tight text-ink-900 mt-2 truncate">
-          {project.name} <span className="text-ink-500 font-normal">· 成员</span>
-        </h1>
-      </section>
+      <MembersHeading project={project} />
 
       {!ready ? (
         <section
@@ -237,7 +260,7 @@ export function TeamMembersView({ project, myRole, ready }: Props) {
           <div className="px-6 pt-6 pb-5">
             <DialogTitle className="text-[16px]">移除成员 {removing?.user.name}</DialogTitle>
             <DialogDescription className="text-[13px] text-ink-500 mt-1">
-              {removing?.user.name}将不能再拉取和提交这个项目；他已合入的内容、提交过的请求和讨论都会保留。
+              {removing ? removeConfirmText(removing.user.name, progressByUser.get(removing.user.id)?.changed.total ?? null) : null}
             </DialogDescription>
           </div>
           <div className="flex justify-end gap-2 px-6 py-4 border-t border-ink-150 bg-ink-50/40 rounded-b-[var(--radius-lg)]">

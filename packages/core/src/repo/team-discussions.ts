@@ -8,7 +8,8 @@ import { TeamError } from "./team-errors";
 import { noteClientFormat } from "./team-format";
 import type { RepoProject } from "./project";
 import { loadUserRefs, userRef } from "./team-read";
-import { insertTeamSnapshot, loadBlobInfo, lockRepoState } from "./team-snapshot";
+import { insertTeamSnapshot, loadBlobInfo } from "./team-snapshot";
+import { lockTeamWrite } from "./team-write";
 
 type Rejected = DiscussionsPutResponse["rejected"][number];
 
@@ -47,8 +48,7 @@ export async function putDiscussions(
   const digest = contentDigest(accepted);
 
   return db.transaction(async (tx) => {
-    const state = await lockRepoState(tx, repo.id);
-    if (!state?.teamVersionId || !state.teamReadyAt) throw new TeamError("team_not_ready", "先在 G-canvas 里开启团队协作");
+    const { state } = await lockTeamWrite(tx, repo.id, userId, "member");
     const previous = await tx
       .select({ snapshotId: teamDiscussions.snapshotId, digest: snapshots.contentSha256 })
       .from(teamDiscussions)

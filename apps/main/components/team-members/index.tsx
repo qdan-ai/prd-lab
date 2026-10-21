@@ -6,10 +6,10 @@ import useSWR from "swr";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { formatRelative } from "@/components/workbench/format";
 import { apiFetch, type ApiError } from "@/lib/api-client";
+import { MemberPicker, type Candidate } from "./member-picker";
 import { pendingText, removeConfirmText } from "./remove-text";
 
 type Role = "lead" | "admin" | "member";
@@ -96,6 +96,7 @@ export function TeamMembersView({ project, myRole, ready }: Props) {
   const isLead = myRole === "lead";
   const membersKey = `/api/v1/repos/${project.id}/team/members`;
   const stateKey = `/api/v1/repos/${project.id}/team/state`;
+  const candidatesKey = `/api/v1/repos/${project.id}/team/member-candidates`;
 
   const { data: membersData, mutate: mutateMembers } = useSWR<{ members: Member[] }>(
     membersKey,
@@ -106,6 +107,11 @@ export function TeamMembersView({ project, myRole, ready }: Props) {
     (url: string) =>
       apiFetch<{ progress: Progress[] }>(url, { headers: { "X-Gcanvas-Team-Format": TEAM_FORMAT } }, { silent: true }),
     { refreshInterval: 30_000 },
+  );
+
+  const { data: candidatesData, error: candidatesError, mutate: mutateCandidates } = useSWR<{ users: Candidate[] }>(
+    isLead ? candidatesKey : null,
+    (url: string) => apiFetch<{ users: Candidate[] }>(url, undefined, { silent: true }),
   );
 
   const members = membersData?.members ?? [];
@@ -119,7 +125,7 @@ export function TeamMembersView({ project, myRole, ready }: Props) {
   const [removeBusy, setRemoveBusy] = useState(false);
 
   const refreshAll = async () => {
-    await Promise.all([mutateMembers(), ready ? mutateState() : undefined]);
+    await Promise.all([mutateMembers(), ready ? mutateState() : undefined, isLead ? mutateCandidates() : undefined]);
   };
 
   const onAdd = async () => {
@@ -192,16 +198,14 @@ export function TeamMembersView({ project, myRole, ready }: Props) {
               void onAdd();
             }}
           >
-            <Input
+            <MemberPicker
               value={name}
-              onChange={(e) => {
-                setName(e.target.value);
+              onChange={(next) => {
+                setName(next);
                 setAddError(null);
               }}
-              placeholder="输入对方的 PRD-Lab 账号名"
-              aria-label="账号名"
-              data-testid="team-add-name"
-              className="flex-1"
+              candidates={candidatesData?.users}
+              loadFailed={!!candidatesError}
               disabled={!ready || adding}
             />
             <RoleSelect

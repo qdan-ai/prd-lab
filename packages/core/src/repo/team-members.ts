@@ -33,6 +33,29 @@ export async function listMembers(projectId: string): Promise<Member[]> {
   return rows.map((r) => toMember(r.m, r.name));
 }
 
+/** 成员页选人框的一项：账号号、姓名，以及是否已是在册成员。 */
+export type MemberCandidate = { id: string; name: string; inTeam: boolean };
+
+const nameCollator = new Intl.Collator("zh-Hans-CN");
+
+/**
+ * 成员页选人框的候选：全部未归档的账号（都是登录过 PRD-Lab 的人），已是在册成员的标 `inTeam`。
+ * 可添加的排在前面，各自按姓名排序。
+ */
+export async function listMemberCandidates(projectId: string): Promise<MemberCandidate[]> {
+  const [accounts, active] = await Promise.all([
+    db.select({ id: users.id, name: users.name }).from(users).where(isNull(users.archivedAt)),
+    db
+      .select({ userId: projectMembers.userId })
+      .from(projectMembers)
+      .where(and(eq(projectMembers.projectId, projectId), isNull(projectMembers.removedAt))),
+  ]);
+  const inTeam = new Set(active.map((r) => r.userId));
+  return accounts
+    .map((u) => ({ id: u.id, name: u.name, inTeam: inTeam.has(u.id) }))
+    .sort((a, b) => Number(a.inTeam) - Number(b.inTeam) || nameCollator.compare(a.name, b.name));
+}
+
 async function activeMember(projectId: string, userId: string, conn: Conn = db): Promise<MemberRow | null> {
   const rows = await conn
     .select()

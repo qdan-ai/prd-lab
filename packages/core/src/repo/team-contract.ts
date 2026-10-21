@@ -471,8 +471,8 @@ const mrSummaryFields = {
   decidedAt: t.nullable(IsoTime),
   decidedBy: t.nullable(UserRef),
   returnNote: t.nullable(t.str({ max: TEAM_LIMITS.returnNoteMax })),
-  /** 交这份请求的那台电脑（提交时带的设备号）；早先交的没有为 null */
-  deviceId: t.nullable(DeviceId),
+  /** 交这份请求的那台电脑（提交时带的设备号） */
+  deviceId: DeviceId,
 } as const;
 
 export const MrSummary = t.obj(mrSummaryFields);
@@ -491,7 +491,7 @@ export const MrDetail = t.obj({
   /** 请求的完整样子（接口 5 读） */
   snapshotId: RowId,
   renumberMap: t.nullable(MergeRenames),
-  /** 同一作者从同一台电脑交的、在这份请求基于的 rev 之后已合入的请求（按合入先后）；这份请求没有设备号（早先交的）时为空 */
+  /** 同一作者从同一台电脑交的、在这份请求基于的 rev 之后已合入的请求（按合入先后） */
   priorSameAuthor: t.list(MergedMrRenumber),
 });
 
@@ -503,8 +503,8 @@ export const MyMergedMr = t.obj({
   mergedRev: Rev,
   snapshotId: RowId,
   renumberMap: t.nullable(MergeRenames),
-  /** 交这份请求的那台电脑；早先交的没有为 null */
-  deviceId: t.nullable(DeviceId),
+  /** 交这份请求的那台电脑 */
+  deviceId: DeviceId,
 });
 
 /** 接口 4 的响应：一次刷新拿到的团队状态 */

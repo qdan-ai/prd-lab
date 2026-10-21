@@ -489,7 +489,7 @@ export const MrDetail = t.obj({
   /** 请求的完整样子（接口 5 读） */
   snapshotId: RowId,
   renumberMap: t.nullable(MergeRenames),
-  /** 同一作者、在这份请求基于的 rev 之后已合入的请求（按合入先后），合入前依次套它们的对照表 */
+  /** 同一作者从同一台电脑交的、在这份请求基于的 rev 之后已合入的请求（按合入先后）；这份请求没有设备号（早先交的）时为空 */
   priorSameAuthor: t.list(MergedMrRenumber),
 });
 
@@ -716,6 +716,8 @@ export const MrSubmitRequest = t.obj({
   items: t.list(MrItem, { min: 1, max: TEAM_LIMITS.mrMaxItems }),
   title: t.str({ min: 1, max: TEAM_LIMITS.mrTitleMax }),
   note: t.str({ max: TEAM_LIMITS.mrNoteMax }),
+  /** 交请求的那台电脑（同 `team_progress` 的设备号）：合入时只把同一作者、同一台电脑交的请求当作前序 */
+  deviceId: DeviceId,
 });
 export const MrResponse = t.obj({ mr: MrSummary });
 export const MrListQuery = t.obj({

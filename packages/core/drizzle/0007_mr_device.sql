@@ -1,0 +1,1 @@
+ALTER TABLE `merge_requests` ADD `device_id` varchar(64);

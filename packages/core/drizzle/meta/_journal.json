@@ -50,6 +50,13 @@
       "when": 1792526520839,
       "tag": "0006_team_collab",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1792571022040,
+      "tag": "0007_mr_device",
+      "breakpoints": true
     }
   ]
 }

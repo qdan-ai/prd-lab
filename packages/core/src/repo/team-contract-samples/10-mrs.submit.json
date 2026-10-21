@@ -90,7 +90,8 @@
             "createdAt": "2026-10-21T06:00:00.000Z",
             "decidedAt": null,
             "decidedBy": null,
-            "returnNote": null
+            "returnNote": null,
+            "deviceId": "dev-5d1c7e3a9f2b"
           }
         }
       }
@@ -185,7 +186,8 @@
             "createdAt": "2026-10-21T06:00:00.000Z",
             "decidedAt": null,
             "decidedBy": null,
-            "returnNote": null
+            "returnNote": null,
+            "deviceId": "dev-5d1c7e3a9f2b"
           }
         }
       }

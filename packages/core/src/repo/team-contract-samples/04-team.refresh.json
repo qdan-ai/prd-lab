@@ -353,7 +353,8 @@
               "createdAt": "2026-10-21T07:02:00.000Z",
               "decidedAt": null,
               "decidedBy": null,
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "myMrs": [
@@ -379,7 +380,8 @@
                 "name": "李四",
                 "removed": false
               },
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             },
             {
               "id": "f1e2d3c4-0000-4000-8000-000000000004",
@@ -403,7 +405,8 @@
                 "name": "张三",
                 "removed": false
               },
-              "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交"
+              "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交",
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "myMergedSinceBase": [
@@ -426,7 +429,8 @@
                     "to": 3
                   }
                 }
-              }
+              },
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "members": [
@@ -653,7 +657,8 @@
               "createdAt": "2026-10-21T07:02:00.000Z",
               "decidedAt": null,
               "decidedBy": null,
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "myMrs": [
@@ -679,7 +684,8 @@
                 "name": "李四",
                 "removed": false
               },
-              "returnNote": null
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
             },
             {
               "id": "f1e2d3c4-0000-4000-8000-000000000004",
@@ -703,7 +709,8 @@
                 "name": "张三",
                 "removed": false
               },
-              "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交"
+              "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交",
+              "deviceId": "dev-5d1c7e3a9f2b"
             }
           ],
           "myMergedSinceBase": [],

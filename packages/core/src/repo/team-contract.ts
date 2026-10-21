@@ -471,6 +471,8 @@ const mrSummaryFields = {
   decidedAt: t.nullable(IsoTime),
   decidedBy: t.nullable(UserRef),
   returnNote: t.nullable(t.str({ max: TEAM_LIMITS.returnNoteMax })),
+  /** 交这份请求的那台电脑（提交时带的设备号）；早先交的没有为 null */
+  deviceId: t.nullable(DeviceId),
 } as const;
 
 export const MrSummary = t.obj(mrSummaryFields);
@@ -501,6 +503,8 @@ export const MyMergedMr = t.obj({
   mergedRev: Rev,
   snapshotId: RowId,
   renumberMap: t.nullable(MergeRenames),
+  /** 交这份请求的那台电脑；早先交的没有为 null */
+  deviceId: t.nullable(DeviceId),
 });
 
 /** 接口 4 的响应：一次刷新拿到的团队状态 */

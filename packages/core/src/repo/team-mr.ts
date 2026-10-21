@@ -120,15 +120,14 @@ export async function listMrs(
 
 /**
  * 详情：摘要 + 说明、改动项、完整样子的快照、改名对照表、同一作者从同一台电脑交的、在它基于的 rev 之后（它之前）已合入的请求。
- * 同一作者在别的电脑交的不算（那台电脑的请求里没有这一台的改动，叠到出发点上会像改了回去）；
- * 早先交的请求没有设备号，来源不明，前序请求为空。
+ * 同一作者在别的电脑交的不算（那台电脑的请求里没有这一台的改动，叠到出发点上会像改了回去）。
  */
 export async function getMr(projectId: string, ownerId: string, mrId: string): Promise<MrDetail> {
   const row = await findMr(db, projectId, mrId);
   const priorWhere = [
     eq(mergeRequests.projectId, projectId),
     eq(mergeRequests.authorId, row.authorId),
-    row.deviceId === null ? sql`false` : eq(mergeRequests.deviceId, row.deviceId),
+    eq(mergeRequests.deviceId, row.deviceId),
     eq(mergeRequests.status, "merged"),
     ne(mergeRequests.id, row.id),
     gt(mergeRequests.mergedRev, row.baseRev),

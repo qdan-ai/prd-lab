@@ -180,7 +180,7 @@ export function toMrSummary(row: MrRow, refs: Map<string, UserRef>): MrSummary {
     decidedAt: isoOrNull(row.decidedAt),
     decidedBy: row.decidedBy ? userRef(refs, row.decidedBy) : null,
     returnNote: row.returnNote ?? null,
-    deviceId: row.deviceId ?? null,
+    deviceId: row.deviceId,
   };
 }
 
@@ -446,7 +446,7 @@ export async function loadTeamState(
       mergedRev: m.mergedRev!,
       snapshotId: m.snapshotId,
       renumberMap: (m.renumberMap ?? null) as MyMergedMr["renumberMap"],
-      deviceId: m.deviceId ?? null,
+      deviceId: m.deviceId,
     }));
 
   return {

@@ -462,8 +462,8 @@ export const mergeRequests = mysqlTable(
     authorId: varchar("author_id", { length: 36 })
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
-    // 交请求的那台电脑（G-canvas 的设备号）；早先交的没有，为空 = 来源不明
-    deviceId: varchar("device_id", { length: 64 }),
+    // 交请求的那台电脑（G-canvas 的设备号）
+    deviceId: varchar("device_id", { length: 64 }).notNull(),
     title: varchar("title", { length: 255 }).notNull(),
     note: text("note"),
     items: json("items"),

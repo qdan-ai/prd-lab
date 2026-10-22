@@ -3,7 +3,9 @@ import { and, desc, eq, isNull, sql as drizzleSql } from "drizzle-orm";
 import {
   db,
   idempotencyKeys,
+  notTeamVersion,
   projects,
+  snapshotInAudience,
   snapshotFiles,
   snapshots,
   uploadFile,
@@ -41,7 +43,9 @@ export async function GET(_: Request, { params }: Ctx) {
     })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
-    .where(and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt)))
+    .where(
+      and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt), notTeamVersion(versions.id)),
+    )
     .limit(1);
   const versionRow = versionRows[0];
   if (!versionRow) return errorResponse("not_found");
@@ -64,7 +68,7 @@ export async function GET(_: Request, { params }: Ctx) {
     })
     .from(snapshots)
     .innerJoin(users, eq(snapshots.uploaderId, users.id))
-    .where(and(eq(snapshots.versionId, vid), isNull(snapshots.archivedAt)))
+    .where(and(eq(snapshots.versionId, vid), isNull(snapshots.archivedAt), snapshotInAudience("guest")))
     .orderBy(desc(snapshots.seqNo));
 
   return Response.json(rows);
@@ -92,7 +96,9 @@ export async function POST(request: Request, { params }: Ctx) {
     })
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
-    .where(and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt)))
+    .where(
+      and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt), notTeamVersion(versions.id)),
+    )
     .limit(1);
   const versionRow = versionRows[0];
   if (!versionRow) return errorResponse("not_found");

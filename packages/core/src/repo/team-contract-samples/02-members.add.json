@@ -1,0 +1,147 @@
+{
+  "endpoint": "members.add",
+  "cases": [
+    {
+      "name": "添加成员",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "王五",
+          "role": "member"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "member": {
+            "user": {
+              "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+              "name": "王五",
+              "removed": false
+            },
+            "role": "member",
+            "addedAt": "2026-10-21T01:11:00.000Z",
+            "removedAt": null
+          }
+        }
+      }
+    },
+    {
+      "name": "开启没完成",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "王五",
+          "role": "member"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "team_not_ready",
+          "message": "先在 G-canvas 里开启团队协作"
+        }
+      }
+    },
+    {
+      "name": "没有这个账号",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "钱七",
+          "role": "admin"
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "error_code": "user_not_found",
+          "message": "没有这个账号，请对方先登录一次 PRD-Lab",
+          "details": {
+            "name": "钱七"
+          }
+        }
+      }
+    },
+    {
+      "name": "已是成员",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "李四",
+          "role": "member"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "already_member",
+          "message": "李四已是成员",
+          "details": {
+            "member": {
+              "user": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "role": "admin",
+              "addedAt": "2026-10-21T01:10:00.000Z",
+              "removedAt": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "不是负责人",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "王五",
+          "role": "member"
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_code": "forbidden_role",
+          "message": "需要管理员权限",
+          "details": {
+            "required": "lead",
+            "actual": "admin"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -12,7 +12,8 @@ export class RepoError extends Error {
       | "validation_error"
       | "blobs_missing"
       | "unsupported_format"
-      | "discussions_not_allowed",
+      | "discussions_not_allowed"
+      | "team_managed",
     message?: string,
     readonly details?: Record<string, unknown>,
   ) {

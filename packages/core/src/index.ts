@@ -35,6 +35,18 @@ export {
   type ShareCookiePayload,
   type VerifyShareCookieResult,
 } from "./hmac-token/share-cookie";
+export {
+  notTeamVersion,
+  snapshotInAudience,
+  isTeamSnapshot,
+  isTeamVersion,
+  getTeamAccess,
+  roleAtLeast,
+  type ReadAudience,
+  type AudienceOpts,
+  type TeamRole,
+  type TeamAccess,
+} from "./repo/team-guard";
 export { hashPassword, verifyPassword } from "./password";
 export { generateShareId } from "./share-id";
 export {

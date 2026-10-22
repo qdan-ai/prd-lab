@@ -1,0 +1,177 @@
+{
+  "endpoint": "discussions.put",
+  "cases": [
+    {
+      "name": "推我的讨论",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "files": {
+            "docs/discussions/李四-2026-10-21-详情页.md": {
+              "sha256": "50cd22da24a803272568d1d7019f19926372c95c5fc071c702e48d646c1d6b32",
+              "size": 135
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "snapshotId": "a0b1c2d3-0000-4000-8000-000000000301",
+          "unchanged": false,
+          "accepted": [
+            "docs/discussions/李四-2026-10-21-详情页.md"
+          ],
+          "rejected": []
+        }
+      }
+    },
+    {
+      "name": "指纹没变",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "files": {
+            "docs/discussions/李四-2026-10-21-详情页.md": {
+              "sha256": "50cd22da24a803272568d1d7019f19926372c95c5fc071c702e48d646c1d6b32",
+              "size": 135
+            }
+          },
+          "baseSnapshotId": "a0b1c2d3-0000-4000-8000-000000000301"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "snapshotId": "a0b1c2d3-0000-4000-8000-000000000301",
+          "unchanged": true,
+          "accepted": [
+            "docs/discussions/李四-2026-10-21-详情页.md"
+          ],
+          "rejected": []
+        }
+      }
+    },
+    {
+      "name": "拒收路径不合的文件",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "files": {
+            "docs/discussions/李四-2026-10-21-详情页.md": {
+              "sha256": "50cd22da24a803272568d1d7019f19926372c95c5fc071c702e48d646c1d6b32",
+              "size": 135
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45
+            }
+          },
+          "baseSnapshotId": "a0b1c2d3-0000-4000-8000-000000000301"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "snapshotId": "a0b1c2d3-0000-4000-8000-000000000301",
+          "unchanged": true,
+          "accepted": [
+            "docs/discussions/李四-2026-10-21-详情页.md"
+          ],
+          "rejected": [
+            {
+              "path": "docs/specs/R-1-首页.md",
+              "reason": "not_discussion_path"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "落后：现存那份不是我合进来的那份",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "files": {
+            "docs/discussions/李四-2026-10-21-详情页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45
+            }
+          },
+          "baseSnapshotId": "a0b1c2d3-0000-4000-8000-000000000301"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "discussions_moved",
+          "message": "discussions moved",
+          "details": {
+            "snapshotId": "a0b1c2d3-0000-4000-8000-000000000303"
+          }
+        }
+      }
+    },
+    {
+      "name": "文件还没上传",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "files": {
+            "docs/discussions/李四-2026-10-21-详情页.md": {
+              "sha256": "50cd22da24a803272568d1d7019f19926372c95c5fc071c702e48d646c1d6b32",
+              "size": 135
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "blobs_missing",
+          "message": "blobs missing",
+          "details": {
+            "missing": [
+              "50cd22da24a803272568d1d7019f19926372c95c5fc071c702e48d646c1d6b32"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "endpoint": "blobs.get",
+  "cases": [
+    {
+      "name": "按指纹下载",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/octet-stream",
+          "Content-Length": "24"
+        },
+        "bodyBase64": "LnF1b3RlIHsgY29sb3I6ICNjMDA7IH0K"
+      }
+    },
+    {
+      "name": "不是本项目登记过的指纹",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "sha256": "ca3704aa0b06f5954c79ee837faa152d84d6b2d42838f0637a15eda8337dbdce"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "error_code": "not_found",
+          "message": "not_found"
+        }
+      }
+    },
+    {
+      "name": "下载名额满",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "Retry-After": "5"
+        },
+        "body": {
+          "error_code": "rate_limited",
+          "message": "rate_limited",
+          "details": {
+            "retryAfterSeconds": 5
+          }
+        }
+      }
+    }
+  ]
+}

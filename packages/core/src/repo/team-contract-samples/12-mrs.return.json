@@ -1,0 +1,104 @@
+{
+  "endpoint": "mrs.return",
+  "cases": [
+    {
+      "name": "退回",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "id": "f1e2d3c4-0000-4000-8000-000000000004"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "note": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "mr": {
+            "id": "f1e2d3c4-0000-4000-8000-000000000004",
+            "seq": 4,
+            "line": "main",
+            "author": {
+              "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+              "name": "王五",
+              "removed": false
+            },
+            "title": "首页配色",
+            "itemCount": 1,
+            "status": "returned",
+            "withdrawReason": null,
+            "baseRev": 1,
+            "mergedRev": null,
+            "createdAt": "2026-10-21T03:00:00.000Z",
+            "decidedAt": "2026-10-21T04:00:00.000Z",
+            "decidedBy": {
+              "id": "3f1c9a52-6d2e-4b8a-9c71-0e5d4a2b7f10",
+              "name": "张三",
+              "removed": false
+            },
+            "returnNote": "与主线后来合入的 #3 有冲突，请拉取主线后重新提交",
+            "deviceId": "dev-5d1c7e3a9f2b"
+          }
+        }
+      }
+    },
+    {
+      "name": "成员不能退回",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "id": "f1e2d3c4-0000-4000-8000-000000000004"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "note": "不要"
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_code": "forbidden_role",
+          "message": "需要管理员权限",
+          "details": {
+            "required": "admin",
+            "actual": "member"
+          }
+        }
+      }
+    },
+    {
+      "name": "原因没写",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "id": "f1e2d3c4-0000-4000-8000-000000000004"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "note": ""
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "error_code": "validation_error",
+          "message": "note_required"
+        }
+      }
+    }
+  ]
+}

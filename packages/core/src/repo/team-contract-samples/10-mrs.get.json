@@ -1,0 +1,88 @@
+{
+  "endpoint": "mrs.get",
+  "cases": [
+    {
+      "name": "请求详情",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "id": "f1e2d3c4-0000-4000-8000-000000000006"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "mr": {
+            "id": "f1e2d3c4-0000-4000-8000-000000000006",
+            "seq": 6,
+            "line": "main",
+            "author": {
+              "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+              "name": "李四",
+              "removed": false
+            },
+            "title": "个股详情加分时图",
+            "itemCount": 1,
+            "status": "open",
+            "withdrawReason": null,
+            "baseRev": 1,
+            "mergedRev": null,
+            "createdAt": "2026-10-21T07:02:00.000Z",
+            "decidedAt": null,
+            "decidedBy": null,
+            "returnNote": null,
+            "note": "",
+            "items": [
+              {
+                "itemId": "page:b2",
+                "label": "个股详情",
+                "kind": "page",
+                "elementIds": [
+                  "b2"
+                ]
+              }
+            ],
+            "snapshotId": "a0b1c2d3-0000-4000-8000-000000000206",
+            "renumberMap": null,
+            "priorSameAuthor": [
+              {
+                "id": "f1e2d3c4-0000-4000-8000-000000000002",
+                "seq": 2,
+                "mergedRev": 2,
+                "renumberMap": {
+                  "files": {},
+                  "states": {}
+                }
+              }
+            ],
+            "deviceId": "dev-5d1c7e3a9f2b"
+          }
+        }
+      }
+    },
+    {
+      "name": "没有这份请求",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "id": "f1e2d3c4-9999-4000-8000-000000000999"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "error_code": "not_found",
+          "message": "not_found"
+        }
+      }
+    }
+  ]
+}

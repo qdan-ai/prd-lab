@@ -1,0 +1,71 @@
+{
+  "endpoint": "projects.list",
+  "cases": [
+    {
+      "name": "我所在的团队项目",
+      "request": {
+        "params": {},
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "projects": [
+            {
+              "id": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+              "name": "行情改版",
+              "lead": {
+                "id": "3f1c9a52-6d2e-4b8a-9c71-0e5d4a2b7f10",
+                "name": "张三",
+                "removed": false
+              },
+              "role": "member",
+              "rev": 3,
+              "teamReadyAt": "2026-10-21T01:00:00.000Z",
+              "openMrCount": 1,
+              "mine": {
+                "lastSubmittedAt": "2026-10-21T06:00:00.000Z",
+                "recentDecided": [
+                  {
+                    "id": "f1e2d3c4-0000-4000-8000-000000000005",
+                    "seq": 5,
+                    "status": "merged",
+                    "mergedRev": 3,
+                    "decidedAt": "2026-10-21T07:00:00.000Z"
+                  },
+                  {
+                    "id": "f1e2d3c4-0000-4000-8000-000000000004",
+                    "seq": 4,
+                    "status": "returned",
+                    "mergedRev": null,
+                    "decidedAt": "2026-10-21T04:00:00.000Z"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "没登录",
+      "request": {
+        "params": {},
+        "headers": {
+          "X-Gcanvas-Team-Format": "1",
+          "Authorization": "Bearer prd_revokedToken123"
+        }
+      },
+      "response": {
+        "status": 401,
+        "body": {
+          "error_code": "unauthorized",
+          "message": "unauthorized"
+        }
+      }
+    }
+  ]
+}

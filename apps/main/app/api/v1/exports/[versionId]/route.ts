@@ -11,6 +11,7 @@ import { and, asc, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import {
   db,
   getObjectBuffer,
+  notTeamVersion,
   projects,
   snapshotFiles,
   snapshots,
@@ -50,7 +51,12 @@ export async function GET(_: Request, { params }: Ctx) {
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(
-      and(eq(versions.id, versionId), isNull(versions.archivedAt), isNull(projects.archivedAt)),
+      and(
+        eq(versions.id, versionId),
+        isNull(versions.archivedAt),
+        isNull(projects.archivedAt),
+        notTeamVersion(versions.id),
+      ),
     )
     .limit(1);
   const row = rows[0];

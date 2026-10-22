@@ -1,0 +1,51 @@
+{
+  "endpoint": "init.status",
+  "cases": [
+    {
+      "name": "断线后查进度",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "initId": "b7c8d9e0-1f2a-4b3c-8d4e-5f6a7b8c9d0e"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "initId": "b7c8d9e0-1f2a-4b3c-8d4e-5f6a7b8c9d0e",
+          "receivedVersionKeys": [
+            "550b73d7401efb72818e7012f0a3f76610499088"
+          ],
+          "hasStart": true,
+          "hasHead": false,
+          "hasIds": true,
+          "ready": false
+        }
+      }
+    },
+    {
+      "name": "不是这次开启",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "initId": "b7c8d9e0-9999-4b3c-8d4e-5f6a7b8c9d0e"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "error_code": "not_found",
+          "message": "not_found"
+        }
+      }
+    }
+  ]
+}

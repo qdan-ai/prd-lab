@@ -1,0 +1,63 @@
+{
+  "endpoint": "discussions.list",
+  "cases": [
+    {
+      "name": "各作者最新一份",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "authors": [
+            {
+              "author": {
+                "id": "3f1c9a52-6d2e-4b8a-9c71-0e5d4a2b7f10",
+                "name": "张三",
+                "removed": false
+              },
+              "snapshotId": "a0b1c2d3-0000-4000-8000-000000000302",
+              "contentDigest": "17acb3daecd595f7ab0a04bb7928af712a334aa2df2156ec10acfa691183b5ca",
+              "pushedAt": "2026-10-21T00:58:00.000Z"
+            },
+            {
+              "author": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "snapshotId": "a0b1c2d3-0000-4000-8000-000000000301",
+              "contentDigest": "0e1b1b2d4f6ed8becebee529d51efbc8045e26bb4494cb2c677b6746de12f668",
+              "pushedAt": "2026-10-21T06:30:00.000Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "已被移除",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_code": "not_member",
+          "message": "你已不在这个团队"
+        }
+      }
+    }
+  ]
+}

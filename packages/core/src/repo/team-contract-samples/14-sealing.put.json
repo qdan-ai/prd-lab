@@ -1,0 +1,66 @@
+{
+  "endpoint": "sealing.put",
+  "cases": [
+    {
+      "name": "上报正在封版",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "line": "main",
+          "deviceId": "dev-2b8e4f6a0c9d"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "sealing": {
+            "line": "main",
+            "user": {
+              "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+              "name": "李四",
+              "removed": false
+            },
+            "deviceId": "dev-2b8e4f6a0c9d",
+            "since": "2026-10-21T07:05:00.000Z",
+            "seenAt": "2026-10-21T07:06:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "name": "成员不能上报",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "line": "main",
+          "deviceId": "dev-5d1c7e3a9f2b"
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_code": "forbidden_role",
+          "message": "需要管理员权限",
+          "details": {
+            "required": "admin",
+            "actual": "member"
+          }
+        }
+      }
+    }
+  ]
+}

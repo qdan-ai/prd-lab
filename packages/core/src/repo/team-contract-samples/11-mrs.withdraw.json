@@ -1,0 +1,97 @@
+{
+  "endpoint": "mrs.withdraw",
+  "cases": [
+    {
+      "name": "撤回自己的请求",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "id": "f1e2d3c4-0000-4000-8000-000000000006"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "mr": {
+            "id": "f1e2d3c4-0000-4000-8000-000000000006",
+            "seq": 6,
+            "line": "main",
+            "author": {
+              "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+              "name": "李四",
+              "removed": false
+            },
+            "title": "个股详情加分时图",
+            "itemCount": 1,
+            "status": "withdrawn",
+            "withdrawReason": "author",
+            "baseRev": 3,
+            "mergedRev": null,
+            "createdAt": "2026-10-21T07:02:00.000Z",
+            "decidedAt": "2026-10-21T07:20:00.000Z",
+            "decidedBy": {
+              "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+              "name": "李四",
+              "removed": false
+            },
+            "returnNote": null,
+            "deviceId": "dev-5d1c7e3a9f2b"
+          }
+        }
+      }
+    },
+    {
+      "name": "不是作者",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "id": "f1e2d3c4-0000-4000-8000-000000000006"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {}
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_code": "not_author",
+          "message": "只有作者能撤回"
+        }
+      }
+    },
+    {
+      "name": "已经合入",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b",
+          "id": "f1e2d3c4-0000-4000-8000-000000000005"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {}
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "mr_not_open",
+          "message": "mr_not_open",
+          "details": {
+            "status": "merged"
+          }
+        }
+      }
+    }
+  ]
+}

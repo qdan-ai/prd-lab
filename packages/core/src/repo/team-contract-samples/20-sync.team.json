@@ -1,0 +1,28 @@
+{
+  "endpoint": "sync.team",
+  "cases": [
+    {
+      "name": "团队项目不收个人推送",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "format": "gcanvas-repo/1",
+          "versions": []
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "team_managed",
+          "message": "这个项目已开启团队协作，版本由团队协作维护"
+        }
+      }
+    }
+  ]
+}

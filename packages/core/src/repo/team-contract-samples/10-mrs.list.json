@@ -1,0 +1,145 @@
+{
+  "endpoint": "mrs.list",
+  "cases": [
+    {
+      "name": "待审的",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "query": {
+          "state": "open",
+          "limit": "50"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "items": [
+            {
+              "id": "f1e2d3c4-0000-4000-8000-000000000006",
+              "seq": 6,
+              "line": "main",
+              "author": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "title": "个股详情加分时图",
+              "itemCount": 1,
+              "status": "open",
+              "withdrawReason": null,
+              "baseRev": 3,
+              "mergedRev": null,
+              "createdAt": "2026-10-21T07:02:00.000Z",
+              "decidedAt": null,
+              "decidedBy": null,
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
+            }
+          ],
+          "next": null
+        }
+      }
+    },
+    {
+      "name": "全部（有下一页）",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "query": {
+          "state": "all",
+          "limit": "2"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "items": [
+            {
+              "id": "f1e2d3c4-0000-4000-8000-000000000006",
+              "seq": 6,
+              "line": "main",
+              "author": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "title": "个股详情加分时图",
+              "itemCount": 1,
+              "status": "open",
+              "withdrawReason": null,
+              "baseRev": 3,
+              "mergedRev": null,
+              "createdAt": "2026-10-21T07:02:00.000Z",
+              "decidedAt": null,
+              "decidedBy": null,
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
+            },
+            {
+              "id": "f1e2d3c4-0000-4000-8000-000000000005",
+              "seq": 5,
+              "line": "main",
+              "author": {
+                "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+                "name": "王五",
+                "removed": false
+              },
+              "title": "首页加资讯区",
+              "itemCount": 1,
+              "status": "merged",
+              "withdrawReason": null,
+              "baseRev": 2,
+              "mergedRev": 3,
+              "createdAt": "2026-10-21T06:00:00.000Z",
+              "decidedAt": "2026-10-21T07:00:00.000Z",
+              "decidedBy": {
+                "id": "8a2d4e61-1b3c-4f5d-8e9a-2c7b6d5e4f32",
+                "name": "李四",
+                "removed": false
+              },
+              "returnNote": null,
+              "deviceId": "dev-5d1c7e3a9f2b"
+            }
+          ],
+          "next": "5"
+        }
+      }
+    },
+    {
+      "name": "分页参数不合法",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "query": {
+          "limit": "500"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1"
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "error_code": "validation_error",
+          "message": "invalid_limit",
+          "details": {
+            "max": 100
+          }
+        }
+      }
+    }
+  ]
+}

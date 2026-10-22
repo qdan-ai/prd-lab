@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { and, eq, isNull } from "drizzle-orm";
-import { db, shareLinks, verifyShareCookie, versions, projects } from "@prd-lab/core";
+import { db, notTeamVersion, shareLinks, verifyShareCookie, versions, projects } from "@prd-lab/core";
 
 /**
  * S5 访客 session 校验（S19 改方案级：share 绑 version，访客可切换方案内所有活跃 snapshot）。
@@ -50,7 +50,14 @@ export async function getShareSession(shareId: string): Promise<ShareSessionResu
     .from(shareLinks)
     .innerJoin(versions, eq(shareLinks.versionId, versions.id))
     .innerJoin(projects, eq(versions.projectId, projects.id))
-    .where(and(eq(shareLinks.id, shareId), isNull(versions.archivedAt), isNull(projects.archivedAt)))
+    .where(
+      and(
+        eq(shareLinks.id, shareId),
+        isNull(versions.archivedAt),
+        isNull(projects.archivedAt),
+        notTeamVersion(versions.id),
+      ),
+    )
     .limit(1);
   const row = rows[0];
 

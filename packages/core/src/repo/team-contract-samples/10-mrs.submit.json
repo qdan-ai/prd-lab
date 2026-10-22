@@ -1,0 +1,437 @@
+{
+  "endpoint": "mrs.submit",
+  "cases": [
+    {
+      "name": "提交成功",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "opId": "op-1b6f0c3e-8a2d-4e7f-9b1c-5d3a7e9f2c40",
+          "line": "main",
+          "baseRev": 2,
+          "files": {
+            "canvas.json": {
+              "sha256": "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776",
+              "size": 502,
+              "gitMode": "100644",
+              "gitOid": "dd112c51ffce03d13f5f5becece5e2e790e82f17"
+            },
+            "blocks/home.html": {
+              "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+              "size": 106,
+              "gitMode": "100644",
+              "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+            },
+            "styles/main.css": {
+              "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd",
+              "size": 24,
+              "gitMode": "100644",
+              "gitOid": "b7f4dfe3b06761e1bb6c72e2b3c71c3dd12ceb41"
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45,
+              "gitMode": "100644",
+              "gitOid": "15607950e4440f0681fa4e6d8b7b66aabf43673c"
+            },
+            "blocks/detail.html": {
+              "sha256": "60773503b066d0b5a2ece240240d8b48147bd58fdd1e5fb0a470cc5aa9f4222d",
+              "size": 66,
+              "gitMode": "100644",
+              "gitOid": "399a23d00242624918c1aa6699d9102494bb1d51"
+            },
+            "tools/export.sh": {
+              "sha256": "6fd817db6f311109a3b90fa8258c1e5f78fbb9988fb8126ff3dbb51239444176",
+              "size": 22,
+              "gitMode": "100755",
+              "gitOid": "5dd0fe2cdc6466f7efae079d818eec6f2872c322"
+            }
+          },
+          "items": [
+            {
+              "itemId": "page:b1",
+              "label": "首页",
+              "kind": "page",
+              "elementIds": [
+                "b1"
+              ]
+            }
+          ],
+          "title": "首页加资讯区",
+          "note": "资讯区放在行情下面",
+          "deviceId": "dev-5d1c7e3a9f2b"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "mr": {
+            "id": "f1e2d3c4-0000-4000-8000-000000000005",
+            "seq": 5,
+            "line": "main",
+            "author": {
+              "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+              "name": "王五",
+              "removed": false
+            },
+            "title": "首页加资讯区",
+            "itemCount": 1,
+            "status": "open",
+            "withdrawReason": null,
+            "baseRev": 2,
+            "mergedRev": null,
+            "createdAt": "2026-10-21T06:00:00.000Z",
+            "decidedAt": null,
+            "decidedBy": null,
+            "returnNote": null,
+            "deviceId": "dev-5d1c7e3a9f2b"
+          }
+        }
+      }
+    },
+    {
+      "name": "响应丢了，同一操作号重试",
+      "replayOf": "提交成功",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "opId": "op-1b6f0c3e-8a2d-4e7f-9b1c-5d3a7e9f2c40",
+          "line": "main",
+          "baseRev": 2,
+          "files": {
+            "canvas.json": {
+              "sha256": "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776",
+              "size": 502,
+              "gitMode": "100644",
+              "gitOid": "dd112c51ffce03d13f5f5becece5e2e790e82f17"
+            },
+            "blocks/home.html": {
+              "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+              "size": 106,
+              "gitMode": "100644",
+              "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+            },
+            "styles/main.css": {
+              "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd",
+              "size": 24,
+              "gitMode": "100644",
+              "gitOid": "b7f4dfe3b06761e1bb6c72e2b3c71c3dd12ceb41"
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45,
+              "gitMode": "100644",
+              "gitOid": "15607950e4440f0681fa4e6d8b7b66aabf43673c"
+            },
+            "blocks/detail.html": {
+              "sha256": "60773503b066d0b5a2ece240240d8b48147bd58fdd1e5fb0a470cc5aa9f4222d",
+              "size": 66,
+              "gitMode": "100644",
+              "gitOid": "399a23d00242624918c1aa6699d9102494bb1d51"
+            },
+            "tools/export.sh": {
+              "sha256": "6fd817db6f311109a3b90fa8258c1e5f78fbb9988fb8126ff3dbb51239444176",
+              "size": 22,
+              "gitMode": "100755",
+              "gitOid": "5dd0fe2cdc6466f7efae079d818eec6f2872c322"
+            }
+          },
+          "items": [
+            {
+              "itemId": "page:b1",
+              "label": "首页",
+              "kind": "page",
+              "elementIds": [
+                "b1"
+              ]
+            }
+          ],
+          "title": "首页加资讯区",
+          "note": "资讯区放在行情下面",
+          "deviceId": "dev-5d1c7e3a9f2b"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "mr": {
+            "id": "f1e2d3c4-0000-4000-8000-000000000005",
+            "seq": 5,
+            "line": "main",
+            "author": {
+              "id": "c5e7f8a9-2d4b-4c6e-9f1a-3b5d7e9f1a24",
+              "name": "王五",
+              "removed": false
+            },
+            "title": "首页加资讯区",
+            "itemCount": 1,
+            "status": "open",
+            "withdrawReason": null,
+            "baseRev": 2,
+            "mergedRev": null,
+            "createdAt": "2026-10-21T06:00:00.000Z",
+            "decidedAt": null,
+            "decidedBy": null,
+            "returnNote": null,
+            "deviceId": "dev-5d1c7e3a9f2b"
+          }
+        }
+      }
+    },
+    {
+      "name": "有文件还没上传",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "opId": "op-1b6f0c3e-8a2d-4e7f-9b1c-5d3a7e9f2c40",
+          "line": "main",
+          "baseRev": 2,
+          "files": {
+            "canvas.json": {
+              "sha256": "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776",
+              "size": 502,
+              "gitMode": "100644",
+              "gitOid": "dd112c51ffce03d13f5f5becece5e2e790e82f17"
+            },
+            "blocks/home.html": {
+              "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+              "size": 106,
+              "gitMode": "100644",
+              "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+            },
+            "styles/main.css": {
+              "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd",
+              "size": 24,
+              "gitMode": "100644",
+              "gitOid": "b7f4dfe3b06761e1bb6c72e2b3c71c3dd12ceb41"
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45,
+              "gitMode": "100644",
+              "gitOid": "15607950e4440f0681fa4e6d8b7b66aabf43673c"
+            },
+            "blocks/detail.html": {
+              "sha256": "60773503b066d0b5a2ece240240d8b48147bd58fdd1e5fb0a470cc5aa9f4222d",
+              "size": 66,
+              "gitMode": "100644",
+              "gitOid": "399a23d00242624918c1aa6699d9102494bb1d51"
+            },
+            "tools/export.sh": {
+              "sha256": "6fd817db6f311109a3b90fa8258c1e5f78fbb9988fb8126ff3dbb51239444176",
+              "size": 22,
+              "gitMode": "100755",
+              "gitOid": "5dd0fe2cdc6466f7efae079d818eec6f2872c322"
+            }
+          },
+          "items": [
+            {
+              "itemId": "page:b1",
+              "label": "首页",
+              "kind": "page",
+              "elementIds": [
+                "b1"
+              ]
+            }
+          ],
+          "title": "首页加资讯区",
+          "note": "资讯区放在行情下面",
+          "deviceId": "dev-5d1c7e3a9f2b"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "blobs_missing",
+          "message": "blobs missing",
+          "details": {
+            "missing": [
+              "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "基于的 rev 不存在",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "opId": "op-0d9c8b7a-6f5e-4d3c-2b1a-0f9e8d7c6b5a",
+          "line": "main",
+          "baseRev": 99,
+          "files": {
+            "canvas.json": {
+              "sha256": "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776",
+              "size": 502,
+              "gitMode": "100644",
+              "gitOid": "dd112c51ffce03d13f5f5becece5e2e790e82f17"
+            },
+            "blocks/home.html": {
+              "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+              "size": 106,
+              "gitMode": "100644",
+              "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+            },
+            "styles/main.css": {
+              "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd",
+              "size": 24,
+              "gitMode": "100644",
+              "gitOid": "b7f4dfe3b06761e1bb6c72e2b3c71c3dd12ceb41"
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45,
+              "gitMode": "100644",
+              "gitOid": "15607950e4440f0681fa4e6d8b7b66aabf43673c"
+            },
+            "blocks/detail.html": {
+              "sha256": "60773503b066d0b5a2ece240240d8b48147bd58fdd1e5fb0a470cc5aa9f4222d",
+              "size": 66,
+              "gitMode": "100644",
+              "gitOid": "399a23d00242624918c1aa6699d9102494bb1d51"
+            },
+            "tools/export.sh": {
+              "sha256": "6fd817db6f311109a3b90fa8258c1e5f78fbb9988fb8126ff3dbb51239444176",
+              "size": 22,
+              "gitMode": "100755",
+              "gitOid": "5dd0fe2cdc6466f7efae079d818eec6f2872c322"
+            }
+          },
+          "items": [
+            {
+              "itemId": "page:b1",
+              "label": "首页",
+              "kind": "page",
+              "elementIds": [
+                "b1"
+              ]
+            }
+          ],
+          "title": "首页加资讯区",
+          "note": "资讯区放在行情下面",
+          "deviceId": "dev-5d1c7e3a9f2b"
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "error_code": "validation_error",
+          "message": "unknown_base_rev",
+          "details": {
+            "baseRev": 99,
+            "rev": 3
+          }
+        }
+      }
+    },
+    {
+      "name": "客户端过旧",
+      "request": {
+        "params": {
+          "pid": "7c1f2e9a-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        },
+        "headers": {
+          "Authorization": "Bearer prd_9xY2kLmN3pQrS4tUvW5xYz6A",
+          "X-Gcanvas-Team-Format": "1",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "opId": "op-1b6f0c3e-8a2d-4e7f-9b1c-5d3a7e9f2c40",
+          "line": "main",
+          "baseRev": 2,
+          "files": {
+            "canvas.json": {
+              "sha256": "47e5f899919e68a028fd27ac73f4c32c8e8bb4effe1a82668e79b35569c1b776",
+              "size": 502,
+              "gitMode": "100644",
+              "gitOid": "dd112c51ffce03d13f5f5becece5e2e790e82f17"
+            },
+            "blocks/home.html": {
+              "sha256": "34f5b67e7ea4a9fb220f448b5a73f9c88706fe90033902611c556f1ecc30e21e",
+              "size": 106,
+              "gitMode": "100644",
+              "gitOid": "dd3b1ac592ac9946b66415f0a2c58e7247341a1d"
+            },
+            "styles/main.css": {
+              "sha256": "6884b1f1c3340da23b4d6a2dccf5a6a2b5f93a62df97e71562a1ff51f031adfd",
+              "size": 24,
+              "gitMode": "100644",
+              "gitOid": "b7f4dfe3b06761e1bb6c72e2b3c71c3dd12ceb41"
+            },
+            "docs/specs/R-1-首页.md": {
+              "sha256": "9e50c8268808dabc61bd4f1fa4ef431fb75fbeb33e6cd6f89e35153f3ee94069",
+              "size": 45,
+              "gitMode": "100644",
+              "gitOid": "15607950e4440f0681fa4e6d8b7b66aabf43673c"
+            },
+            "blocks/detail.html": {
+              "sha256": "60773503b066d0b5a2ece240240d8b48147bd58fdd1e5fb0a470cc5aa9f4222d",
+              "size": 66,
+              "gitMode": "100644",
+              "gitOid": "399a23d00242624918c1aa6699d9102494bb1d51"
+            },
+            "tools/export.sh": {
+              "sha256": "6fd817db6f311109a3b90fa8258c1e5f78fbb9988fb8126ff3dbb51239444176",
+              "size": 22,
+              "gitMode": "100755",
+              "gitOid": "5dd0fe2cdc6466f7efae079d818eec6f2872c322"
+            }
+          },
+          "items": [
+            {
+              "itemId": "page:b1",
+              "label": "首页",
+              "kind": "page",
+              "elementIds": [
+                "b1"
+              ]
+            }
+          ],
+          "title": "首页加资讯区",
+          "note": "资讯区放在行情下面",
+          "deviceId": "dev-5d1c7e3a9f2b"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error_code": "client_too_old",
+          "message": "这个团队里有人用了更新的 G-canvas，先升级再继续",
+          "details": {
+            "minClientFormat": 2,
+            "clientFormat": 1
+          }
+        }
+      }
+    }
+  ]
+}

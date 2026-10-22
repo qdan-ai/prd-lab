@@ -5,6 +5,7 @@ import {
   getObjectStream,
   reissueToken,
   snapshotFiles,
+  snapshotInAudience,
   snapshots,
   verifyToken,
   versions,
@@ -92,7 +93,12 @@ export async function GET(request: NextRequest, { params }: Ctx) {
     .innerJoin(versions, eq(snapshots.versionId, versions.id))
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(
-      and(eq(snapshots.id, snapshotId), isNull(versions.archivedAt), isNull(projects.archivedAt)),
+      and(
+        eq(snapshots.id, snapshotId),
+        isNull(versions.archivedAt),
+        isNull(projects.archivedAt),
+        snapshotInAudience("guest"),
+      ),
     )
     .limit(1);
   const snap = snapRows[0];

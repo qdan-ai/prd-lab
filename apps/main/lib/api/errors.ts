@@ -35,6 +35,8 @@ export const errorCodes = {
   forbidden_role: { status: 403 }, // 是团队成员但角色不够（界面翻译成「需要管理员权限」）
   not_member: { status: 403 }, // 曾是团队成员、现已移除（团队接口；界面显示「你已不在团队」）
   team_managed: { status: 409 }, // 团队项目的内容走团队接口，拒绝个人推送（sync）
+  // ---- CSRF 止血 ----
+  cross_site_request: { status: 403 }, // 写请求来源不是主站自身（Origin / Sec-Fetch-Site 校验失败），见 lib/api/csrf.ts
 } as const;
 
 export type ErrorCode = keyof typeof errorCodes;

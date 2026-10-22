@@ -10,6 +10,11 @@ const config: NextConfig = {
   transpilePackages: ["@prd-lab/core"],
   // 允许 nginx 反代域名访问 dev resources（HMR/RSC chunks）
   allowedDevOrigins: ["app.local", "preview.local"],
+  experimental: {
+    // proxy.ts 命中的非 GET 请求，Next 会把请求体复制一份给 proxy，默认只复制前 10MB、
+    // 超出部分路由拿不到（zip 上传上限 50MB 会被截断）。放到与 nginx client_max_body_size 一致。
+    proxyClientMaxBodySize: "100mb",
+  },
 };
 
 export default config;

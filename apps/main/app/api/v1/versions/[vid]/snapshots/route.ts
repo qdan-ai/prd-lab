@@ -1,3 +1,5 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
+import { projectReadableBy } from "@prd-lab/core";
 import { createHash } from "node:crypto";
 import { and, desc, eq, isNull, sql as drizzleSql } from "drizzle-orm";
 import {
@@ -17,7 +19,7 @@ import {
 } from "@prd-lab/core";
 import { RENDERERS } from "@prd-lab/core/renderers";
 import { getSession } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canEditProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { insertReturning } from "@/lib/db/insert-returning";
 
@@ -31,7 +33,13 @@ type Ctx = { params: Promise<{ vid: string }> };
  * 列出活跃快照（按 seq 降序），含 uploader_name + is_current。
  */
 export async function GET(_: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { vid } = await params;
 
@@ -44,13 +52,11 @@ export async function GET(_: Request, { params }: Ctx) {
     .from(versions)
     .innerJoin(projects, eq(versions.projectId, projects.id))
     .where(
-      and(eq(versions.id, vid), isNull(versions.archivedAt), isNull(projects.archivedAt), notTeamVersion(versions.id)),
+      and(eq(versions.id, vid), isNull(versions.archivedAt), projectReadableBy(session.userId), notTeamVersion(versions.id)),
     )
     .limit(1);
   const versionRow = versionRows[0];
   if (!versionRow) return errorResponse("not_found");
-  const canRead = versionRow.visibility === "team" || versionRow.ownerId === session.userId;
-  if (!canRead) return errorResponse("not_found");
 
   const rows = await db
     .select({
@@ -81,11 +87,17 @@ export async function GET(_: Request, { params }: Ctx) {
  * 可选 Idempotency-Key header 走 24h 幂等。
  */
 export async function POST(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { vid } = await params;
 
-  // 1. 管理权校验（owner 或 team 项目管理员）
+  // 1. 管理权校验（仅创建者）
   const versionRows = await db
     .select({
       versionId: versions.id,
@@ -102,7 +114,7 @@ export async function POST(request: Request, { params }: Ctx) {
     .limit(1);
   const versionRow = versionRows[0];
   if (!versionRow) return errorResponse("not_found");
-  if (!canManageProject(versionRow, session)) return errorResponse("not_owner");
+  if (!canEditProject(versionRow, session)) return errorResponse("not_owner");
   // 仓库项目只接受仓库式推送（/api/v1/repos/:pid/sync），zip 上传一律拒
   if (versionRow.projectKind === "repo") {
     return errorResponse("repo_managed", "该项目由 G-canvas 仓库式推送维护，不接受 zip 上传");

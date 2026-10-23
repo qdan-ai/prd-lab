@@ -1,4 +1,6 @@
-import { issueRepoToken, PREVIEW_HANDOFF_TTL_SECONDS } from "@prd-lab/core";
+import { errorResponse } from "@/lib/api/errors";
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
+import { canReadProject, issueRepoToken, PREVIEW_HANDOFF_TTL_SECONDS } from "@prd-lab/core";
 import { findProjectForRepo, getRepoShare, isValidKey } from "@prd-lab/core/repo";
 import { getSession } from "@/lib/api/auth-guard";
 import { requestOrigin } from "@/lib/api/request-origin";
@@ -22,11 +24,21 @@ export async function GET(request: Request, { params }: Ctx) {
   const repo = row && row.kind === "repo" && row.versionId ? { ...row, versionId: row.versionId } : null;
   if (!repo) return unavailable(null);
 
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
+  if (repo.visibility === "private" && (!session || !(await canReadProject(pid, session.userId)))) {
+    return unavailable(session ? null : `/r/${encodeURIComponent(pid)}/k/${encodeURIComponent(key)}`);
+  }
+
   const share = await getRepoShare(repo.versionId);
   if (share) return redirect(`/share/${share.shareId}?${new URLSearchParams({ k: key })}`);
 
-  const session = await getSession();
-  if (session && (repo.visibility === "team" || repo.ownerId === session.userId)) {
+  if (session && await canReadProject(pid, session.userId)) {
     const token = issueRepoToken(
       { repoId: repo.id, sessionUserId: session.userId, origin: requestOrigin(request) },
       PREVIEW_HANDOFF_TTL_SECONDS,

@@ -1,13 +1,20 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { and, desc, eq, inArray, isNull, max, or, sql as drizzleSql } from "drizzle-orm";
-import { db, notTeamVersion, projects, snapshotInAudience, snapshots, versions, users } from "@prd-lab/core";
+import { db, projectReadableBy, notTeamVersion, projects, snapshotInAudience, snapshots, versions, users } from "@prd-lab/core";
 import { getSession, type Session } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canEditProject, canChangeProjectVisibility } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_FOREIGN_KEY_VIOLATION, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 import { insertReturning } from "@/lib/db/insert-returning";
 
 export async function GET(request: Request) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
 
   const url = new URL(request.url);
@@ -18,7 +25,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
 
   let body: unknown;
@@ -91,7 +104,7 @@ async function getProjectList(userId: string) {
     .where(
       and(
         isNull(projects.archivedAt),
-        or(eq(projects.visibility, "team"), eq(projects.ownerId, userId)),
+        projectReadableBy(userId),
       ),
     )
     .orderBy(desc(projects.createdAt));
@@ -116,7 +129,7 @@ async function getSwitcherView(session: Pick<Session, "userId" | "isAdmin">) {
     .where(
       and(
         isNull(projects.archivedAt),
-        or(eq(projects.visibility, "team"), eq(projects.ownerId, userId)),
+        projectReadableBy(userId),
       ),
     )
     .orderBy(projects.name);
@@ -202,6 +215,7 @@ async function getSwitcherView(session: Pick<Session, "userId" | "isAdmin">) {
         .where(
           and(
             isNull(snapshots.archivedAt),
+            snapshotInAudience("guest"),
             or(
               ...latestPairs.map((p) =>
                 and(eq(snapshots.versionId, p.versionId), eq(snapshots.seqNo, p.seqNo)),
@@ -227,7 +241,8 @@ async function getSwitcherView(session: Pick<Session, "userId" | "isAdmin">) {
     visibility: p.visibility,
     kind: p.kind,
     ownedByMe: p.ownerId === userId,
-    canManage: canManageProject(p, session),
+    canManage: canEditProject(p, session),
+    canChangeVisibility: canChangeProjectVisibility(p, session, p.visibility === "team" ? "private" : "team"),
     versions: (versionsByProject.get(p.id) ?? []).map((v) => ({
       id: v.id,
       name: v.name,

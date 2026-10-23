@@ -1,3 +1,4 @@
+import { shareResponse } from "@/lib/share/response";
 import { Readable } from "node:stream";
 import { getObjectStream } from "@prd-lab/core";
 import {
@@ -72,7 +73,7 @@ export async function HEAD(request: Request, ctx: Ctx) {
 }
 
 async function handle(request: Request, { params }: Ctx, head: boolean): Promise<Response> {
-  const res = await dispatch(request, { params }, head);
+  const res = await shareResponse(() => dispatch(request, { params }, head));
   return head && res.body !== null ? new Response(null, { status: res.status, headers: res.headers }) : res;
 }
 
@@ -81,6 +82,10 @@ async function dispatch(request: Request, { params }: Ctx, head: boolean): Promi
   const origin = requestOrigin(request);
 
   const session = await getShareSession(shareId);
+  if (session.kind === "unauthorized") {
+    return agentError(401, "unauthorized", "私有项目需要账户身份", "请登录主站，或使用当前账户的有效 Bearer Token；分享密码不能代替账户登录");
+  }
+  if (session.kind === "forbidden") return agentError(404, "not_found", "项目不存在", "请联系项目创建者确认访问权");
   if (session.kind === "revoked") {
     return agentError(410, "share_revoked", "该访客链接已被撤销", "请向开发要新的访客链接");
   }

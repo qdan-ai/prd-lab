@@ -3,12 +3,12 @@ import { auth } from "@/auth";
 import { checkCsrf } from "@/lib/api/csrf";
 import { errorResponse } from "@/lib/api/errors";
 
-const PROTECTED_PREFIXES = ["/projects"];
+import { isProtectedAccountPath } from "@/lib/account-ui/safe-callback";
 
 // 第二个参数标成 NextFetchEvent，让 auth() 选中间件重载（返回 NextMiddleware）
 const authProxy = auth((req, _event: NextFetchEvent) => {
   const { pathname, search } = req.nextUrl;
-  const needsAuth = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
+  const needsAuth = isProtectedAccountPath(pathname);
   if (!needsAuth) return NextResponse.next();
   if (req.auth?.user?.id) return NextResponse.next();
 
@@ -29,8 +29,8 @@ export default function proxy(req: NextRequest, event: NextFetchEvent) {
     return errorResponse("cross_site_request", "请求来源不是本站，已拒绝", { reason: verdict.reason });
   }
 
-  // 登入跳转只管 /projects/*；其它路径（CSRF 匹配进来的）不跑 NextAuth 会话解析
-  if (!PROTECTED_PREFIXES.some((p) => req.nextUrl.pathname.startsWith(p))) {
+  // 登入跳转保护 /projects、/settings、/admin；其它路径（CSRF 匹配进来的）不跑 NextAuth 会话解析
+  if (!isProtectedAccountPath(req.nextUrl.pathname)) {
     return NextResponse.next();
   }
   return authProxy(req, event);
@@ -39,6 +39,8 @@ export default function proxy(req: NextRequest, event: NextFetchEvent) {
 export const config = {
   matcher: [
     "/projects/:path*",
+    "/settings/:path*",
+    "/admin/:path*",
     // 带 Origin 头的请求（浏览器的写请求都会带）全站过一遍 CSRF 判定。
     // 不带 Origin 的请求（CLI / curl / 浏览器同源 GET）不进 proxy：判定本就放行，
     // 且 proxy 会把请求体复制一份（见 next.config.ts proxyClientMaxBodySize），没必要碰大上传。

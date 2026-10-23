@@ -1,3 +1,4 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { issueRepoToken, PREVIEW_HANDOFF_TTL_SECONDS } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
 import { errorResponse } from "@/lib/api/errors";
@@ -11,7 +12,13 @@ type Ctx = { params: Promise<{ pid: string }> };
  * 主站「打开查看器」：签 300s 仓库级交接令牌（可读即可），返回预览站入口地址。
  */
 export async function POST(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
   const repo = await requireReadableRepo(pid, session);

@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ShareDialog } from "@/components/share-dialog";
+import { ProjectVisibilityDialog } from "@/components/project-visibility-dialog";
 import { DeleteProjectModal } from "@/components/delete-project-modal";
 import { VisibilityChip } from "@/components/workbench/tab-panel";
 import { formatRelative } from "@/components/workbench/format";
@@ -36,6 +37,7 @@ interface Props {
   /** 项目简介（G-canvas 推送时带上）；没有为 null */
   summary: string | null;
   canManage: boolean;
+  canChangeVisibility: boolean;
   /** 已开启团队协作且当前用户是团队成员：显示「成员」入口 */
   showMembers?: boolean;
   pushedAt: string | null;
@@ -54,12 +56,14 @@ export function RepoProjectView({
   systemVersionId,
   summary,
   canManage,
+  canChangeVisibility,
   showMembers,
   pushedAt,
   pushedBy,
   versions,
   draft,
 }: Props) {
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [opening, setOpening] = useState(false);
@@ -141,6 +145,9 @@ export function RepoProjectView({
                 <Share2 size={13} strokeWidth={2.25} />
                 <span>分享</span>
               </Button>
+            </>
+          ) : null}
+          {canManage || canChangeVisibility ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="项目操作" data-testid="repo-project-menu">
@@ -148,7 +155,10 @@ export function RepoProjectView({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem
+                  {canChangeVisibility ? <DropdownMenuItem onSelect={() => setVisibilityOpen(true)}>
+                    {project.visibility === "team" ? "改为私有" : "改为团队可见"}
+                  </DropdownMenuItem> : null}
+                  {canManage ? <DropdownMenuItem
                     destructive
                     className="gap-2"
                     onSelect={() => setDeleteOpen(true)}
@@ -156,17 +166,21 @@ export function RepoProjectView({
                   >
                     <Trash2 size={13} />
                     删除项目
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> : null}
                 </DropdownMenuContent>
               </DropdownMenu>
-            </>
           ) : null}
         </div>
       </section>
 
       {canManage ? (
-        <VisitorLinkCard systemVersionId={systemVersionId} onManage={() => setShareOpen(true)} />
+        <VisitorLinkCard visibility={project.visibility} systemVersionId={systemVersionId} onManage={() => setShareOpen(true)} />
       ) : null}
+
+      <ProjectVisibilityDialog
+        target={visibilityOpen ? { ...project, ownedByMe: canManage } : null}
+        onClose={() => setVisibilityOpen(false)}
+      />
 
       <VersionsCard versions={versions} draft={draft} />
 
@@ -174,6 +188,7 @@ export function RepoProjectView({
         <>
           <ShareDialog
             open={shareOpen}
+            visibility={project.visibility}
             version={{ id: systemVersionId, name: project.name }}
             description="访客打开链接直接进入查看器，默认看线上版本，可切换查看所有已推送的版本"
             onClose={() => setShareOpen(false)}
@@ -191,7 +206,7 @@ export function RepoProjectView({
   );
 }
 
-function VisitorLinkCard({ systemVersionId, onManage }: { systemVersionId: string; onManage: () => void }) {
+function VisitorLinkCard({ systemVersionId, onManage, visibility }: { systemVersionId: string; onManage: () => void; visibility: "private" | "team" }) {
   // 与分享弹窗同一个缓存键：弹窗里建 / 撤链接、改密码后这里自动刷新
   const { data, isLoading } = useSWR<{ share: ShareRow | null }>(
     `/api/v1/versions/${systemVersionId}/shares`,
@@ -235,7 +250,9 @@ function VisitorLinkCard({ systemVersionId, onManage }: { systemVersionId: strin
               ) : (
                 <LockOpen size={12} strokeWidth={2.25} className="text-ink-500" />
               )}
-              {share.hasPassword ? "已设访问密码" : "无密码，拿到链接的人都能查看"}
+              {visibility === "private"
+                ? `须登录且为创建者或有效协作成员${share.hasPassword ? "，另需分享密码" : "；无分享密码"}`
+                : share.hasPassword ? "已设访问密码" : "无密码，拿到链接的人都能查看"}
             </span>
             <Button variant="ghost" size="sm" onClick={onManage}>
               管理链接与密码

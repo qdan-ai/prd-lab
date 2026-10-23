@@ -1,10 +1,11 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { generateShareId, hashPassword, db, shareLinks } from "@prd-lab/core";
 import { getRepoShare } from "@prd-lab/core/repo";
 import { getSession } from "@/lib/api/auth-guard";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 import { requestOrigin } from "@/lib/api/request-origin";
-import { requireManagedRepo, shareUrl } from "@/lib/repo/route-helpers";
+import { requireRepoShareOwner, shareUrl } from "@/lib/repo/route-helpers";
 
 type Ctx = { params: Promise<{ pid: string }> };
 
@@ -13,10 +14,16 @@ type Ctx = { params: Promise<{ pid: string }> };
  * 仓库项目的项目级分享链接（挂在系统方案上，一仓库一条）。
  */
 export async function GET(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
-  const repo = await requireManagedRepo(pid, session, { teamMin: "admin" });
+  const repo = await requireRepoShareOwner(pid, session);
   if (repo instanceof Response) return repo;
 
   const share = await getRepoShare(repo.versionId);
@@ -28,10 +35,16 @@ export async function GET(request: Request, { params }: Ctx) {
  * 建项目级分享链接；已有 → 409 share_already_exists。密码规则同方案级分享（可选，6..200）。
  */
 export async function POST(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
-  const repo = await requireManagedRepo(pid, session, { teamMin: "admin" });
+  const repo = await requireRepoShareOwner(pid, session);
   if (repo instanceof Response) return repo;
 
   let body: unknown;

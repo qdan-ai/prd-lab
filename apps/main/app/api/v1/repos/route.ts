@@ -1,6 +1,7 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { createRepoProject, listRepoProjects } from "@prd-lab/core/repo";
 import { getSession } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canEditProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_FOREIGN_KEY_VIOLATION, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 import { requestOrigin } from "@/lib/api/request-origin";
@@ -11,14 +12,20 @@ import { shareUrl } from "@/lib/repo/route-helpers";
  * 当前用户能推送的仓库项目（G-canvas 首次推送「选择已有仓库」用）。
  */
 export async function GET(request: Request) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
 
   const origin = requestOrigin(request);
   const rows = await listRepoProjects();
   return Response.json(
     rows
-      .filter((r) => canManageProject(r, session))
+      .filter((r) => canEditProject(r, session))
       .map((r) => ({
         id: r.id,
         name: r.name,
@@ -34,7 +41,13 @@ export async function GET(request: Request) {
  * 建仓库项目（项目 + 系统方案 + 仓库状态，一个事务）。
  */
 export async function POST(request: Request) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
 
   let body: unknown;

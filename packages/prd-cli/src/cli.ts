@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { stdin as input, stdout as output } from "node:process";
 import { cac } from "cac";
-import { ApiClient } from "./lib/api-client";
+import { ApiClient, printAuthenticationHint } from "./lib/api-client";
 import { startOAuthFlow } from "./lib/oauth";
 import { packDirectoryToZip } from "./lib/packer";
 import {
@@ -79,7 +79,7 @@ cli.command("whoami", "显示当前 token 对应用户").action(async () => {
   const client = readClientOrExit();
   const res = await client.get<{ id: string; name: string }>("/api/v1/me");
   if (res.status !== 200 || !res.data) {
-    console.error(`[prd] whoami 失败：HTTP ${res.status} ${res.error?.error_code ?? ""}`);
+    console.error(`[prd] whoami 失败：HTTP ${res.status} ${res.error?.error_code ?? ""} ${res.error?.message ?? ""}`);
     process.exit(1);
   }
   console.log(`${res.data.name} (${res.data.id})`);
@@ -161,7 +161,7 @@ cli.command("auth list", "列出活跃 API token").action(async () => {
     Array<{ id: string; name: string; tokenPrefix: string; lastUsedAt: string | null; createdAt: string }>
   >("/api/v1/cli/tokens");
   if (res.status !== 200 || !res.data) {
-    console.error(`[prd] 拉取失败：HTTP ${res.status}`);
+    console.error(`[prd] 拉取失败：HTTP ${res.status} ${res.error?.message ?? ""}`);
     process.exit(1);
   }
   if (res.data.length === 0) {
@@ -188,7 +188,7 @@ cli
       console.error(`[prd] 未找到 token ${tokenId}（或非你拥有）`);
       process.exit(1);
     }
-    console.error(`[prd] 撤销失败：HTTP ${res.status}`);
+    console.error(`[prd] 撤销失败：HTTP ${res.status} ${res.error?.message ?? ""}`);
     process.exit(1);
   });
 
@@ -354,6 +354,7 @@ cli
     const res = await fetch(`${client.endpoint}/api/v1/exports/${versionId}`, {
       headers: { authorization: `Bearer ${client.token}` },
     });
+    printAuthenticationHint(res.status);
     if (!res.ok) {
       console.error(`[prd] 导出失败：HTTP ${res.status}`);
       process.exit(1);

@@ -68,3 +68,5 @@ export {
 // (renderer-codex-followup sprint Step 2 修复，详见 KNOWLEDGE R12 同源教训：
 // 根 export 会让所有 `@prd-lab/core` 消费者隐式依赖 renderer 包 dist-node 产物，
 // clean clone 上未 build 时触发 ENOENT)
+
+export { projectReadableBy, canReadProject } from "./project-access";

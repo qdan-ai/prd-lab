@@ -13,6 +13,13 @@ export const errorCodes = {
   unauthorized: { status: 401 },
   not_found: { status: 404 },
   name_conflict: { status: 409 },
+  // ---- S21 账户 ----
+  not_admin: { status: 403 },
+  name_taken: { status: 409 },
+  email_taken: { status: 409 },
+  invite_code_invalid: { status: 400 },
+  login_locked: { status: 429 },
+  authentication_unavailable: { status: 503 },
   // ---- S5 分享链接 ----
   share_already_exists: { status: 409 }, // 同 version 已存在 active share_link
   share_not_found: { status: 404 }, // share_id 不存在 / 已撤销

@@ -117,22 +117,21 @@ export function SidebarLeft({ versionId, projectId, versionName, ownedByMe = tru
           {versionId ? <SnapshotList versionId={versionId} ownedByMe={ownedByMe} /> : null}
         </div>
 
-        <div className="border-t border-ink-200 p-2.5 shrink-0">
+        {ownedByMe ? <div className="border-t border-ink-200 p-2.5 shrink-0">
           <Button
             variant="secondary"
             size="md"
             className="w-full gap-2"
-            disabled={!versionId || !ownedByMe}
+            disabled={!versionId}
             onClick={() => setUploadOpen(true)}
             data-testid="open-upload-modal"
-            title={ownedByMe ? undefined : "仅项目所有者可上传快照"}
           >
             <Upload size={13} strokeWidth={2.25} />
             <span>上传新版本</span>
           </Button>
-        </div>
+        </div> : null}
       </aside>
-      {versionId ? (
+      {ownedByMe && versionId ? (
         <UploadSnapshotModal
           open={uploadOpen}
           onOpenChange={setUploadOpen}

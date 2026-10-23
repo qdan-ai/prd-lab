@@ -1,7 +1,8 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db, hashPassword, notTeamVersion, projects, shareLinks, versions } from "@prd-lab/core";
 import { getSession, type Session } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canManageProjectShares } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 
 type Ctx = { params: Promise<{ shareId: string }> };
@@ -15,7 +16,13 @@ type Ctx = { params: Promise<{ shareId: string }> };
  * 已 revoked → 410 share_revoked。
  */
 export async function PATCH(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { shareId } = await params;
 
@@ -74,7 +81,13 @@ export async function PATCH(request: Request, { params }: Ctx) {
  * owner-only 软删（写 revoked_at）。撤销后 active 索引释放，可立即新建。
  */
 export async function DELETE(_: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { shareId } = await params;
 
@@ -112,7 +125,7 @@ async function loadShareForOwner(
     .limit(1);
   const row = rows[0];
   if (!row) return { kind: "error", code: "share_not_found" };
-  if (!canManageProject(row, session)) return { kind: "error", code: "not_owner" };
+  if (!canManageProjectShares(row, session)) return { kind: "error", code: "not_owner" };
   if (row.revokedAt !== null) return { kind: "error", code: "share_revoked" };
   return { kind: "ok", versionId: row.versionId };
 }

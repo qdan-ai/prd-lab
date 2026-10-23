@@ -67,8 +67,14 @@ const nowDefault = () => sql`CURRENT_TIMESTAMP(3)`;
 export const users = mysqlTable("users", {
   id: uuidPk(),
   name: varchar("name", { length: 255 }).notNull().unique(),
-  email: varchar("email", { length: 255 }),
+  email: varchar("email", { length: 255 }).unique(),
   passwordHash: varchar("password_hash", { length: 255 }),
+  role: mysqlEnum("role", ["admin", "editor"]).notNull().default("editor"),
+  passwordChangedAt: datetimeFsp("password_changed_at"),
+  credentialVersion: int("credential_version").notNull().default(0),
+  failedLoginCount: int("failed_login_count").notNull().default(0),
+  loginFailureWindowStartedAt: datetimeFsp("login_failure_window_started_at"),
+  loginLockedUntil: datetimeFsp("login_locked_until"),
   createdAt: datetimeFsp("created_at").notNull().default(nowDefault()),
   archivedAt: datetimeFsp("archived_at"),
 });

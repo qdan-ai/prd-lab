@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { RenameDialog } from "@/components/rename-dialog";
 import { DeleteProjectModal } from "@/components/delete-project-modal";
+import { ProjectVisibilityDialog } from "@/components/project-visibility-dialog";
 import { DeleteVersionModal } from "@/components/delete-version-modal";
 
 type SwitcherVersion = SwitcherProject["versions"][number];
@@ -45,6 +46,7 @@ export function CommandSwitcher() {
   const openProjectDialog = useCreateDialogStore((s) => s.openProject);
   const openVersionDialog = useCreateDialogStore((s) => s.openVersion);
 
+  const [visibilityTarget, setVisibilityTarget] = useState<SwitcherProject | null>(null);
   const router = useRouter();
   const params = useParams<{ pid?: string }>();
   const currentPid = params?.pid;
@@ -201,7 +203,7 @@ export function CommandSwitcher() {
                         <span className="text-[10px] text-ink-500 shrink-0 ml-2">
                           {p.kind === "repo" ? "G-canvas 仓库" : `${p.versions.length} 方案`}
                         </span>
-                        {p.canManage ? (
+                        {p.canManage || p.canChangeVisibility ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button
@@ -215,28 +217,15 @@ export function CommandSwitcher() {
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                              <DropdownMenuItem onSelect={() => setRenameProjectTarget(p)}>
+                              {p.canManage ? <DropdownMenuItem onSelect={() => setRenameProjectTarget(p)}>
                                 重命名项目
-                              </DropdownMenuItem>
-                              {/* 可见性改动 = owner-only（后端 PATCH 已收紧）；管理员对他人 team 项目不显示此项，避免点了必 403 的死入口 */}
-                              {p.ownedByMe ? (
-                                <DropdownMenuItem
-                                  onSelect={async () => {
-                                    const next = p.visibility === "team" ? "private" : "team";
-                                    try {
-                                      await projectsApi.rename(p.id, { visibility: next });
-                                      toast.success(next === "team" ? "已改为团队可见" : "已改为私有");
-                                      await mutate();
-                                      router.refresh();
-                                    } catch {
-                                      // toast 已自动
-                                    }
-                                  }}
-                                >
+                              </DropdownMenuItem> : null}
+                              {p.canChangeVisibility ? (
+                                <DropdownMenuItem onSelect={() => setVisibilityTarget(p)}>
                                   {p.visibility === "team" ? "改为私有" : "改为团队可见"}
                                 </DropdownMenuItem>
                               ) : null}
-                              <DropdownMenuItem
+                              {p.canManage ? <DropdownMenuItem
                                 destructive
                                 className="gap-2"
                                 onSelect={() => setDeleteProjectTarget(p)}
@@ -244,7 +233,7 @@ export function CommandSwitcher() {
                               >
                                 <Trash2 size={13} />
                                 删除项目
-                              </DropdownMenuItem>
+                              </DropdownMenuItem> : null}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         ) : null}
@@ -303,6 +292,12 @@ export function CommandSwitcher() {
         </div>
       </DialogContent>
     </Dialog>
+
+      <ProjectVisibilityDialog
+        target={visibilityTarget}
+        onClose={() => setVisibilityTarget(null)}
+        onChanged={() => setOpen(false)}
+      />
 
       <RenameDialog
         open={renameProjectTarget !== null}

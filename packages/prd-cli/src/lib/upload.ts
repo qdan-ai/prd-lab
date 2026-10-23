@@ -1,12 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
-import type { ApiClient } from "./api-client";
+import { withAuthenticationHint, type ApiClient } from "./api-client";
 
 /**
  * 项目/版本解析 + 自动建。
  *
  * lookup 走 `GET /api/v1/projects?view=switcher`（CLI 用户的视图 = 自己的 + team）。
- * 找不到时 autoCreate=true 会自动建 project 或 version（owner 或 team 项目管理员可建）。
+ * 找不到时 autoCreate=true 会自动建 project 或 version（仅项目创建者可建方案）。
  */
 
 interface SwitcherVersion {
@@ -20,7 +20,7 @@ interface SwitcherProject {
   name: string;
   visibility: "private" | "team";
   ownedByMe: boolean;
-  /** owner 或 team 项目管理员 → 可上传 / 建方案（与后端 canManageProject 同口径）。
+  /** 项目创建者 → 可上传 / 建方案（与主站 canManage 字段同口径）。
    *  optional：旧主站（S18 之前）switcher 响应无此字段，消费方需兜底到 ownedByMe。 */
   canManage?: boolean;
   versions: SwitcherVersion[];
@@ -49,14 +49,14 @@ export async function resolveProjectVersion(
 ): Promise<ResolvedVersion> {
   const list = await client.get<SwitcherProject[]>("/api/v1/projects?view=switcher");
   if (list.status !== 200 || !list.data) {
-    throw new Error(`获取项目列表失败 (HTTP ${list.status}: ${list.error?.error_code ?? "unknown"})`);
+    throw new Error(`获取项目列表失败 (HTTP ${list.status}: ${list.error?.error_code ?? "unknown"}) ${list.error?.message ?? ""}`);
   }
 
   const project = list.data.find((p) => p.name === projectName);
   if (project) {
     // canManage 兜底 ownedByMe：CLI 若早于主站升级，旧主站 switcher 无 canManage 字段，回退到 ownedByMe 不误拦 owner
     if (!(project.canManage ?? project.ownedByMe)) {
-      throw new Error(`项目 "${projectName}" 非你拥有（也非团队管理员），无权上传`);
+      throw new Error(`项目 "${projectName}" 非你创建，无权上传`);
     }
     const version = project.versions.find((v) => v.name === versionName);
     if (version) {
@@ -78,7 +78,7 @@ export async function resolveProjectVersion(
     );
     if (createRes.status !== 201 || !createRes.data) {
       throw new Error(
-        `创建方案失败 (HTTP ${createRes.status}: ${createRes.error?.error_code ?? "unknown"})`,
+        `创建方案失败 (HTTP ${createRes.status}: ${createRes.error?.error_code ?? "unknown"}) ${createRes.error?.message ?? ""}`,
       );
     }
     return {
@@ -103,7 +103,7 @@ export async function resolveProjectVersion(
   );
   if (createProjectRes.status !== 201 || !createProjectRes.data) {
     throw new Error(
-      `创建项目失败 (HTTP ${createProjectRes.status}: ${createProjectRes.error?.error_code ?? "unknown"})`,
+      `创建项目失败 (HTTP ${createProjectRes.status}: ${createProjectRes.error?.error_code ?? "unknown"}) ${createProjectRes.error?.message ?? ""}`,
     );
   }
   const newProjectId = createProjectRes.data.project.id;
@@ -114,7 +114,7 @@ export async function resolveProjectVersion(
   );
   if (createVersionRes.status !== 201 || !createVersionRes.data) {
     throw new Error(
-      `创建方案失败 (HTTP ${createVersionRes.status}: ${createVersionRes.error?.error_code ?? "unknown"})`,
+      `创建方案失败 (HTTP ${createVersionRes.status}: ${createVersionRes.error?.error_code ?? "unknown"}) ${createVersionRes.error?.message ?? ""}`,
     );
   }
   return {
@@ -186,7 +186,7 @@ export async function uploadSnapshot(
         // ignore
       }
     }
-    return { status: res.status, error: err };
+    return { status: res.status, error: withAuthenticationHint(res.status, err) };
   }
   const body = (await res.json()) as Omit<UploadResult, "status">;
   return { status: res.status, ...body };

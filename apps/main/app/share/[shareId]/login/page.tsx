@@ -1,10 +1,13 @@
-import { redirect } from "next/navigation";
+import { shareAccountLoginUrl } from "@/lib/share/response";
+import { redirect, notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, shareLinks } from "@prd-lab/core";
 import { repoProjectIdOfVersion } from "@prd-lab/core/repo";
 import { getShareSession } from "@/lib/share/share-session";
 import { versionQuery } from "@/lib/repo/share-entry";
 import { ShareLoginForm } from "./share-login-form";
+
+export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ shareId: string }>;
@@ -31,6 +34,10 @@ export default async function ShareLoginPage({ params, searchParams }: Props) {
     typeof k === "string" ? k : null,
   )}`;
 
+  const session = await getShareSession(shareId);
+  if (session.kind === "unauthorized") redirect(shareAccountLoginUrl(shareId, versionQuery(typeof v === "string" ? v : null, typeof k === "string" ? k : null)));
+  if (session.kind === "forbidden") notFound();
+
   const rows = await db
     .select({ revokedAt: shareLinks.revokedAt, passwordHash: shareLinks.passwordHash, versionId: shareLinks.versionId })
     .from(shareLinks)
@@ -44,7 +51,6 @@ export default async function ShareLoginPage({ params, searchParams }: Props) {
   if (rows[0].revokedAt !== null) {
     return <ShareErrorPanel title="分享已撤销" message="该分享链接已被项目所有者撤销，无法再访问。" />;
   }
-  const session = await getShareSession(shareId);
   if (session.kind === "ok") {
     redirect(contentHref);
   }

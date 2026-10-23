@@ -1,3 +1,4 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { PassThrough } from "node:stream";
 // archiver v8 类型滞后，运行时是 ZipArchive class
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -10,6 +11,8 @@ const ZipArchive = (archiverMod as any).ZipArchive as new (
 import { and, asc, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import {
   db,
+  projectReadableBy,
+  snapshotInAudience,
   getObjectBuffer,
   notTeamVersion,
   projects,
@@ -19,7 +22,6 @@ import {
   versions,
 } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { repoManagedResponse } from "@/lib/repo/route-helpers";
 
@@ -36,7 +38,13 @@ type Ctx = { params: Promise<{ versionId: string }> };
  * 仓库项目的内置方案下混着各版本、草稿与起点的快照，「最新一个」没有意义 → 409 repo_managed。
  */
 export async function GET(_: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { versionId } = await params;
 
@@ -54,20 +62,19 @@ export async function GET(_: Request, { params }: Ctx) {
       and(
         eq(versions.id, versionId),
         isNull(versions.archivedAt),
-        isNull(projects.archivedAt),
+        projectReadableBy(session.userId),
         notTeamVersion(versions.id),
       ),
     )
     .limit(1);
   const row = rows[0];
   if (!row) return errorResponse("not_found");
-  if (!canManageProject(row, session)) return errorResponse("not_owner");
   if (row.projectKind === "repo") return repoManagedResponse("export");
 
   const snapRows = await db
     .select()
     .from(snapshots)
-    .where(and(eq(snapshots.versionId, versionId), isNull(snapshots.archivedAt)))
+    .where(and(eq(snapshots.versionId, versionId), isNull(snapshots.archivedAt), snapshotInAudience("guest")))
     .orderBy(desc(snapshots.seqNo))
     .limit(1);
   const snap = snapRows[0];
@@ -80,7 +87,8 @@ export async function GET(_: Request, { params }: Ctx) {
     .from(snapshotFiles)
     .where(eq(snapshotFiles.snapshotId, exportSnapshotId));
 
-  const archivedSnapRows = await db
+  const isOwner = row.ownerId === session.userId;
+  const archivedSnapRows = isOwner ? await db
     .select({
       seqNo: snapshots.seqNo,
       changeNote: snapshots.changeNote,
@@ -89,8 +97,8 @@ export async function GET(_: Request, { params }: Ctx) {
     })
     .from(snapshots)
     .leftJoin(users, eq(snapshots.archivedBy, users.id))
-    .where(and(eq(snapshots.versionId, versionId), isNotNull(snapshots.archivedAt)))
-    .orderBy(asc(snapshots.seqNo));
+    .where(and(eq(snapshots.versionId, versionId), isNotNull(snapshots.archivedAt), snapshotInAudience("guest")))
+    .orderBy(asc(snapshots.seqNo)) : [];
 
   const pass = new PassThrough();
   const archive = new ZipArchive({ zlib: { level: 6 } });
@@ -117,12 +125,12 @@ export async function GET(_: Request, { params }: Ctx) {
         },
         exportedAt,
         exportedBy: session.userName,
-        archived_snapshots: archivedSnapRows.map((a) => ({
+        ...(isOwner ? { archived_snapshots: archivedSnapRows.map((a) => ({
           seq: a.seqNo,
           changeNote: a.changeNote,
           archivedAt: a.archivedAt,
           archivedBy: a.archivedByName,
-        })),
+        })) } : {}),
       };
       archive.append(Buffer.from(JSON.stringify(meta, null, 2), "utf8"), { name: "meta.json" });
 
@@ -167,6 +175,7 @@ export async function GET(_: Request, { params }: Ctx) {
     status: 200,
     headers: {
       "Content-Type": "application/zip",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": `attachment; filename*=UTF-8''${filename}`,
     },
   });

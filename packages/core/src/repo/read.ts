@@ -1,6 +1,6 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../db/client";
-import { repoState, repoVersions, snapshotFiles, snapshots, users } from "../db/schema";
+import { repoState, repoVersions, snapshotFiles, snapshots, users, versions } from "../db/schema";
 import { buildAgentPrompt, type AgentPrompt } from "./agent";
 import { REPO_FORMAT } from "./manifest";
 import { type RepoProject, getRepoShare } from "./project";
@@ -24,7 +24,13 @@ type VersionRow = {
   contentDigest: string;
 };
 
-async function loadVersionRows(projectId: string): Promise<VersionRow[]> {
+/** Content readers exclude archived snapshots/plans; push reconciliation deliberately retains them. */
+function unarchivedGuestContent() {
+  return and(isNull(snapshots.archivedAt), sql`EXISTS (SELECT 1 FROM ${versions}
+    WHERE ${versions.id} = ${snapshots.versionId} AND ${versions.archivedAt} IS NULL)`)!;
+}
+
+async function loadVersionRows(projectId: string, contentOnly = false): Promise<VersionRow[]> {
   return db
     .select({
       key: repoVersions.key,
@@ -44,7 +50,7 @@ async function loadVersionRows(projectId: string): Promise<VersionRow[]> {
     })
     .from(repoVersions)
     .innerJoin(snapshots, eq(repoVersions.snapshotId, snapshots.id))
-    .where(and(eq(repoVersions.projectId, projectId), snapshotInAudience("guest")))
+    .where(and(eq(repoVersions.projectId, projectId), snapshotInAudience("guest"), contentOnly ? unarchivedGuestContent() : undefined))
     // 按封版时间升序（草稿、起点没有封版时间，排最前）；同一次推送写入的行 created_at 相同，最后按 key 保证顺序稳定
     .orderBy(asc(repoVersions.sealedAt), asc(repoVersions.createdAt), asc(repoVersions.key));
 }
@@ -140,7 +146,7 @@ export async function getRepoPushState(repo: RepoProject) {
  * 另返回 resolveInput，供调用方按 ?v= 解析落到哪一版。
  */
 export async function getRepoView(repo: RepoProject) {
-  const [rows, state] = await Promise.all([loadVersionRows(repo.id), loadStateRow(repo.id)]);
+  const [rows, state] = await Promise.all([loadVersionRows(repo.id, true), loadStateRow(repo.id)]);
   const live = rows.filter((r) => r.withdrawnAt === null);
   const resolveInput = toResolveInput(rows, state.onlineKey);
   const visibleKeys = new Set(
@@ -176,7 +182,7 @@ export async function lookupRepoKey(projectId: string, key: string): Promise<Rep
     .select({ snapshotId: repoVersions.snapshotId, withdrawnAt: repoVersions.withdrawnAt })
     .from(repoVersions)
     .innerJoin(snapshots, eq(repoVersions.snapshotId, snapshots.id))
-    .where(and(eq(repoVersions.projectId, projectId), eq(repoVersions.key, key), snapshotInAudience("guest")))
+    .where(and(eq(repoVersions.projectId, projectId), eq(repoVersions.key, key), snapshotInAudience("guest"), unarchivedGuestContent()))
     .limit(1);
   const row = rows[0];
   if (!row) return { status: "not_found" };
@@ -262,14 +268,14 @@ export async function lookupAgentVersion(projectId: string, key: string): Promis
     })
     .from(repoVersions)
     .innerJoin(snapshots, eq(repoVersions.snapshotId, snapshots.id))
-    .where(and(eq(repoVersions.projectId, projectId), eq(repoVersions.key, key), snapshotInAudience("guest")))
+    .where(and(eq(repoVersions.projectId, projectId), eq(repoVersions.key, key), snapshotInAudience("guest"), unarchivedGuestContent()))
     .limit(1);
   const r = rows[0];
   if (!r || r.kind === "hidden") return { status: "not_found" };
   if (r.withdrawnAt !== null) {
     let replacement: { key: string; number: string | null } | null = null;
     if (r.number !== null) {
-      const all = await loadVersionRows(projectId);
+      const all = await loadVersionRows(projectId, true);
       const resolved = resolveRepoVersion(toResolveInput(all, null), r.number);
       const hit = resolved.notice === null ? all.find((v) => v.key === resolved.key) : undefined;
       if (hit && hit.key !== r.key && hit.kind !== "draft") replacement = { key: hit.key, number: hit.number };

@@ -14,6 +14,18 @@ export interface ApiErrorBody {
   message?: string;
 }
 
+export const REAUTHORIZATION_HINT = "API Token 无效或已撤销，请运行 prd login 重新登录并授权；自定义服务请带 --endpoint。";
+
+export function withAuthenticationHint(status: number, error: ApiErrorBody): ApiErrorBody {
+  return status === 401
+    ? { ...error, message: [error.message, REAUTHORIZATION_HINT].filter(Boolean).join("；") }
+    : error;
+}
+
+export function printAuthenticationHint(status: number): void {
+  if (status === 401) console.error(`[prd] ${REAUTHORIZATION_HINT}`);
+}
+
 export class ApiClient {
   readonly endpoint: string;
   readonly token: string;
@@ -42,6 +54,7 @@ export class ApiClient {
       body: init.body,
     });
     if (init.raw) {
+      printAuthenticationHint(res.status);
       return { status: res.status, data: res as unknown as T };
     }
     const ct = res.headers.get("content-type") ?? "";
@@ -54,7 +67,7 @@ export class ApiClient {
           // ignore parse failure
         }
       }
-      return { status: res.status, data: null, error: body };
+      return { status: res.status, data: null, error: withAuthenticationHint(res.status, body) };
     }
     if (res.status === 204) return { status: 204, data: null };
     if (!ct.includes("application/json")) {

@@ -1,8 +1,9 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { buildRepoAgentPrompt } from "@prd-lab/core/repo";
 import { getSession } from "@/lib/api/auth-guard";
 import { errorResponse } from "@/lib/api/errors";
 import { requestOrigin } from "@/lib/api/request-origin";
-import { requireManagedRepo } from "@/lib/repo/route-helpers";
+import { requireRepoAgentPromptAccess } from "@/lib/repo/route-helpers";
 
 type Ctx = { params: Promise<{ pid: string }> };
 
@@ -13,10 +14,16 @@ type Ctx = { params: Promise<{ pid: string }> };
  * `k` 缺省 = 不锁版本。按「能管理这个项目」判断；没有访客链接 → 404 share_not_found。
  */
 export async function GET(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
-  const repo = await requireManagedRepo(pid, session, { teamMin: "admin" });
+  const repo = await requireRepoAgentPromptAccess(pid, session);
   if (repo instanceof Response) return repo;
 
   const result = await buildRepoAgentPrompt(repo, requestOrigin(request), new URL(request.url).searchParams.get("k"));

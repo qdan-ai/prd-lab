@@ -1,4 +1,4 @@
-import { issueRepoShareToken, PREVIEW_HANDOFF_TTL_SECONDS, shareSessionId } from "@prd-lab/core";
+import { issueRepoToken, issueRepoShareToken, PREVIEW_HANDOFF_TTL_SECONDS, shareSessionId } from "@prd-lab/core";
 import { repoProjectIdOfVersion } from "@prd-lab/core/repo";
 import { previewOrigin } from "@/lib/repo/route-helpers";
 
@@ -25,13 +25,18 @@ export async function repoShareEntryUrl(input: {
   shareId: string;
   versionId: string;
   pv: number;
+  /** Authorized private account from getShareSession; absent for team shares. */
+  userId?: string;
   origin: string | null;
   v: string | null;
   k: string | null;
 }): Promise<string | null> {
   const repoId = await repoProjectIdOfVersion(input.versionId);
   if (!repoId) return null;
-  const token = issueRepoShareToken(
+  const token = input.userId ? issueRepoToken(
+    { repoId, sessionUserId: input.userId, ...(input.origin ? { origin: input.origin } : {}) },
+    PREVIEW_HANDOFF_TTL_SECONDS,
+  ) : issueRepoShareToken(
     {
       repoId,
       shareSessionId: shareSessionId(input.shareId, input.pv),

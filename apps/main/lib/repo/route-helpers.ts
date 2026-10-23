@@ -1,3 +1,4 @@
+import { canReadProject } from "@prd-lab/core";
 import {
   asRepoProject,
   findProjectForRepo,
@@ -8,7 +9,7 @@ import {
   type TeamRole,
 } from "@prd-lab/core/repo";
 import type { Session } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canEditProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 
 /** 仓库服务层的业务错误 → 标准错误响应；其他异常原样抛出。 */
@@ -19,7 +20,7 @@ export function repoErrorResponse(e: unknown): Response {
 
 /**
  * 取一个当前用户能管理（推送）的仓库项目。
- * 不存在 / 已归档 / 私有且不是 owner → not_found（防探测）；可读但不可管 → not_owner；普通项目 → not_repo。
+ * 不存在 / 已归档 / 私有且无读取权 → not_found（防探测）；可读但不可管 → not_owner；普通项目 → not_repo。
  *
  * 已开启团队协作的项目改按团队角色判：
  *   - 不是成员（含网站管理员、已移除成员）→ not_owner；是成员但角色低于 `teamMin`（默认 member）→ forbidden_role。
@@ -38,7 +39,7 @@ export async function requireManagedRepo(
     if (!roleAtLeast(access.role, opts.teamMin ?? "member")) return errorResponse("forbidden_role");
     return repo;
   }
-  if (!canManageProject(repo, session)) return errorResponse("not_owner");
+  if (!canEditProject(repo, session)) return errorResponse("not_owner");
   return repo;
 }
 
@@ -52,14 +53,40 @@ export async function requireReadableRepo(
 ): Promise<RepoProject | Response> {
   const row = await findProjectForRepo(pid);
   if (!row) return errorResponse("not_found");
-  let canRead = row.visibility === "team" || row.ownerId === session.userId;
-  if (!canRead) canRead = (await getTeamAccess(pid, session.userId))?.role != null;
-  if (!canRead) return errorResponse("not_found");
+  if (!(await canReadProject(pid, session.userId))) return errorResponse("not_found");
   try {
     return asRepoProject(row);
   } catch (e) {
     return repoErrorResponse(e);
   }
+}
+
+/** Share configuration is owner-only, not the team's admin capability. */
+export async function requireRepoShareOwner(
+  pid: string,
+  session: Pick<Session, "userId">,
+): Promise<RepoProject | Response> {
+  const repo = await requireReadableRepo(pid, session);
+  if (repo instanceof Response) return repo;
+  if (repo.ownerId !== session.userId) return errorResponse("not_owner");
+  return repo;
+}
+
+/** Read-only AI prompt retains its existing gate; it cannot modify share configuration. */
+export async function requireRepoAgentPromptAccess(
+  pid: string,
+  session: Pick<Session, "userId" | "isAdmin">,
+): Promise<RepoProject | Response> {
+  const repo = await requireReadableRepo(pid, session);
+  if (repo instanceof Response) return repo;
+  const access = await getTeamAccess(pid, session.userId);
+  if (access?.enabled) {
+    if (access.role === null) return errorResponse("not_owner");
+    if (!roleAtLeast(access.role, "admin")) return errorResponse("forbidden_role");
+  } else if (repo.ownerId !== session.userId && !(session.isAdmin && repo.visibility === "team")) {
+    return errorResponse("not_owner");
+  }
+  return repo;
 }
 
 /**

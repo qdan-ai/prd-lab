@@ -1,5 +1,7 @@
 "use client";
 
+import useSWR from "swr";
+import { accountsApi } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { LogOut, User } from "lucide-react";
 import {
@@ -19,7 +21,9 @@ interface UserMenuProps {
 /**
  * 用户头像下拉菜单（首字母 avatar）
  */
-export function UserMenu({ userName, onLogout }: UserMenuProps) {
+export function UserMenu({ userName: fallbackName, onLogout }: UserMenuProps) {
+  const { data: me, error } = useSWR("/api/v1/me", accountsApi.me, { shouldRetryOnError: false });
+  const userName = me?.name ?? fallbackName;
   const initial = userName.trim().charAt(0).toUpperCase() || "?";
   const router = useRouter();
   return (
@@ -38,7 +42,7 @@ export function UserMenu({ userName, onLogout }: UserMenuProps) {
           <div className="w-5 h-5 rounded-full bg-ink-900 text-ink-50 text-[10px] font-medium flex items-center justify-center select-none">
             {initial}
           </div>
-          <span className="text-[12px] text-ink-700 max-w-[120px] truncate">
+          <span className="hidden sm:inline text-[12px] text-ink-700 max-w-[120px] truncate">
             {userName}
           </span>
         </button>
@@ -49,6 +53,10 @@ export function UserMenu({ userName, onLogout }: UserMenuProps) {
           <div className="text-[13px] font-medium text-ink-900 truncate">{userName}</div>
         </div>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => router.push("/settings/profile")} className="gap-2">
+          <User size={12} strokeWidth={2.25} />
+          <span>个人资料</span>
+        </DropdownMenuItem>
         <DropdownMenuItem
           className="gap-2"
           data-testid="user-menu-settings"
@@ -58,6 +66,10 @@ export function UserMenu({ userName, onLogout }: UserMenuProps) {
           <span>接入 AI 工具</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        {me?.role === "admin" && !error && <DropdownMenuItem onSelect={() => router.push("/admin/users")} className="gap-2">
+          <User size={12} strokeWidth={2.25} />
+          <span>用户管理</span>
+        </DropdownMenuItem>}
         <DropdownMenuItem onSelect={onLogout} destructive className="gap-2">
           <LogOut size={12} strokeWidth={2.25} />
           <span>登出</span>

@@ -1,9 +1,9 @@
-import { and, count, desc, eq, isNull, max, or } from "drizzle-orm";
+import { projectReadableBy, snapshotInAudience } from "@prd-lab/core";
+import { and, count, inArray, desc, eq, isNull, max } from "drizzle-orm";
 import { db, projects, snapshots, versions } from "@prd-lab/core";
 import { repoProjectSummaries } from "@prd-lab/core/repo";
 import { auth, signOut } from "@/auth";
-import { isAdminName } from "@/lib/auth/admins";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canEditProject, canChangeProjectVisibility } from "@/lib/api/owner-check";
 import { CommandSwitcher } from "@/components/command-switcher";
 import { CreateDialog } from "@/components/create-dialog";
 import { GlobalHotkeys } from "@/components/global-hotkeys";
@@ -33,7 +33,6 @@ export default async function ProjectsListPage({
 
   const userId = session.user.id;
   const userName = session.user.name ?? "未命名";
-  const isAdmin = isAdminName(session.user.name);
 
   const params = await searchParams;
   const tab: WorkbenchTab = params.tab === "team" ? "team" : "mine";
@@ -49,12 +48,7 @@ export default async function ProjectsListPage({
       createdAt: projects.createdAt,
     })
     .from(projects)
-    .where(
-      and(
-        isNull(projects.archivedAt),
-        or(eq(projects.visibility, "team"), eq(projects.ownerId, userId)),
-      ),
-    )
+    .where(projectReadableBy(userId))
     .orderBy(desc(projects.createdAt));
 
   // 2) 每个项目活跃 snapshot 计数 + 最近一次时间（UI 文案"版本"指 snapshot）
@@ -71,7 +65,7 @@ export default async function ProjectsListPage({
           .from(snapshots)
           .innerJoin(versions, eq(versions.id, snapshots.versionId))
           .where(
-            and(isNull(snapshots.archivedAt), isNull(versions.archivedAt)),
+            and(inArray(versions.projectId, projectIds), isNull(snapshots.archivedAt), isNull(versions.archivedAt), snapshotInAudience("guest")),
           )
           .groupBy(versions.projectId);
   const snapshotCountByProject = new Map<string, number>();
@@ -93,7 +87,7 @@ export default async function ProjectsListPage({
   }
 
   // 5) Tab 口径（重叠）
-  const mineList = list.filter((p) => p.ownerId === userId);
+  const mineList = list.filter((p) => p.ownerId === userId || p.visibility === "private");
   const teamList = list.filter((p) => p.visibility === "team");
 
   const toCardData = (p: (typeof list)[number]): WorkbenchProject => ({
@@ -102,7 +96,8 @@ export default async function ProjectsListPage({
     visibility: p.visibility,
     createdAt: p.createdAt.toISOString(),
     ownedByMe: p.ownerId === userId,
-    canManage: canManageProject(p, { userId, isAdmin }),
+    canManage: canEditProject(p, { userId }),
+    canChangeVisibility: canChangeProjectVisibility(p, { userId, isAdmin: session.user.role === "admin" }, p.visibility === "team" ? "private" : "team"),
     kind: p.kind,
     snapshotCount:
       p.kind === "repo"

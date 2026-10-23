@@ -1,5 +1,10 @@
+import { and, eq, isNull } from "drizzle-orm";
+import { privatePreviewDenial, protectedPreviewResponse } from "../../../../lib/project-access";
 import { NextRequest } from "next/server";
 import {
+  db,
+  versions,
+  notTeamVersion,
   getObjectStream,
   reissueRepoToken,
   verifyRepoToken,
@@ -45,7 +50,11 @@ type Ctx = { params: Promise<{ pid: string; rest?: string[] }> };
  * 每个请求再校验 key 属于本仓库：已撤回 → 410，不存在 → 404。两种 404 用响应头
  * `X-Repo-Error: version_not_found | file_not_found` 区分（查看器把后者当「没有这个文件」）。
  */
-export async function GET(request: NextRequest, { params }: Ctx) {
+export async function GET(request: NextRequest, ctx: Ctx) {
+  return protectedPreviewResponse(() => handle(request, ctx));
+}
+
+async function handle(request: NextRequest, { params }: Ctx) {
   const { pid, rest = [] } = await params;
   const cookieName = `prd-repo-${pid}`;
   const tokenInQuery = request.nextUrl.searchParams.get("token");
@@ -78,6 +87,13 @@ export async function GET(request: NextRequest, { params }: Ctx) {
     if (e instanceof RepoError) return text(404, "repo not found");
     throw e;
   }
+
+  const denied = await privatePreviewDenial(repo, verified.payload, isDocumentNav);
+  if (denied) return denied;
+
+  const [version] = await db.select({ id: versions.id }).from(versions)
+    .where(and(eq(versions.id, repo.versionId), isNull(versions.archivedAt), notTeamVersion(versions.id))).limit(1);
+  if (!version) return text(404, "repo not found");
 
   const response = await dispatch(repo, rest, request, verified.payload.origin ?? null);
   if (tokenInQuery) {
@@ -123,7 +139,7 @@ async function dispatch(
       status: 200,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-store",
         "X-Frame-Options": "SAMEORIGIN",
         "Content-Security-Policy": buildRendererCsp({ httpsImages: true }),
       },
@@ -141,7 +157,7 @@ async function dispatch(
   if (rest.length === 2 && rest[0] === "files") {
     const found = await lookupRepoKey(repo.id, rest[1]!);
     if (found.status !== "ok") return keyError(found.status);
-    return json(200, { key: rest[1], files: await listSnapshotFiles(found.snapshotId) }, "private, no-cache");
+    return json(200, { key: rest[1], files: await listSnapshotFiles(found.snapshotId) }, "private, no-store");
   }
 
   if (rest.length === 1 && rest[0] === "agent-prompt") {
@@ -187,10 +203,8 @@ async function streamObject(s3Key: string, contentType: string): Promise<Respons
       });
   const headers: Record<string, string> = {
     "Content-Type": contentType,
-    // 版本内容按 key 不可变；HTML 不缓存，与 /p/ 一致
-    "Cache-Control": contentType.startsWith("text/html")
-      ? "private, no-store"
-      : "private, max-age=31536000, immutable",
+    // Visibility and membership can change even though version content is immutable.
+    "Cache-Control": "private, no-store",
   };
   if (typeof obj.contentLength === "number") headers["Content-Length"] = String(obj.contentLength);
   return new Response(webStream, { status: 200, headers });

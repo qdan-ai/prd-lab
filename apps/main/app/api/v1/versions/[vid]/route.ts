@@ -1,7 +1,9 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
+import { projectReadableBy } from "@prd-lab/core";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, notTeamVersion, projects, versions } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canEditProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 import { repoManagedResponse } from "@/lib/repo/route-helpers";
@@ -9,7 +11,13 @@ import { repoManagedResponse } from "@/lib/repo/route-helpers";
 type Ctx = { params: Promise<{ vid: string }> };
 
 export async function GET(_: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { vid } = await params;
 
@@ -25,15 +33,13 @@ export async function GET(_: Request, { params }: Ctx) {
       and(
         eq(versions.id, vid),
         isNull(versions.archivedAt),
-        isNull(projects.archivedAt),
+        projectReadableBy(session.userId),
         notTeamVersion(versions.id),
       ),
     )
     .limit(1);
   const row = rows[0];
   if (!row) return errorResponse("not_found");
-  const canRead = row.visibility === "team" || row.ownerId === session.userId;
-  if (!canRead) return errorResponse("not_found");
 
   return Response.json(row.v);
 }
@@ -43,7 +49,13 @@ export async function GET(_: Request, { params }: Ctx) {
  * S8：仅支持 `{name}` 重命名；删除 `{snapshot_seq}` 设当前路径（current 概念废弃）。
  */
 export async function PATCH(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { vid } = await params;
 
@@ -68,7 +80,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     return errorResponse("validation_error", "invalid name");
   }
 
-  // 管理权校验（owner 或 team 项目管理员）
+  // 管理权校验（仅创建者）
   const ownerRows = await db
     .select({ ownerId: projects.ownerId, visibility: projects.visibility, projectKind: projects.kind })
     .from(versions)
@@ -83,7 +95,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     )
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
+  if (!canEditProject(ownerRows[0], session)) return errorResponse("not_owner");
   // 仓库项目只有一个内置方案（系统方案），由仓库式推送维护
   if (ownerRows[0].projectKind === "repo") return repoManagedResponse("rename_version");
 
@@ -108,7 +120,13 @@ export async function PATCH(request: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { vid } = await params;
 
@@ -126,7 +144,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
     )
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
+  if (!canEditProject(ownerRows[0], session)) return errorResponse("not_owner");
   if (ownerRows[0].projectKind === "repo") return repoManagedResponse("delete_version");
 
   await db

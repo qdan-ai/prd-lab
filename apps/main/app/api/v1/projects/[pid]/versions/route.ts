@@ -1,7 +1,9 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
+import { projectReadableBy } from "@prd-lab/core";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db, notTeamVersion, projects, versions } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canEditProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION, PG_LOCK_NOT_AVAILABLE } from "@/lib/api/pg-errors";
 import { insertReturning } from "@/lib/db/insert-returning";
@@ -9,7 +11,13 @@ import { insertReturning } from "@/lib/db/insert-returning";
 type Ctx = { params: Promise<{ pid: string }> };
 
 export async function GET(_: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
 
@@ -17,11 +25,9 @@ export async function GET(_: Request, { params }: Ctx) {
   const projRows = await db
     .select({ visibility: projects.visibility, ownerId: projects.ownerId })
     .from(projects)
-    .where(and(eq(projects.id, pid), isNull(projects.archivedAt)))
+    .where(and(eq(projects.id, pid), projectReadableBy(session.userId)))
     .limit(1);
   if (!projRows[0]) return errorResponse("not_found");
-  const canRead = projRows[0].visibility === "team" || projRows[0].ownerId === session.userId;
-  if (!canRead) return errorResponse("not_found");
 
   const list = await db
     .select()
@@ -32,7 +38,13 @@ export async function GET(_: Request, { params }: Ctx) {
 }
 
 export async function POST(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
 
@@ -45,14 +57,14 @@ export async function POST(request: Request, { params }: Ctx) {
   const parsed = parseCreateBody(body);
   if (!parsed.ok) return errorResponse("validation_error", parsed.message);
 
-  // owner 或管理员（team 项目）可建 version
+  // 仅创建者可建 version
   const projRows = await db
     .select({ ownerId: projects.ownerId, visibility: projects.visibility, kind: projects.kind })
     .from(projects)
     .where(and(eq(projects.id, pid), isNull(projects.archivedAt)))
     .limit(1);
   if (!projRows[0]) return errorResponse("not_found");
-  if (!canManageProject(projRows[0], session)) return errorResponse("not_owner");
+  if (!canEditProject(projRows[0], session)) return errorResponse("not_owner");
   // 仓库项目只有一个系统方案，由仓库式推送维护
   if (projRows[0].kind === "repo") {
     return errorResponse("repo_managed", "该项目由 G-canvas 仓库式推送维护，不能新建方案");

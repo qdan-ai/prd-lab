@@ -1,10 +1,13 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { sharedSnapshotAvailable } from "@/lib/share/snapshot-access";
+import { shareResponse, shareAccountLoginUrl } from "@/lib/share/response";
+import { and, eq } from "drizzle-orm";
 import {
   db,
   issueRepoShareToken,
+  issueRepoToken,
   issueShareToken,
+  issueToken,
   shareSessionId,
-  snapshotInAudience,
   snapshots,
   PREVIEW_HANDOFF_TTL_SECONDS,
 } from "@prd-lab/core";
@@ -21,18 +24,25 @@ type Ctx = { params: Promise<{ shareId: string }> };
  * S20 访客侧自动重签落点：预览站会话 token 过期后，document 导航 302 到这里，
  * 校验完 share session + snapshot 归属重新签一枚 300s 交接 token，再 302 弹回预览站。
  *
- * 任何不通过（session invalid/revoked/not_found、sid 不属于本方案或已归档）一律
+ * private 账户门禁先行：匿名 → 主站登录，有身份但无权 → 404。
+ * 其余不通过（session invalid/revoked/not_found、sid 不属于本方案或已归档）一律
  * 302 回 `/share/{shareId}`：分享页 SSR 自会呈现密码页 / 410 等状态，
  * 且响应不区分失败原因（防枚举）。
  *
  * 仓库查看器（预览站 /r/<pid>）走同一端点，参数换成 `rid=<pid>`、`next=/r/<pid>/…`：
  * 校验链接绑定的正是该仓库的系统方案后签仓库级令牌。
  */
-export async function GET(request: Request, { params }: Ctx) {
+export async function GET(request: Request, ctx: Ctx) {
+  return shareResponse(() => handle(request, ctx));
+}
+
+async function handle(request: Request, { params }: Ctx) {
   const { shareId } = await params;
   const sharePage = `/share/${shareId}`;
 
   const session = await getShareSession(shareId);
+  if (session.kind === "unauthorized") return redirect(shareAccountLoginUrl(shareId));
+  if (session.kind === "forbidden") return new Response("not found", { status: 404 });
   if (session.kind !== "ok") return redirect(sharePage);
 
   const url = new URL(request.url);
@@ -40,7 +50,10 @@ export async function GET(request: Request, { params }: Ctx) {
   if (rid) {
     if ((await repoProjectIdOfVersion(session.versionId)) !== rid) return redirect(sharePage);
     const next = sanitizeRepoNextPath(url.searchParams.get("next"), rid);
-    const token = issueRepoShareToken(
+    const token = session.userId ? issueRepoToken(
+      { repoId: rid, sessionUserId: session.userId, origin: requestOrigin(request) },
+      PREVIEW_HANDOFF_TTL_SECONDS,
+    ) : issueRepoShareToken(
       {
         repoId: rid,
         shareSessionId: shareSessionId(shareId, session.pv),
@@ -63,15 +76,17 @@ export async function GET(request: Request, { params }: Ctx) {
       and(
         eq(snapshots.id, sid),
         eq(snapshots.versionId, session.versionId),
-        isNull(snapshots.archivedAt),
-        snapshotInAudience("guest"),
+        sharedSnapshotAvailable(),
       ),
     )
     .limit(1);
   if (!rows[0]) return redirect(sharePage);
 
   const next = sanitizeNextPath(url.searchParams.get("next"), sid);
-  const token = issueShareToken(
+  const token = session.userId ? issueToken(
+    { snapshotId: sid, sessionUserId: session.userId, origin: requestOrigin(request) },
+    PREVIEW_HANDOFF_TTL_SECONDS,
+  ) : issueShareToken(
     {
       snapshotId: sid,
       shareSessionId: shareSessionId(shareId, session.pv),

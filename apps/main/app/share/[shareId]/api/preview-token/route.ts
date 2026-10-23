@@ -1,9 +1,11 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { sharedSnapshotAvailable } from "@/lib/share/snapshot-access";
+import { shareResponse } from "@/lib/share/response";
+import { and, eq } from "drizzle-orm";
 import {
   db,
   issueShareToken,
+  issueToken,
   shareSessionId,
-  snapshotInAudience,
   snapshots,
   PREVIEW_HANDOFF_TTL_SECONDS,
 } from "@prd-lab/core";
@@ -22,9 +24,15 @@ type Ctx = { params: Promise<{ shareId: string }> };
  * S20：签发 300s 交接 token 且 payload 带 origin，供预览站会话过期后 302 回
  * `/share/{shareId}/preview-refresh` 自动重签。
  */
-export async function POST(request: Request, { params }: Ctx) {
+export async function POST(request: Request, ctx: Ctx) {
+  return shareResponse(() => handle(request, ctx));
+}
+
+async function handle(request: Request, { params }: Ctx) {
   const { shareId } = await params;
   const session = await getShareSession(shareId);
+  if (session.kind === "unauthorized") return errorResponse("unauthorized");
+  if (session.kind === "forbidden") return errorResponse("not_found");
   if (session.kind === "revoked") return errorResponse("share_revoked");
   if (session.kind === "not_found") return errorResponse("share_not_found");
   if (session.kind === "invalid") return errorResponse("unauthorized");
@@ -51,14 +59,16 @@ export async function POST(request: Request, { params }: Ctx) {
       and(
         eq(snapshots.id, sid),
         eq(snapshots.versionId, session.versionId),
-        isNull(snapshots.archivedAt),
-        snapshotInAudience("guest"),
+        sharedSnapshotAvailable(),
       ),
     )
     .limit(1);
   if (!rows[0]) return errorResponse("not_found");
 
-  const token = issueShareToken(
+  const token = session.userId ? issueToken(
+    { snapshotId: sid, sessionUserId: session.userId, origin: requestOrigin(request) },
+    PREVIEW_HANDOFF_TTL_SECONDS,
+  ) : issueShareToken(
     {
       snapshotId: sid,
       shareSessionId: shareSessionId(shareId, session.pv),

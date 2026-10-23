@@ -1,5 +1,7 @@
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
-import { db, snapshotFiles, snapshotInAudience, snapshots } from "@prd-lab/core";
+import { sharedSnapshotAvailable } from "@/lib/share/snapshot-access";
+import { shareResponse } from "@/lib/share/response";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { db, snapshotFiles, snapshots } from "@prd-lab/core";
 import { errorResponse } from "@/lib/api/errors";
 import { getShareSession } from "@/lib/share/share-session";
 
@@ -12,9 +14,15 @@ type Ctx = { params: Promise<{ shareId: string }> };
  * 归属校验：sid 必须属于 share 绑定的 version 且未归档，否则 not_found。
  * 排序：entry HTML 永远第一位，其余按 relPath 字母序。
  */
-export async function GET(request: Request, { params }: Ctx) {
+export async function GET(request: Request, ctx: Ctx) {
+  return shareResponse(() => handle(request, ctx));
+}
+
+async function handle(request: Request, { params }: Ctx) {
   const { shareId } = await params;
   const session = await getShareSession(shareId);
+  if (session.kind === "unauthorized") return errorResponse("unauthorized");
+  if (session.kind === "forbidden") return errorResponse("not_found");
   if (session.kind === "revoked") return errorResponse("share_revoked");
   if (session.kind === "not_found") return errorResponse("share_not_found");
   if (session.kind === "invalid") return errorResponse("unauthorized");
@@ -30,8 +38,7 @@ export async function GET(request: Request, { params }: Ctx) {
     .where(
       and(
         eq(snapshots.versionId, session.versionId),
-        isNull(snapshots.archivedAt),
-        snapshotInAudience("guest"),
+        sharedSnapshotAvailable(),
         ...(sid ? [eq(snapshots.id, sid)] : []),
       ),
     )

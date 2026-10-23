@@ -1,5 +1,6 @@
+import { privatePreviewDenial, protectedPreviewResponse } from "../../../../lib/project-access";
 import { NextRequest } from "next/server";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import {
   db,
   getObjectStream,
@@ -10,6 +11,7 @@ import {
   verifyToken,
   versions,
   projects,
+  repoVersions,
   PREVIEW_COOKIE_MAX_AGE_SECONDS,
   PREVIEW_SESSION_TTL_SECONDS,
   type TokenPayload,
@@ -42,7 +44,11 @@ type Ctx = { params: Promise<{ snapshotId: string; rel?: string[] }> };
  *
  * archived snapshot → HTTP 410 Gone
  */
-export async function GET(request: NextRequest, { params }: Ctx) {
+export async function GET(request: NextRequest, ctx: Ctx) {
+  return protectedPreviewResponse(() => handle(request, ctx));
+}
+
+async function handle(request: NextRequest, { params }: Ctx) {
   const { snapshotId, rel } = await params;
   const cookieName = `prd-preview-${snapshotId}`;
   const tokenInQuery = request.nextUrl.searchParams.get("token");
@@ -84,6 +90,11 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   const snapRows = await db
     .select({
       id: snapshots.id,
+      withdrawn: sql<number>`EXISTS (SELECT 1 FROM ${repoVersions}
+        WHERE ${repoVersions.snapshotId} = ${snapshots.id}
+        AND ${repoVersions.withdrawnAt} IS NOT NULL)`.mapWith(Boolean),
+      projectId: projects.id,
+      visibility: projects.visibility,
       entryHtmlPath: snapshots.entryHtmlPath,
       archivedAt: snapshots.archivedAt,
       rendererName: snapshots.rendererName,
@@ -103,7 +114,10 @@ export async function GET(request: NextRequest, { params }: Ctx) {
     .limit(1);
   const snap = snapRows[0];
   if (!snap) return text(404, "snapshot not found");
+  const denied = await privatePreviewDenial({ id: snap.projectId, visibility: snap.visibility }, verifyResult.payload, isDocumentNav);
+  if (denied) return denied;
   if (snap.archivedAt !== null) return goneHtml();
+  if (snap.withdrawn) return text(410, "version withdrawn");
 
   // ── renderer SPA 分支（DESIGN §6.1 / 决策 D6）──
   // 命中条件：rendererName != null && tokenInQuery && (rel 为空 || rel===entryHtmlPath) && 非 raw=1
@@ -135,7 +149,7 @@ export async function GET(request: NextRequest, { params }: Ctx) {
       status: 200,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-store",
         "X-Frame-Options": "SAMEORIGIN",
         "Content-Security-Policy": buildRendererCsp(),
         "Set-Cookie": buildSessionCookie(),
@@ -163,7 +177,7 @@ export async function GET(request: NextRequest, { params }: Ctx) {
         status: 200,
         headers: {
           "Content-Type": "text/html; charset=utf-8",
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store",
           "Set-Cookie": buildSessionCookie(),
         },
       });
@@ -215,10 +229,9 @@ async function serveChild(snapshotId: string, relPath: string): Promise<Response
         },
       });
 
-  const isHtml = fileRow.contentType.startsWith("text/html");
   const headers: Record<string, string> = {
     "Content-Type": fileRow.contentType,
-    "Cache-Control": isHtml ? "private, no-store" : "public, max-age=31536000, immutable",
+    "Cache-Control": "private, no-store",
   };
   // 让 shell 的 fetch 拿到 content-length 做进度分母
   if (typeof obj.contentLength === "number") {
@@ -285,7 +298,7 @@ function expiredHtml(): Response {
 </head><body><h1>预览链接已失效</h1><p>请回到主站或分享页，重新打开该文件。</p></body></html>`;
   return new Response(html, {
     status: 401,
-    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store" },
   });
 }
 

@@ -1,3 +1,6 @@
+import { errorResponse } from "@/lib/api/errors";
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
+import { projectReadableBy } from "@prd-lab/core";
 import { and, eq, isNull } from "drizzle-orm";
 import {
   db,
@@ -24,7 +27,13 @@ import { requestOrigin } from "@/lib/api/request-origin";
 export async function GET(request: Request, { params }: { params: Promise<{ sid: string }> }) {
   const { sid } = await params;
   const url = new URL(request.url);
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) {
     // callbackUrl 用浏览器视角 origin 重组（standalone 下 url.href 是 0.0.0.0:3000 内部地址）
     const publicHref = `${requestOrigin(request)}${url.pathname}${url.search}`;
@@ -45,15 +54,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ sid:
       and(
         eq(snapshots.id, sid),
         isNull(versions.archivedAt),
-        isNull(projects.archivedAt),
+        projectReadableBy(session.userId),
         snapshotInAudience("guest"),
       ),
     )
     .limit(1);
   const row = rows[0];
   if (!row) return text(404, "该版本不存在或无权访问");
-  const canRead = row.visibility === "team" || row.ownerId === session.userId;
-  if (!canRead) return text(404, "该版本不存在或无权访问");
   if (row.archivedAt !== null) return text(409, "该版本已被删除");
 
   const next = sanitizeNextPath(url.searchParams.get("next"), sid);

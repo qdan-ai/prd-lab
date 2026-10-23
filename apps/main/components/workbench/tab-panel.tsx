@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ProjectVisibilityDialog, type VisibilityTarget } from "@/components/project-visibility-dialog";
 import { DeleteProjectModal } from "@/components/delete-project-modal";
 import { useCreateDialogStore } from "@/components/create-dialog/use-create-dialog-store";
 import { RepoChip } from "@/components/repo-project/repo-chip";
@@ -25,8 +26,9 @@ export interface WorkbenchProject {
   visibility: "private" | "team";
   createdAt: string;
   ownedByMe: boolean;
-  /** 可管理（owner 或 team 项目管理员）→ 控制卡片 ⋯ 删除菜单显隐。 */
+  /** 仅创建者可删除。 */
   canManage: boolean;
+  canChangeVisibility: boolean;
   /** repo = G-canvas 仓库项目：版本数为访客可见的版本数，时间为最近推送 */
   kind: "upload" | "repo";
   snapshotCount: number;
@@ -39,6 +41,7 @@ interface Props {
 }
 
 export function WorkbenchTabPanel({ tab, projects }: Props) {
+  const [visibilityTarget, setVisibilityTarget] = useState<VisibilityTarget | null>(null);
   const query = useWorkbenchSearchStore((s) => s.query);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; isRepo: boolean } | null>(
     null,
@@ -61,9 +64,10 @@ export function WorkbenchTabPanel({ tab, projects }: Props) {
         data-testid="workbench-grid"
       >
         {filtered.map((p) => (
-          <ProjectCard key={p.id} project={p} onDelete={() => setDeleteTarget({ id: p.id, name: p.name, isRepo: p.kind === "repo" })} />
+          <ProjectCard key={p.id} project={p} onVisibility={() => setVisibilityTarget(p)} onDelete={() => setDeleteTarget({ id: p.id, name: p.name, isRepo: p.kind === "repo" })} />
         ))}
       </ul>
+      <ProjectVisibilityDialog target={visibilityTarget} onClose={() => setVisibilityTarget(null)} />
       <DeleteProjectModal
         open={deleteTarget !== null}
         target={deleteTarget}
@@ -74,7 +78,7 @@ export function WorkbenchTabPanel({ tab, projects }: Props) {
   );
 }
 
-function ProjectCard({ project, onDelete }: { project: WorkbenchProject; onDelete: () => void }) {
+function ProjectCard({ project, onDelete, onVisibility }: { project: WorkbenchProject; onDelete: () => void; onVisibility: () => void }) {
   return (
     <li>
       <Link
@@ -88,7 +92,7 @@ function ProjectCard({ project, onDelete }: { project: WorkbenchProject; onDelet
           <div className="flex items-center gap-1 shrink-0">
             {project.kind === "repo" ? <RepoChip /> : null}
             <VisibilityChip visibility={project.visibility} />
-            {project.canManage ? (
+            {project.canManage || project.canChangeVisibility ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -111,7 +115,10 @@ function ProjectCard({ project, onDelete }: { project: WorkbenchProject; onDelet
                     e.stopPropagation();
                   }}
                 >
-                  <DropdownMenuItem
+                  {project.canChangeVisibility ? <DropdownMenuItem onSelect={onVisibility}>
+                    {project.visibility === "team" ? "改为私有" : "改为团队可见"}
+                  </DropdownMenuItem> : null}
+                  {project.canManage ? <DropdownMenuItem
                     destructive
                     onSelect={onDelete}
                     data-testid={`card-delete-${project.id}`}
@@ -119,7 +126,7 @@ function ProjectCard({ project, onDelete }: { project: WorkbenchProject; onDelet
                   >
                     <Trash2 size={13} />
                     删除项目
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
@@ -175,7 +182,7 @@ export function VisibilityChip({ visibility }: { visibility: "private" | "team" 
           ? "text-ink-500 bg-white border-ink-200"
           : "text-ink-700 bg-ink-100 border-ink-200"
       }`}
-      title={isPrivate ? "私有项目（仅自己可见）" : "团队项目（所有登入用户可见）"}
+      title={isPrivate ? "私有项目（仅创建者及有效协作成员可见）" : "团队项目（所有登入用户可见）"}
     >
       {isPrivate ? (
         <Lock size={9} strokeWidth={2.25} />

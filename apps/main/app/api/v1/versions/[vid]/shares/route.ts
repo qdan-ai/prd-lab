@@ -1,7 +1,8 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, generateShareId, hashPassword, notTeamVersion, shareLinks, projects, versions } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canManageProjectShares } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 
@@ -14,7 +15,13 @@ type Ctx = { params: Promise<{ vid: string }> };
  * 不要求方案有活跃 snapshot（空方案分享无害，访客见空态）。
  */
 export async function GET(_: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { vid } = await params;
 
@@ -30,7 +37,7 @@ export async function GET(_: Request, { params }: Ctx) {
     )
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
+  if (!canManageProjectShares(ownerRows[0], session)) return errorResponse("not_owner");
 
   const rows = await db
     .select({
@@ -61,7 +68,13 @@ export async function GET(_: Request, { params }: Ctx) {
  * S19：share 绑方案（version）级。已有 active link → 409 share_already_exists。
  */
 export async function POST(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { vid } = await params;
 
@@ -86,7 +99,7 @@ export async function POST(request: Request, { params }: Ctx) {
     )
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
+  if (!canManageProjectShares(ownerRows[0], session)) return errorResponse("not_owner");
 
   const id = generateShareId();
   const passwordHash = parsed.password ? await hashPassword(parsed.password) : null;

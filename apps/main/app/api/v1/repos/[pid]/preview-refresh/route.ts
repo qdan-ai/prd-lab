@@ -1,3 +1,5 @@
+import { errorResponse } from "@/lib/api/errors";
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { issueRepoToken, PREVIEW_HANDOFF_TTL_SECONDS } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
 import { requestOrigin } from "@/lib/api/request-origin";
@@ -15,7 +17,13 @@ type Ctx = { params: Promise<{ pid: string }> };
 export async function GET(request: Request, { params }: Ctx) {
   const { pid } = await params;
   const url = new URL(request.url);
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) {
     const publicHref = `${requestOrigin(request)}${url.pathname}${url.search}`;
     return redirect(`${requestOrigin(request)}/login?callbackUrl=${encodeURIComponent(publicHref)}`);

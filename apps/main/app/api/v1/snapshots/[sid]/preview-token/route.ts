@@ -1,3 +1,5 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
+import { projectReadableBy } from "@prd-lab/core";
 import { and, eq, isNull } from "drizzle-orm";
 import {
   db,
@@ -18,7 +20,13 @@ import { requestOrigin } from "@/lib/api/request-origin";
  * S20：payload 带 origin，供预览站会话过期后 302 回 preview-refresh 自动重签。
  */
 export async function POST(request: Request, { params }: { params: Promise<{ sid: string }> }) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { sid } = await params;
 
@@ -36,15 +44,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ sid
       and(
         eq(snapshots.id, sid),
         isNull(versions.archivedAt),
-        isNull(projects.archivedAt),
+        projectReadableBy(session.userId),
         snapshotInAudience("guest"),
       ),
     )
     .limit(1);
   const row = rows[0];
   if (!row) return errorResponse("not_found");
-  const canRead = row.visibility === "team" || row.ownerId === session.userId;
-  if (!canRead) return errorResponse("not_found");
   if (row.archivedAt !== null) return errorResponse("snapshot_archived");
 
   const token = issueToken(

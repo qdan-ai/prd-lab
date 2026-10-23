@@ -1,8 +1,9 @@
+import { shareResponse } from "@/lib/share/response";
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db, issueShareCookie, shareLinks, verifyPassword } from "@prd-lab/core";
 import { errorResponse } from "@/lib/api/errors";
-import { shareCookieName } from "@/lib/share/share-session";
+import { getShareSession, shareCookieName } from "@/lib/share/share-session";
 
 type Ctx = { params: Promise<{ shareId: string }> };
 
@@ -17,8 +18,18 @@ const COOKIE_TTL_SECONDS = 7 * 24 * 3600;
  *      访客直接 bcrypt 校密码，失败 401。
  *      姓名/邮箱字段在评论功能移除后已无任何下游用途，一并精简。
  */
-export async function POST(request: Request, { params }: Ctx) {
+export async function POST(request: Request, ctx: Ctx) {
+  return shareResponse(() => handle(request, ctx));
+}
+
+async function handle(request: Request, { params }: Ctx) {
   const { shareId } = await params;
+
+  const session = await getShareSession(shareId);
+  if (session.kind === "unauthorized") return errorResponse("unauthorized");
+  if (session.kind === "forbidden") return errorResponse("not_found");
+  if (session.kind === "not_found") return errorResponse("share_not_found");
+  if (session.kind === "revoked") return errorResponse("share_revoked");
 
   let body: unknown;
   try {

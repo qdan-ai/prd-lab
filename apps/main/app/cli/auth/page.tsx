@@ -1,10 +1,10 @@
 import os from "node:os";
 import { redirect } from "next/navigation";
 import { Cpu, Lock, ShieldCheck } from "lucide-react";
-import { generateApiToken } from "@prd-lab/core";
-import { apiTokens, db } from "@prd-lab/core";
-import { auth } from "@/auth";
-import { Button } from "@/components/ui/button";
+import { getSession } from "@/lib/api/auth-guard";
+import { createAccountToken } from "@/lib/auth/account-tokens";
+import { accountErrorResponse } from "@/lib/auth/account-errors";
+import { ApprovalForm } from "./approval-form";
 
 /**
  * /cli/auth —— CLI OAuth 授权页
@@ -54,31 +54,35 @@ export default async function CliAuthPage({ searchParams }: { searchParams: Sear
     );
   }
 
-  const session = await auth();
-  if (!session?.user?.id || !session.user.name) {
-    const back = `/cli/auth?cb=${encodeURIComponent(cb.toString())}&state=${encodeURIComponent(state)}`;
-    redirect(`/login?callbackUrl=${encodeURIComponent(back)}`);
-  }
+  const back = `/cli/auth?cb=${encodeURIComponent(cb.toString())}&state=${encodeURIComponent(state)}${params.client ? `&client=${encodeURIComponent(params.client)}` : ""}`;
+  const login = `/login?reauth=1&callbackUrl=${encodeURIComponent(back)}`;
+  const session = await getSession();
+  if (!session) redirect(login);
 
   // CLI 端传 ?client=<os.hostname()>；缺省回退到 server hostname（旧 CLI 兼容）
   const clientHostname = (params.client ?? "").trim() || os.hostname() || "unknown-host";
   const tokenName = `CLI on ${clientHostname}`;
-  const userId = session.user.id;
-  const userName = session.user.name;
+  const userId = session.userId;
+  const userName = session.userName;
 
   async function approve() {
     "use server";
-    if (!cb || !state) return;
-    const generated = generateApiToken();
-    await db.insert(apiTokens).values({
-      userId,
-      name: tokenName,
-      tokenHash: generated.hash,
-      tokenPrefix: generated.prefix,
-    });
-    const target = new URL(cb.toString());
-    target.searchParams.set("token", generated.plain);
-    target.searchParams.set("state", state);
+    let plainToken: string;
+    try {
+      // The displayed identity is only a consent constraint, never an authentication credential.
+      const current = await getSession();
+      if (!current) return { message: "登录已失效，请重新登录后授权。", login };
+      if (current.userId !== userId) return { message: "登录账号已变更，请重新打开授权页并确认身份。", reopen: back };
+      plainToken = (await createAccountToken(current, tokenName)).plainToken;
+    } catch (error) {
+      const response = accountErrorResponse(error);
+      if (response.status === 401) return { message: "登录已失效，请重新登录后授权。", login };
+      if (response.status === 503) return { message: "认证服务暂时不可用，请稍后重试。" };
+      throw error;
+    }
+    const target = new URL(cb!.toString());
+    target.searchParams.set("token", plainToken);
+    target.searchParams.set("state", state!);
     redirect(target.toString());
   }
 
@@ -113,11 +117,7 @@ export default async function CliAuthPage({ searchParams }: { searchParams: Sear
             时点击授权。
           </div>
 
-          <form action={approve}>
-            <Button type="submit" size="lg" className="w-full">
-              授权并返回 CLI
-            </Button>
-          </form>
+          <ApprovalForm action={approve} />
 
           <div className="flex items-center gap-3 text-[11px] text-ink-500 mt-4 pt-4 border-t border-ink-150">
             <span className="inline-flex items-center gap-1">

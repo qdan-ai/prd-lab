@@ -57,6 +57,13 @@
       "when": 1792571022040,
       "tag": "0007_mr_device",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1792738373703,
+      "tag": "0008_account_roles",
+      "breakpoints": true
     }
   ]
 }

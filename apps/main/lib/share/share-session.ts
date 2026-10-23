@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { and, eq, isNull } from "drizzle-orm";
-import { db, notTeamVersion, shareLinks, verifyShareCookie, versions, projects } from "@prd-lab/core";
+import { db, notTeamVersion, shareLinks, verifyShareCookie, versions, projects, canReadProject, users } from "@prd-lab/core";
 
 /**
  * S5 访客 session 校验（S19 改方案级：share 绑 version，访客可切换方案内所有活跃 snapshot）。
@@ -10,6 +10,7 @@ import { db, notTeamVersion, shareLinks, verifyShareCookie, versions, projects }
  * 校验流程（每请求，顺序不可乱）：
  *   1. 查 DB share 行（含 passwordHash）
  *   2. 不存在 / version/project archived → not_found
+ *   2a. private → getSession 账户身份 + 存活用户 + canReadProject；分享 cookie 不能代替账户
  *   3. revoked_at NOT NULL → revoked（先于无密码放行；撤销的无密码链接也要 410）
  *   4. passwordHash 为 null（无密码）→ ok（完全不读 cookie）
  *   5. 有密码：cookie 缺失 / hmac 不通 / 过期 → invalid
@@ -22,6 +23,8 @@ export type ShareSessionOk = {
   shareId: string;
   versionId: string;
   pv: number;
+  /** Present only after private-project account authorization; never inferred from the share cookie. */
+  userId?: string;
 };
 
 export type ShareSessionInvalid = { kind: "invalid"; reason?: string };
@@ -31,7 +34,9 @@ export type ShareSessionResult =
   | ShareSessionOk
   | ShareSessionInvalid
   | ShareSessionNotFound
-  | ShareSessionRevoked;
+  | ShareSessionRevoked
+  | { kind: "unauthorized" }
+  | { kind: "forbidden" };
 
 export function shareCookieName(shareId: string): string {
   return `prd_share_${shareId}`;
@@ -42,6 +47,8 @@ export async function getShareSession(shareId: string): Promise<ShareSessionResu
   const rows = await db
     .select({
       id: shareLinks.id,
+      projectId: projects.id,
+      visibility: projects.visibility,
       versionId: shareLinks.versionId,
       passwordHash: shareLinks.passwordHash,
       passwordVersion: shareLinks.passwordVersion,
@@ -64,12 +71,24 @@ export async function getShareSession(shareId: string): Promise<ShareSessionResu
   // 2. 不存在 / version/project archived → not_found
   if (!row) return { kind: "not_found" };
 
+  // Private is an account boundary, including passwordless and password-login requests.
+  let userId: string | undefined;
+  if (row.visibility === "private") {
+    const { getSession } = await import("@/lib/api/auth-guard");
+    const account = await getSession();
+    if (!account) return { kind: "unauthorized" };
+    const [liveUser] = await db.select({ id: users.id }).from(users)
+      .where(and(eq(users.id, account.userId), isNull(users.archivedAt))).limit(1);
+    if (!liveUser || !await canReadProject(row.projectId, account.userId)) return { kind: "forbidden" };
+    userId = account.userId;
+  }
+
   // 3. 已撤销 → revoked（必须先于无密码放行，撤销的无密码链接也要拦）
   if (row.revokedAt !== null) return { kind: "revoked" };
 
   // 4. 无密码 → 直接放行，完全不读 cookie
   if (row.passwordHash === null) {
-    return { kind: "ok", shareId, versionId: row.versionId, pv: row.passwordVersion };
+    return { kind: "ok", shareId, versionId: row.versionId, pv: row.passwordVersion, ...(userId ? { userId } : {}) };
   }
 
   // 5. 有密码：读 cookie，无 / 签名失败 / 过期 → invalid
@@ -98,6 +117,7 @@ export async function getShareSession(shareId: string): Promise<ShareSessionResu
     shareId,
     versionId: row.versionId,
     pv: row.passwordVersion,
+    ...(userId ? { userId } : {}),
   };
 }
 

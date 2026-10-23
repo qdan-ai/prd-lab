@@ -1,34 +1,44 @@
-import { and, eq, isNull, or } from "drizzle-orm";
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
+import { projectReadableBy } from "@prd-lab/core";
+import { and, eq, isNull } from "drizzle-orm";
 import { db, projects } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canEditProject, canChangeProjectVisibility } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 
 type Ctx = { params: Promise<{ pid: string }> };
 
 export async function GET(_: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
 
   const rows = await db
     .select()
     .from(projects)
-    .where(and(eq(projects.id, pid), isNull(projects.archivedAt)))
+    .where(and(eq(projects.id, pid), projectReadableBy(session.userId)))
     .limit(1);
   const project = rows[0];
   if (!project) return errorResponse("not_found");
-
-  // 可见性过滤：team 大家可见；private 仅 owner
-  const canRead = project.visibility === "team" || project.ownerId === session.userId;
-  if (!canRead) return errorResponse("not_found"); // 防探测：私有项目对非 owner 假装 404
 
   return Response.json(project);
 }
 
 export async function PATCH(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
 
@@ -45,32 +55,24 @@ export async function PATCH(request: Request, { params }: Ctx) {
     return errorResponse("validation_error", "no editable fields");
   }
 
-  // 校验管理权（owner 恒可；管理员可管 team 项目）
-  const ownerRows = await db
-    .select({ ownerId: projects.ownerId, visibility: projects.visibility })
-    .from(projects)
-    .where(and(eq(projects.id, pid), isNull(projects.archivedAt)))
-    .limit(1);
-  if (!ownerRows[0]) return errorResponse("not_found");
-  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
-  // 可见性改动收紧为 owner-only：管理员可改 team 项目的 name，但不得改可见性。
-  // 否则 admin 能把他人 team 项目改成 private，改完后自己既读不到也管不了（canManage 只放行 team），不可逆。
-  if (update.fields.visibility !== undefined && ownerRows[0].ownerId !== session.userId) {
-    return errorResponse("not_owner", "仅项目所有者可修改可见性");
-  }
-
   try {
-    await db
-      .update(projects)
-      .set(update.fields)
-      .where(and(eq(projects.id, pid), isNull(projects.archivedAt)));
-    const [updated] = await db
-      .select()
-      .from(projects)
-      .where(and(eq(projects.id, pid), isNull(projects.archivedAt)))
-      .limit(1);
-    if (!updated) return errorResponse("not_found");
-    return Response.json(updated);
+    return await db.transaction(async (tx) => {
+      // Serialize visibility decisions with concurrent PATCH/DELETE; no stale preflight authorization.
+      const [project] = await tx.select().from(projects)
+        .where(and(eq(projects.id, pid), isNull(projects.archivedAt))).for("update");
+      if (!project) return errorResponse("not_found");
+      if (update.fields.name !== undefined && !canEditProject(project, session)) {
+        return errorResponse("not_owner");
+      }
+      if (update.fields.visibility !== undefined &&
+          !canChangeProjectVisibility(project, session, update.fields.visibility)) {
+        return errorResponse("not_owner");
+      }
+      await tx.update(projects).set(update.fields)
+        .where(and(eq(projects.id, pid), isNull(projects.archivedAt)));
+      const [updated] = await tx.select().from(projects).where(eq(projects.id, pid));
+      return Response.json(updated);
+    });
   } catch (e: unknown) {
     if (isPgError(e, PG_UNIQUE_VIOLATION)) {
       return errorResponse("name_conflict", "project name already exists");
@@ -80,7 +82,13 @@ export async function PATCH(request: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
 
@@ -90,7 +98,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
     .where(and(eq(projects.id, pid), isNull(projects.archivedAt)))
     .limit(1);
   if (!ownerRows[0]) return errorResponse("not_found");
-  if (!canManageProject(ownerRows[0], session)) return errorResponse("not_owner");
+  if (!canEditProject(ownerRows[0], session)) return errorResponse("not_owner");
 
   await db
     .update(projects)

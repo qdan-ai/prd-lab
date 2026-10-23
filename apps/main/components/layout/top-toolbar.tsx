@@ -12,6 +12,7 @@ import { ShareDialog } from "@/components/share-dialog";
 
 interface Props {
   projectName: string;
+  visibility: "private" | "team";
   versionName: string;
   versionId: string;
   viewingSnapshotSeq: number | null;
@@ -32,6 +33,7 @@ interface Props {
  */
 export function TopToolbar({
   projectName,
+  visibility,
   versionName,
   versionId,
   viewingSnapshotSeq,
@@ -133,6 +135,7 @@ export function TopToolbar({
 
       <ShareDialog
         open={shareOpen}
+        visibility={visibility}
         version={{ id: versionId, name: versionName }}
         onClose={() => setShareOpen(false)}
       />

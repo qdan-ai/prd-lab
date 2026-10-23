@@ -1,9 +1,9 @@
+import { projectReadableBy, notTeamVersion, snapshotInAudience } from "@prd-lab/core";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { db, projects, snapshots, versions } from "@prd-lab/core";
 import { auth, signOut } from "@/auth";
-import { isAdminName } from "@/lib/auth/admins";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canEditProject } from "@/lib/api/owner-check";
 import { TopToolbar } from "@/components/layout/top-toolbar";
 import { BottomBar } from "@/components/layout/bottom-bar";
 import { SidebarLeft } from "@/components/sidebar-left";
@@ -50,23 +50,21 @@ export default async function VersionPage({
         eq(versions.id, vid),
         eq(projects.id, pid),
         isNull(versions.archivedAt),
-        isNull(projects.archivedAt),
+        projectReadableBy(session.user.id),
+        notTeamVersion(versions.id),
       ),
     )
     .limit(1);
   const row = rows[0];
   if (!row) notFound();
 
-  const canRead =
-    row.project.visibility === "team" || row.project.ownerId === session.user.id;
-  if (!canRead) notFound();
   // 仓库项目没有可操作的方案页：内置方案只由 G-canvas 推送维护，统一落到仓库项目页
   if (row.project.kind === "repo") redirect(`/projects/${pid}`);
 
-  // 管理员可管理 team 项目（与 owner 同权：上传/删快照/分享/导出）。规则统一走 canManageProject，与后端同源。
-  const canManage = canManageProject(
-    { ownerId: row.project.ownerId, visibility: row.project.visibility },
-    { userId: session.user.id, isAdmin: isAdminName(session.user.name) },
+  // Existing UI canManage means creator-only; download/visibility controls are separate capabilities.
+  const canManage = canEditProject(
+    { ownerId: row.project.ownerId },
+    { userId: session.user.id },
   );
 
   const seqMatch = typeof sp.snapshot === "string" ? /^v(\d+)$/.exec(sp.snapshot) : null;
@@ -93,7 +91,7 @@ export default async function VersionPage({
         archivedAt: snapshots.archivedAt,
       })
       .from(snapshots)
-      .where(and(eq(snapshots.versionId, vid), eq(snapshots.seqNo, targetSeq)))
+      .where(and(eq(snapshots.versionId, vid), eq(snapshots.seqNo, targetSeq), snapshotInAudience("guest")))
       .limit(1);
     const t = target[0];
     if (!t) {
@@ -113,7 +111,7 @@ export default async function VersionPage({
         versionLabel: snapshots.versionLabel,
       })
       .from(snapshots)
-      .where(and(eq(snapshots.versionId, vid), isNull(snapshots.archivedAt)))
+      .where(and(eq(snapshots.versionId, vid), isNull(snapshots.archivedAt), snapshotInAudience("guest")))
       .orderBy(desc(snapshots.seqNo))
       .limit(1);
     if (latest[0]) viewingSnapshot = latest[0];
@@ -126,6 +124,7 @@ export default async function VersionPage({
       data-viewing-seq={viewingSnapshot?.seqNo ?? ""}
     >
       <TopToolbar
+        visibility={row.project.visibility}
         projectName={row.project.name}
         versionName={row.version.name}
         viewingSnapshotSeq={viewingSnapshot?.seqNo ?? null}

@@ -1,3 +1,4 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { getRepoPushState } from "@prd-lab/core/repo";
 import { getSession } from "@/lib/api/auth-guard";
 import { errorResponse } from "@/lib/api/errors";
@@ -12,7 +13,13 @@ type Ctx = { params: Promise<{ pid: string }> };
  * G-canvas 据此算「这次会推什么」。
  */
 export async function GET(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { pid } = await params;
   const repo = await requireManagedRepo(pid, session);
@@ -21,7 +28,8 @@ export async function GET(request: Request, { params }: Ctx) {
   const state = await getRepoPushState(repo);
   return Response.json({
     ...state,
-    share: state.share
+    // Nested share configuration follows the same creator-only rule as GET /share.
+    share: repo.ownerId === session.userId && state.share
       ? {
           shareId: state.share.shareId,
           url: shareUrl(requestOrigin(request), state.share.shareId),

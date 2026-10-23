@@ -107,7 +107,7 @@ export const projectsApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     });
-    mutateKeys(["/api/v1/projects?view=switcher", `/api/v1/projects/${pid}`]);
+    mutateKeys(["/api/v1/projects?view=switcher", "/api/v1/projects", `/api/v1/projects/${pid}`]);
     return result;
   },
 
@@ -350,8 +350,10 @@ export type SwitcherProject = {
   name: string;
   visibility: "private" | "team";
   ownedByMe: boolean;
-  /** 是否可管理（owner 或 team 项目管理员）→ 控制 ⋯ 菜单/删除/改名/新建方案显隐。 */
+  /** 创建者编辑能力，不包含站点管理员的单向可见性操作。 */
   canManage: boolean;
+  /** 是否可切换到当前可见性的另一值，由服务端按当前项目判断。 */
+  canChangeVisibility: boolean;
   /** repo = G-canvas 仓库项目：只有一个内置方案，不列方案、不能新建方案 */
   kind: "upload" | "repo";
   versions: Array<{
@@ -368,4 +370,38 @@ export type SwitcherProject = {
       changeNote: string;
     } | null;
   }>;
+};
+
+// ---- Account UI: safe fields only; credential/session versions never enter client state. ----
+export type AccountUser = {
+  id: string; name: string; email: string | null; role: "admin" | "editor";
+  createdAt: string; passwordMode: "shared" | "personal";
+};
+export type AccountProfile = AccountUser & { passwordChangedAt: string | null; authVia?: "session" | "api_token" };
+export type AccountReauthentication = { authenticated: boolean; reauthRequired: boolean; reauthError?: { status: number; error_code: string; details?: Record<string, unknown> } };
+export type RegistrationInput = { name: string; email: string; password: string; confirmPassword: string; inviteCode?: string };
+export type PasswordChangeInput = { currentPassword: string; newPassword: string; confirmPassword: string };
+export type PasswordResetResult = { user: Pick<AccountUser, "id" | "name" | "email">; password: string; apiTokensRevoked: boolean };
+
+export const accountsApi = {
+  me: () => apiFetch<AccountProfile>("/api/v1/me", {}, { silent: true }),
+  register: (body: RegistrationInput) => apiFetch<AccountReauthentication & { registered: true; user: AccountProfile }>(
+    "/api/v1/auth/register", { method: "POST", body: JSON.stringify(body) }, { silent: true }),
+  updateProfile: async (body: { name: string; email?: string }) => {
+    const result = await apiFetch<AccountProfile>("/api/v1/me", { method: "PATCH", body: JSON.stringify(body) }, { silent: true });
+    await swrMutate("/api/v1/me", result, { revalidate: false });
+    mutateKeys(["/api/v1/admin/users"]);
+    return result;
+  },
+  changePassword: async (body: PasswordChangeInput) => {
+    const result = await apiFetch<AccountReauthentication & { passwordUpdated: true }>("/api/v1/me/password", { method: "POST", body: JSON.stringify(body) }, { silent: true });
+    if (!result.reauthRequired) mutateKeys(["/api/v1/me"]);
+    return result;
+  },
+  users: () => apiFetch<{ users: AccountUser[] }>("/api/v1/admin/users", {}, { silent: true }),
+  resetPassword: async (id: string, revokeApiTokens: boolean) => {
+    const result = await apiFetch<PasswordResetResult>(`/api/v1/admin/users/${encodeURIComponent(id)}/reset-password`, { method: "POST", body: JSON.stringify({ revokeApiTokens }) }, { silent: true });
+    mutateKeys(["/api/v1/admin/users"]);
+    return result;
+  },
 };

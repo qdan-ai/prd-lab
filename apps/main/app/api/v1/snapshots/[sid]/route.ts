@@ -1,7 +1,8 @@
+import { AuthenticationUnavailableError } from "@/lib/auth/errors";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, projects, snapshotInAudience, snapshots, versions } from "@prd-lab/core";
 import { getSession } from "@/lib/api/auth-guard";
-import { canManageProject } from "@/lib/api/owner-check";
+import { canEditProject } from "@/lib/api/owner-check";
 import { errorResponse } from "@/lib/api/errors";
 import { isPgError, PG_UNIQUE_VIOLATION } from "@/lib/api/pg-errors";
 import { repoManagedResponse } from "@/lib/repo/route-helpers";
@@ -14,7 +15,13 @@ type Ctx = { params: Promise<{ sid: string }> };
  * 至少一个字段必填。
  */
 export async function PATCH(request: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { sid } = await params;
 
@@ -86,7 +93,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
     .limit(1);
   const row = rows[0];
   if (!row) return errorResponse("not_found");
-  if (!canManageProject(row, session)) return errorResponse("not_owner");
+  if (!canEditProject(row, session)) return errorResponse("not_owner");
   // 仓库项目的版本只由仓库式推送维护（版本号、名称在 repo_versions，以 G-canvas 为准）
   if (row.projectKind === "repo") return repoManagedResponse("edit_snapshot");
   if (row.archivedAt !== null) return errorResponse("snapshot_archived");
@@ -115,7 +122,13 @@ export async function PATCH(request: Request, { params }: Ctx) {
  * S8：snapshot 平行化，无 current 概念；可删任意活跃 snapshot。
  */
 export async function DELETE(_: Request, { params }: Ctx) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
+    throw e;
+  }
   if (!session) return errorResponse("unauthorized");
   const { sid } = await params;
 
@@ -140,7 +153,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
     .limit(1);
   const row = rows[0];
   if (!row) return errorResponse("not_found");
-  if (!canManageProject(row, session)) return errorResponse("not_owner");
+  if (!canEditProject(row, session)) return errorResponse("not_owner");
   if (row.projectKind === "repo") return repoManagedResponse("delete_snapshot");
   if (row.archivedAt !== null) return errorResponse("snapshot_archived");
 

@@ -7,7 +7,7 @@ import { UploadSnapshotModal } from "@/components/upload-snapshot-modal";
 /**
  * 中央画布占位：当 version 还没版本时显示。
  * 提供 "上传新版本" 触发器（与左抽屉底部同源 modal）。
- * 非 owner（仅 team 项目其他成员可达）→ 提示只读，按钮 disabled。
+ * 非 owner 仅显示等待创建者上传的只读提示。
  */
 export function CanvasPlaceholder({
   versionName,
@@ -36,22 +36,16 @@ export function CanvasPlaceholder({
               : "项目所有者尚未上传版本（你不是所有者，无法上传）"}
           </p>
 
-          <div className="flex items-center gap-3 justify-center mb-3">
+          {ownedByMe ? <div className="flex items-center gap-3 justify-center mb-3">
             <button
               type="button"
-              onClick={() => ownedByMe && setUploadOpen(true)}
-              disabled={!ownedByMe}
-              className={
-                ownedByMe
-                  ? "inline-flex items-center gap-1.5 h-8 px-3.5 rounded-[var(--radius-md)] bg-ink-900 text-ink-50 text-[12px] font-medium hover:bg-ink-950 transition-colors"
-                  : "inline-flex items-center gap-1.5 h-8 px-3.5 rounded-[var(--radius-md)] bg-ink-200 text-ink-500 text-[12px] font-medium cursor-not-allowed"
-              }
+              onClick={() => setUploadOpen(true)}
+              className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-[var(--radius-md)] bg-ink-900 text-ink-50 text-[12px] font-medium hover:bg-ink-950 transition-colors"
               data-testid="placeholder-upload-button"
-              title={ownedByMe ? undefined : "仅项目所有者可上传版本"}
             >
               <Upload size={12} strokeWidth={2.25} />
               <span>上传新版本</span>
-              {ownedByMe ? <ArrowRight size={11} strokeWidth={2.25} /> : null}
+              <ArrowRight size={11} strokeWidth={2.25} />
             </button>
             <span className="text-[12px] text-ink-400">或</span>
             <button
@@ -63,7 +57,7 @@ export function CanvasPlaceholder({
               <Terminal size={12} strokeWidth={2.25} />
               <span>prd push</span>
             </button>
-          </div>
+          </div> : null}
         </div>
       </div>
       {ownedByMe ? (

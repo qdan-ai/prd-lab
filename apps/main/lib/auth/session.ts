@@ -1,16 +1,30 @@
 import { CredentialsSignin, type NextAuthConfig } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import { eq } from "drizzle-orm";
 import { db, users } from "@prd-lab/core";
 import { AuthenticationUnavailableError } from "./errors";
 
 export const SESSION_VERIFY_TTL_SECONDS = 60;
 
+/**
+ * Claims this app keeps in the Auth.js JWT. Auth.js types the token as an open record, so read and write
+ * these fields through this type wherever the token is handled.
+ */
+export type AccountToken = JWT & {
+  userId?: string;
+  role?: "admin" | "editor";
+  credentialVersion?: number;
+  verifiedAt?: number;
+  authenticationError?: "authentication_unavailable";
+};
+
 export function isCredentialVersion(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
 export const authCallbacks = {
-  async jwt({ token, user }) {
+  async jwt({ token: jwt, user }) {
+    const token = jwt as AccountToken;
     // Only authorize's server-side result can establish a version. Ignore session/update input entirely.
     if (user) {
       if (!user.id || !isCredentialVersion(user.credentialVersion)) throw new CredentialsSignin();
@@ -46,7 +60,8 @@ export const authCallbacks = {
     }
     return token;
   },
-  session({ session, token }) {
+  session({ session, token: jwt }) {
+    const token = jwt as AccountToken;
     if (token.authenticationError) {
       session.error = token.authenticationError;
       session.user = undefined!;

@@ -14,13 +14,3 @@ declare module "next-auth" {
     } & DefaultSession["user"];
   }
 }
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    userId?: string;
-    role?: "admin" | "editor";
-    credentialVersion?: number;
-    verifiedAt?: number;
-    authenticationError?: "authentication_unavailable";
-  }
-}

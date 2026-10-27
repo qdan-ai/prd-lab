@@ -12,7 +12,6 @@ import { copyText } from "@/lib/copy-text";
 
 interface Props {
   open: boolean;
-  visibility: "private" | "team";
   version: { id: string; name: string } | null;
   /** 主视图的说明文字；缺省为方案级分享的说明 */
   description?: string;
@@ -21,7 +20,6 @@ interface Props {
 
 type View = "main" | "set_password" | "revoke_confirm";
 
-const PRIVATE_HINT = "须登录且为创建者或有效协作成员；分享密码不能代替账户权限。";
 const PREVIEW_HINT = "已打开的预览不会因此立即退出；会话到期后的新请求才重新校验，已下载的内容无法追回。";
 const NO_PASSWORD_HINT = "任何拿到链接的人都能查看，请勿公开转发。";
 
@@ -31,8 +29,7 @@ const NO_PASSWORD_HINT = "任何拿到链接的人都能查看，请勿公开转
  *   - 已存在态：按 share.hasPassword 分支为「无密码 / 有密码」两套管理操作。
  * `version` 为 null 时 dialog 不渲染。
  */
-export function ShareDialog({ open, version, visibility, description, onClose }: Props) {
-  const isPrivate = visibility === "private";
+export function ShareDialog({ open, version, description, onClose }: Props) {
   const vid = version?.id ?? "";
   const label = version?.name ?? "";
   const [view, setView] = useState<View>("main");
@@ -165,9 +162,7 @@ export function ShareDialog({ open, version, visibility, description, onClose }:
         : "设置后访客需先输入密码才能查看该链接"
       : view === "revoke_confirm"
         ? "撤销后旧 URL 永久失效，新建分享会生成新 URL"
-        : isPrivate
-          ? "私有分享：" + PRIVATE_HINT + " 如设有分享密码，仍需输入。恢复团队可见后，原分享配置恢复访客访问。"
-          : (description ?? "外部访客可查看该方案的所有版本，之后上传的新版本也自动可见");
+        : (description ?? "外部访客可查看该方案的所有版本，之后上传的新版本也自动可见");
 
   const dialogTitle =
     view === "set_password"
@@ -187,7 +182,6 @@ export function ShareDialog({ open, version, visibility, description, onClose }:
         <div className="px-6 pt-6 pb-5 border-b border-ink-150">
           <DialogTitle className="text-[16px]">{dialogTitle}</DialogTitle>
           <div className="text-[13px] text-ink-500 mt-1">{subtitle}</div>
-          {isPrivate && view !== "main" ? <p className="text-xs text-ink-500 mt-2">{PRIVATE_HINT}</p> : null}
         </div>
 
         <div className="px-6 py-5">
@@ -207,7 +201,6 @@ export function ShareDialog({ open, version, visibility, description, onClose }:
             <RevokeConfirmBody shareUrl={shareUrl} />
           ) : share ? (
             <ShareActiveBody
-              isPrivate={isPrivate}
               share={share}
               shareUrl={shareUrl}
               onCopyUrl={onCopyUrl}
@@ -221,7 +214,6 @@ export function ShareDialog({ open, version, visibility, description, onClose }:
             />
           ) : (
             <ShareCreateForm
-              isPrivate={isPrivate}
               withPassword={withPassword}
               onToggleWithPassword={() => setWithPassword((v) => !v)}
               password={createPassword}
@@ -270,7 +262,6 @@ export function ShareDialog({ open, version, visibility, description, onClose }:
 }
 
 function ShareCreateForm({
-  isPrivate,
   withPassword,
   onToggleWithPassword,
   password,
@@ -280,7 +271,6 @@ function ShareCreateForm({
   onSubmit,
   busy,
 }: {
-  isPrivate: boolean;
   withPassword: boolean;
   onToggleWithPassword: () => void;
   password: string;
@@ -296,7 +286,7 @@ function ShareCreateForm({
         <div className="min-w-0">
           <div className="text-[13px] text-ink-900 font-medium">设置访问密码</div>
           <div className="text-[12px] text-ink-500 leading-[1.55] mt-0.5">
-            {isPrivate ? "打开后，有账户访问权的人还需输入分享密码；关闭不会解除私有账户权限。" : "打开后访客需先输入密码才能查看；关闭则任何拿到链接的人都能直接查看。"}
+            打开后访客需先输入密码才能查看；关闭则任何拿到链接的人都能直接查看。
           </div>
         </div>
         <ToggleSwitch
@@ -344,7 +334,7 @@ function ShareCreateForm({
           className="text-[12px] text-ink-500 leading-[1.55] px-3 py-2 bg-ink-50 rounded-[var(--radius-sm)]"
           data-testid="share-create-no-password-hint"
         >
-          {isPrivate ? PRIVATE_HINT : NO_PASSWORD_HINT}
+          {NO_PASSWORD_HINT}
         </div>
       )}
 
@@ -363,7 +353,6 @@ function ShareCreateForm({
 }
 
 function ShareActiveBody({
-  isPrivate,
   share,
   shareUrl,
   onCopyUrl,
@@ -372,7 +361,6 @@ function ShareActiveBody({
   onRevokeClick,
   busy,
 }: {
-  isPrivate: boolean;
   share: ShareRow;
   shareUrl: string;
   onCopyUrl: () => void;
@@ -413,7 +401,7 @@ function ShareActiveBody({
           data-has-password="true"
         >
           <Lock size={13} strokeWidth={2.25} className="shrink-0 text-ink-500" />
-          <span>{isPrivate ? PRIVATE_HINT + " 已设置分享密码，登录核权后仍需输入。" : "已设置访问密码，访客需输入密码后查看。"}</span>
+          <span>已设置访问密码，访客需输入密码后查看。</span>
         </div>
       ) : (
         <div
@@ -423,7 +411,7 @@ function ShareActiveBody({
         >
           <LockOpen size={13} strokeWidth={2.25} className="shrink-0 text-ink-500 mt-0.5" />
           <span className="leading-[1.55]">
-            {isPrivate ? "当前无分享密码。" + PRIVATE_HINT : "当前无密码，任何人可看。" + NO_PASSWORD_HINT}
+            当前无密码，任何人可看。{NO_PASSWORD_HINT}
           </span>
         </div>
       )}

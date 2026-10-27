@@ -203,8 +203,10 @@ async function streamObject(s3Key: string, contentType: string): Promise<Respons
       });
   const headers: Record<string, string> = {
     "Content-Type": contentType,
-    // Visibility and membership can change even though version content is immutable.
-    "Cache-Control": "private, no-store",
+    // 版本内容按 key 不可变；HTML 不缓存，与 /p/ 一致
+    "Cache-Control": contentType.startsWith("text/html")
+      ? "private, no-store"
+      : "private, max-age=31536000, immutable",
   };
   if (typeof obj.contentLength === "number") headers["Content-Length"] = String(obj.contentLength);
   return new Response(webStream, { status: 200, headers });
@@ -213,10 +215,10 @@ async function streamObject(s3Key: string, contentType: string): Promise<Respons
 function keyError(status: "withdrawn" | "not_found"): Response {
   return status === "withdrawn"
     ? json(410, { error: "withdrawn", message: "该版本已被撤回" })
-    : json(404, { error: "not_found", message: "版本不存在" }, "no-store", { "X-Repo-Error": "version_not_found" });
+    : json(404, { error: "not_found", message: "版本不存在" }, "private, no-store", { "X-Repo-Error": "version_not_found" });
 }
 
-function json(status: number, body: unknown, cacheControl = "no-store", extra: Record<string, string> = {}): Response {
+function json(status: number, body: unknown, cacheControl = "private, no-store", extra: Record<string, string> = {}): Response {
   return Response.json(body, { status, headers: { "Cache-Control": cacheControl, ...extra } });
 }
 

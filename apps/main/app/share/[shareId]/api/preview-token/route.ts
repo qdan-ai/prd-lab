@@ -4,7 +4,6 @@ import { and, eq } from "drizzle-orm";
 import {
   db,
   issueShareToken,
-  issueToken,
   shareSessionId,
   snapshots,
   PREVIEW_HANDOFF_TTL_SECONDS,
@@ -31,8 +30,6 @@ export async function POST(request: Request, ctx: Ctx) {
 async function handle(request: Request, { params }: Ctx) {
   const { shareId } = await params;
   const session = await getShareSession(shareId);
-  if (session.kind === "unauthorized") return errorResponse("unauthorized");
-  if (session.kind === "forbidden") return errorResponse("not_found");
   if (session.kind === "revoked") return errorResponse("share_revoked");
   if (session.kind === "not_found") return errorResponse("share_not_found");
   if (session.kind === "invalid") return errorResponse("unauthorized");
@@ -65,10 +62,7 @@ async function handle(request: Request, { params }: Ctx) {
     .limit(1);
   if (!rows[0]) return errorResponse("not_found");
 
-  const token = session.userId ? issueToken(
-    { snapshotId: sid, sessionUserId: session.userId, origin: requestOrigin(request) },
-    PREVIEW_HANDOFF_TTL_SECONDS,
-  ) : issueShareToken(
+  const token = issueShareToken(
     {
       snapshotId: sid,
       shareSessionId: shareSessionId(shareId, session.pv),

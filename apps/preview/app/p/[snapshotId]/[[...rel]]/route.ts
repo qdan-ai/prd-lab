@@ -229,9 +229,11 @@ async function serveChild(snapshotId: string, relPath: string): Promise<Response
         },
       });
 
+  const isHtml = fileRow.contentType.startsWith("text/html");
   const headers: Record<string, string> = {
     "Content-Type": fileRow.contentType,
-    "Cache-Control": "private, no-store",
+    // 快照内容不可变：子资源长期缓存（private：不进共享代理）；HTML 每次导航重新鉴权
+    "Cache-Control": isHtml ? "private, no-store" : "private, max-age=31536000, immutable",
   };
   // 让 shell 的 fetch 拿到 content-length 做进度分母
   if (typeof obj.contentLength === "number") {

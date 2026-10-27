@@ -124,7 +124,6 @@ export default async function VersionPage({
       data-viewing-seq={viewingSnapshot?.seqNo ?? ""}
     >
       <TopToolbar
-        visibility={row.project.visibility}
         projectName={row.project.name}
         versionName={row.version.name}
         viewingSnapshotSeq={viewingSnapshot?.seqNo ?? null}

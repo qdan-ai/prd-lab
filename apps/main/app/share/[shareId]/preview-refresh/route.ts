@@ -1,12 +1,10 @@
 import { sharedSnapshotAvailable } from "@/lib/share/snapshot-access";
-import { shareResponse, shareAccountLoginUrl } from "@/lib/share/response";
+import { shareResponse } from "@/lib/share/response";
 import { and, eq } from "drizzle-orm";
 import {
   db,
   issueRepoShareToken,
-  issueRepoToken,
   issueShareToken,
-  issueToken,
   shareSessionId,
   snapshots,
   PREVIEW_HANDOFF_TTL_SECONDS,
@@ -24,8 +22,7 @@ type Ctx = { params: Promise<{ shareId: string }> };
  * S20 访客侧自动重签落点：预览站会话 token 过期后，document 导航 302 到这里，
  * 校验完 share session + snapshot 归属重新签一枚 300s 交接 token，再 302 弹回预览站。
  *
- * private 账户门禁先行：匿名 → 主站登录，有身份但无权 → 404。
- * 其余不通过（session invalid/revoked/not_found、sid 不属于本方案或已归档）一律
+ * 任何不通过（session invalid/revoked/not_found、sid 不属于本方案或已归档）一律
  * 302 回 `/share/{shareId}`：分享页 SSR 自会呈现密码页 / 410 等状态，
  * 且响应不区分失败原因（防枚举）。
  *
@@ -41,8 +38,6 @@ async function handle(request: Request, { params }: Ctx) {
   const sharePage = `/share/${shareId}`;
 
   const session = await getShareSession(shareId);
-  if (session.kind === "unauthorized") return redirect(shareAccountLoginUrl(shareId));
-  if (session.kind === "forbidden") return new Response("not found", { status: 404 });
   if (session.kind !== "ok") return redirect(sharePage);
 
   const url = new URL(request.url);
@@ -50,10 +45,7 @@ async function handle(request: Request, { params }: Ctx) {
   if (rid) {
     if ((await repoProjectIdOfVersion(session.versionId)) !== rid) return redirect(sharePage);
     const next = sanitizeRepoNextPath(url.searchParams.get("next"), rid);
-    const token = session.userId ? issueRepoToken(
-      { repoId: rid, sessionUserId: session.userId, origin: requestOrigin(request) },
-      PREVIEW_HANDOFF_TTL_SECONDS,
-    ) : issueRepoShareToken(
+    const token = issueRepoShareToken(
       {
         repoId: rid,
         shareSessionId: shareSessionId(shareId, session.pv),
@@ -83,10 +75,7 @@ async function handle(request: Request, { params }: Ctx) {
   if (!rows[0]) return redirect(sharePage);
 
   const next = sanitizeNextPath(url.searchParams.get("next"), sid);
-  const token = session.userId ? issueToken(
-    { snapshotId: sid, sessionUserId: session.userId, origin: requestOrigin(request) },
-    PREVIEW_HANDOFF_TTL_SECONDS,
-  ) : issueShareToken(
+  const token = issueShareToken(
     {
       snapshotId: sid,
       shareSessionId: shareSessionId(shareId, session.pv),

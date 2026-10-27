@@ -26,8 +26,6 @@ async function handle(request: Request, { params }: Ctx) {
   const { shareId } = await params;
 
   const session = await getShareSession(shareId);
-  if (session.kind === "unauthorized") return errorResponse("unauthorized");
-  if (session.kind === "forbidden") return errorResponse("not_found");
   if (session.kind === "not_found") return errorResponse("share_not_found");
   if (session.kind === "revoked") return errorResponse("share_revoked");
 

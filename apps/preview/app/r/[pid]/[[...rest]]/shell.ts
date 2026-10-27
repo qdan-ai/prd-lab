@@ -134,6 +134,6 @@ export function expiredHtml(): Response {
 </head><body><h1>链接已失效</h1><p>请回到分享链接或主站重新打开。</p></body></html>`;
   return new Response(html, {
     status: 401,
-    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store" },
   });
 }

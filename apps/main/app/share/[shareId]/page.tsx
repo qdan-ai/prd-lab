@@ -1,7 +1,6 @@
 import { sharedSnapshotAvailable } from "@/lib/share/snapshot-access";
-import { shareAccountLoginUrl } from "@/lib/share/response";
 import { headers } from "next/headers";
-import { redirect, notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
 import { db, shareLinks, snapshots, users, versions } from "@prd-lab/core";
 import { getShareSession } from "@/lib/share/share-session";
@@ -20,7 +19,7 @@ type Props = {
 /**
  * /share/[shareId] · S19 方案级分享：访客可查看方案下所有活跃版本并切换。
  *
- * SSR 分支（private 先行账户门禁：匿名去主站登录；有身份但无权返回404）：
+ * SSR 分支：
  *   1. share 不存在 → "链接不存在"
  *   2. share 已 revoked → "已撤销"
  *   3. cookie 无 / pv 不匹配 / 过期 → /share/[shareId]/login（`?v=`、`?k=` 一并带过去）
@@ -33,12 +32,6 @@ export default async function SharePage({ params, searchParams }: Props) {
   const { shareId } = await params;
   const search = await searchParams;
 
-  const v = typeof search.v === "string" ? search.v : null;
-  const k = typeof search.k === "string" ? search.k : null;
-  const session = await getShareSession(shareId);
-  if (session.kind === "unauthorized") redirect(shareAccountLoginUrl(shareId, versionQuery(v, k)));
-  if (session.kind === "forbidden") notFound();
-
   const shareRows = await db
     .select({ id: shareLinks.id, revokedAt: shareLinks.revokedAt })
     .from(shareLinks)
@@ -48,6 +41,9 @@ export default async function SharePage({ params, searchParams }: Props) {
   if (shareRows[0].revokedAt !== null)
     return <ShareErrorPanel title="分享已撤销" message="该分享链接已被项目所有者撤销，无法再访问。" />;
 
+  const v = typeof search.v === "string" ? search.v : null;
+  const k = typeof search.k === "string" ? search.k : null;
+  const session = await getShareSession(shareId);
   if (session.kind !== "ok") {
     // 带上 v / k：输完密码回到同一个版本
     redirect(`/share/${shareId}/login${versionQuery(v, k)}`);
@@ -57,7 +53,6 @@ export default async function SharePage({ params, searchParams }: Props) {
     shareId,
     versionId: session.versionId,
     pv: session.pv,
-    userId: session.userId,
     origin: headersOrigin(await headers()),
     v,
     k,

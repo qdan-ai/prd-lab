@@ -69,8 +69,8 @@ export function ProjectVisibilityDialog({ target, onClose, onChanged }: {
           <DialogTitle>{makePrivate ? "改为私有" : "改为团队可见"} · {target?.name}</DialogTitle>
           <DialogDescription>
             {makePrivate
-              ? "原分享记录和密码会保留。私有期间，访问分享链接也须登录，且仅创建者或有效协作成员可读；如设有分享密码，仍需输入。恢复团队可见后，原分享配置将恢复访客访问。"
-              : "所有登录用户都可查看项目；原分享链接将按原有密码配置恢复访客访问，无密码链接可由拿到链接的人查看。不会新建或撤销分享。"}
+              ? "改为私有后，站内只有创建者和协作成员能看到这个项目。已发出的访客链接不受影响，拿到链接的人仍可查看；如需停止外部访问，请撤销访客链接。"
+              : "改为团队可见后，所有登录用户都能在站内查看这个项目。已发出的访客链接不受影响。"}
           </DialogDescription>
           {makePrivate ? <p className="text-xs text-ink-500 mt-3">不追回已下载、已显示的内容或此前已开始的响应。</p> : null}
           {target && !target.ownedByMe ? <p className="text-xs text-ink-500 mt-3">操作后返回工作台；若你是有效协作成员，可从工作台重新进入。</p> : null}

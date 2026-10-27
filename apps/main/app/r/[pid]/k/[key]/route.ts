@@ -12,7 +12,8 @@ type Ctx = { params: Promise<{ pid: string; key: string }> };
  * GET /r/:pid/k/:key   锁版本链接（写进已封 spec 的「PRD-Lab 本版链接」，按版本 key，永不改写）
  *
  * 链接里不放访客链接号：访客链接会被主人重建，这里每次现找仓库当前的那一条。
- *   - 仓库有访客链接 → 302 /share/<链接号>?k=<key>（密码页、内容页一路带着 k，预览站严格按 key 打开）
+ *   - 仓库有访客链接 → 302 /share/<链接号>?k=<key>（密码页、内容页一路带着 k，预览站严格按 key 打开）；
+ *     访客链接不受项目 private / team 影响
  *   - 没有访客链接、当前用户已登录且能看这个项目（与主站「在查看器中打开」同一口径）
  *     → 签主人预览令牌，302 预览站 /r/<pid>?k=<key>&token=…
  *   - 其余（没有访客链接且未登录或无权、项目不存在或已删除、不是仓库、key 格式不对）
@@ -24,6 +25,9 @@ export async function GET(request: Request, { params }: Ctx) {
   const repo = row && row.kind === "repo" && row.versionId ? { ...row, versionId: row.versionId } : null;
   if (!repo) return unavailable(null);
 
+  const share = await getRepoShare(repo.versionId);
+  if (share) return redirect(`/share/${share.shareId}?${new URLSearchParams({ k: key })}`);
+
   let session;
   try {
     session = await getSession();
@@ -31,13 +35,6 @@ export async function GET(request: Request, { params }: Ctx) {
     if (e instanceof AuthenticationUnavailableError) return errorResponse("authentication_unavailable");
     throw e;
   }
-  if (repo.visibility === "private" && (!session || !(await canReadProject(pid, session.userId)))) {
-    return unavailable(session ? null : `/r/${encodeURIComponent(pid)}/k/${encodeURIComponent(key)}`);
-  }
-
-  const share = await getRepoShare(repo.versionId);
-  if (share) return redirect(`/share/${share.shareId}?${new URLSearchParams({ k: key })}`);
-
   if (session && await canReadProject(pid, session.userId)) {
     const token = issueRepoToken(
       { repoId: repo.id, sessionUserId: session.userId, origin: requestOrigin(request) },

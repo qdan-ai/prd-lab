@@ -174,7 +174,7 @@ export function RepoProjectView({
       </section>
 
       {canManage ? (
-        <VisitorLinkCard visibility={project.visibility} systemVersionId={systemVersionId} onManage={() => setShareOpen(true)} />
+        <VisitorLinkCard systemVersionId={systemVersionId} onManage={() => setShareOpen(true)} />
       ) : null}
 
       <ProjectVisibilityDialog
@@ -188,7 +188,6 @@ export function RepoProjectView({
         <>
           <ShareDialog
             open={shareOpen}
-            visibility={project.visibility}
             version={{ id: systemVersionId, name: project.name }}
             description="访客打开链接直接进入查看器，默认看线上版本，可切换查看所有已推送的版本"
             onClose={() => setShareOpen(false)}
@@ -206,7 +205,7 @@ export function RepoProjectView({
   );
 }
 
-function VisitorLinkCard({ systemVersionId, onManage, visibility }: { systemVersionId: string; onManage: () => void; visibility: "private" | "team" }) {
+function VisitorLinkCard({ systemVersionId, onManage }: { systemVersionId: string; onManage: () => void }) {
   // 与分享弹窗同一个缓存键：弹窗里建 / 撤链接、改密码后这里自动刷新
   const { data, isLoading } = useSWR<{ share: ShareRow | null }>(
     `/api/v1/versions/${systemVersionId}/shares`,
@@ -250,9 +249,7 @@ function VisitorLinkCard({ systemVersionId, onManage, visibility }: { systemVers
               ) : (
                 <LockOpen size={12} strokeWidth={2.25} className="text-ink-500" />
               )}
-              {visibility === "private"
-                ? `须登录且为创建者或有效协作成员${share.hasPassword ? "，另需分享密码" : "；无分享密码"}`
-                : share.hasPassword ? "已设访问密码" : "无密码，拿到链接的人都能查看"}
+              {share.hasPassword ? "已设访问密码" : "无密码，拿到链接的人都能查看"}
             </span>
             <Button variant="ghost" size="sm" onClick={onManage}>
               管理链接与密码

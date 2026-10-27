@@ -6,7 +6,7 @@ import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { accountsApi, type AccountProfile } from "@/lib/api-client";
 import { accountErrorMessage, personalPasswordError } from "@/lib/account-ui/feedback";
-import { accountEntryUrl } from "@/lib/account-ui/safe-callback";
+import { afterPasswordUpdate } from "@/lib/account-ui/personal-password";
 import { accountCard, AccountField, AccountNotice } from "./form-parts";
 
 export function ProfileForm({ initialUser, allowEmptySharedPassword }: { initialUser: AccountProfile; allowEmptySharedPassword: boolean }) {
@@ -38,19 +38,24 @@ export function ProfileForm({ initialUser, allowEmptySharedPassword }: { initial
         <Button type="submit" disabled={pending}>{pending ? "保存中…" : "保存资料"}</Button>
       </form>
     </section>
-    <PasswordForm shared={user.passwordMode === "shared"} allowEmptySharedPassword={allowEmptySharedPassword} />
+    <section className={accountCard} aria-labelledby="password-heading">
+      <h2 id="password-heading" className="text-[15px] font-medium mb-2">密码</h2>
+      <p className="text-[12px] text-ink-500 mb-4 leading-relaxed">{user.passwordMode === "shared" ? "当前使用团队共享密码，请设置个人密码。" : "当前使用个人密码。修改密码需要验证当前密码。"} 自行改密不会撤销 API Token。</p>
+      <PasswordForm shared={user.passwordMode === "shared"} allowEmptySharedPassword={allowEmptySharedPassword} />
+    </section>
   </div>;
 }
 
-function PasswordForm({ shared, allowEmptySharedPassword }: { shared: boolean; allowEmptySharedPassword: boolean }) {
+/** With callbackUrl, a successful update continues there (or to sign-in that returns there). */
+export function PasswordForm({ shared, allowEmptySharedPassword, callbackUrl }: { shared: boolean; allowEmptySharedPassword: boolean; callbackUrl?: string }) {
   const busy = useRef(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [updated, setUpdated] = useState(false);
-  const [reauthRequired, setReauthRequired] = useState(false);
+  const [reauthUrl, setReauthUrl] = useState("");
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy.current || reauthRequired) return;
+    if (busy.current || reauthUrl) return;
     const form = event.currentTarget;
     const data = new FormData(form);
     const body = { currentPassword: String(data.get("currentPassword") ?? ""), newPassword: String(data.get("newPassword") ?? ""), confirmPassword: String(data.get("confirmPassword") ?? "") };
@@ -60,20 +65,20 @@ function PasswordForm({ shared, allowEmptySharedPassword }: { shared: boolean; a
     try {
       const result = await accountsApi.changePassword(body);
       if (result.passwordUpdated) {
-        form.reset(); setUpdated(true); setReauthRequired(result.reauthRequired);
+        form.reset();
+        const next = afterPasswordUpdate(result, callbackUrl ?? "/settings/profile");
+        if ("reauthUrl" in next) setReauthUrl(next.reauthUrl);
+        else if (callbackUrl) window.location.assign(next.continueTo);
+        else setUpdated(true);
       }
     } catch (error) { setError(accountErrorMessage(error)); }
     finally { busy.current = false; setPending(false); }
   }
-  return <section className={accountCard} aria-labelledby="password-heading">
-    <h2 id="password-heading" className="text-[15px] font-medium mb-2">密码</h2>
-    <p className="text-[12px] text-ink-500 mb-4 leading-relaxed">{shared ? "当前使用团队共享密码，可自愿设置个人密码；无需强制修改。当前密码请填写团队共享密码。" : "当前使用个人密码。修改密码需要验证当前密码。"} 自行改密不会撤销 API Token。</p>
-    {reauthRequired ? <div className="space-y-3"><AccountNotice>密码已更新，需要重新登录，无需再次提交修改。若管理员同时重置过密码，请使用当前有效凭据登录。</AccountNotice><Link className="text-[13px] underline" href={`${accountEntryUrl("/login", "/settings/profile")}&reauth=1`}>重新登录</Link></div> : <form onSubmit={save} className="space-y-4">
-      <AccountField id="current-password" name="currentPassword" label="当前密码" type="password" autoComplete="current-password" required={!(shared && allowEmptySharedPassword)} />
-      <AccountField id="new-password" name="newPassword" label="新密码" type="password" autoComplete="new-password" required hint="至少 6 个字符，UTF-8 长度不超过 72 字节" />
-      <AccountField id="confirm-password" name="confirmPassword" label="确认新密码" type="password" autoComplete="new-password" required />
-      <AccountNotice error>{error}</AccountNotice><AccountNotice>{updated ? "密码已更新，当前设备保持登录；其他主站旧会话将在 60 秒内失效。" : ""}</AccountNotice>
-      <Button type="submit" disabled={pending}>{pending ? "更新中…" : "更新密码"}</Button>
-    </form>}
-  </section>;
+  return reauthUrl ? <div className="space-y-3"><AccountNotice>密码已更新，需要重新登录，无需再次提交修改。若管理员同时重置过密码，请使用当前有效凭据登录。</AccountNotice><Link className="text-[13px] underline" href={reauthUrl}>重新登录</Link></div> : <form onSubmit={save} className="space-y-4">
+    <AccountField id="current-password" name="currentPassword" label={shared ? "团队共享密码" : "当前密码"} type="password" autoComplete="current-password" required={!(shared && allowEmptySharedPassword)} />
+    <AccountField id="new-password" name="newPassword" label="新密码" type="password" autoComplete="new-password" required hint="至少 6 个字符，UTF-8 长度不超过 72 字节" />
+    <AccountField id="confirm-password" name="confirmPassword" label="确认新密码" type="password" autoComplete="new-password" required />
+    <AccountNotice error>{error}</AccountNotice><AccountNotice>{updated ? "密码已更新，当前设备保持登录；其他主站旧会话将在 60 秒内失效。" : ""}</AccountNotice>
+    <Button type="submit" disabled={pending}>{pending ? "更新中…" : "更新密码"}</Button>
+  </form>;
 }

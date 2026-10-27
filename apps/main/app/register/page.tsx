@@ -8,6 +8,5 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
   const callbackUrl = safeCallbackUrl((await searchParams).callbackUrl);
   const session = await auth();
   if (session?.user?.id) redirect(callbackUrl);
-  const requireInvite = process.env.NODE_ENV === "production" || !!process.env.AUTH_SHARED_PASSWORD;
-  return <AccountEntry title="注册账号"><RegisterForm callbackUrl={callbackUrl} requireInvite={requireInvite} /></AccountEntry>;
+  return <AccountEntry title="注册账号"><RegisterForm callbackUrl={callbackUrl} /></AccountEntry>;
 }

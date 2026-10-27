@@ -379,7 +379,7 @@ export type AccountUser = {
 };
 export type AccountProfile = AccountUser & { passwordChangedAt: string | null; authVia?: "session" | "api_token" };
 export type AccountReauthentication = { authenticated: boolean; reauthRequired: boolean; reauthError?: { status: number; error_code: string; details?: Record<string, unknown> } };
-export type RegistrationInput = { name: string; email: string; password: string; confirmPassword: string; inviteCode?: string };
+export type RegistrationInput = { name: string; email: string; password: string; confirmPassword: string };
 export type PasswordChangeInput = { currentPassword: string; newPassword: string; confirmPassword: string };
 export type PasswordResetResult = { user: Pick<AccountUser, "id" | "name" | "email">; password: string; apiTokensRevoked: boolean };
 

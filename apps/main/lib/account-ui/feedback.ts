@@ -4,7 +4,6 @@ export function accountErrorMessage(error: unknown): string {
   const e = error as Partial<ApiError> | null;
   const labels: Record<string, string> = {
     name_taken: "该姓名已被使用，请换一个姓名", email_taken: "该邮箱已被使用，请换一个邮箱",
-    invite_code_invalid: "团队邀请码不正确", invalid_invite_code: "请输入正确的团队邀请码",
     invalid_name: "姓名需为 1–64 个字符，且不能包含 @", invalid_email: "请输入有效的邮箱地址",
     invalid_password: "密码至少 6 个字符，且 UTF-8 长度不超过 72 字节",
     password_mismatch: "两次输入的密码不一致", current_password_invalid: "当前密码不正确",

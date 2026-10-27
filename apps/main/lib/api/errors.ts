@@ -17,7 +17,6 @@ export const errorCodes = {
   not_admin: { status: 403 },
   name_taken: { status: 409 },
   email_taken: { status: 409 },
-  invite_code_invalid: { status: 400 },
   login_locked: { status: 429 },
   authentication_unavailable: { status: 503 },
   // ---- S5 分享链接 ----

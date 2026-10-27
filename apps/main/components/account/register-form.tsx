@@ -8,7 +8,7 @@ import { accountEntryUrl, safeCallbackUrl } from "@/lib/account-ui/safe-callback
 import { accountErrorMessage, personalPasswordError } from "@/lib/account-ui/feedback";
 import { AccountField, AccountNotice } from "./form-parts";
 
-export function RegisterForm({ callbackUrl, requireInvite }: { callbackUrl: string; requireInvite: boolean }) {
+export function RegisterForm({ callbackUrl }: { callbackUrl: string }) {
   const busy = useRef(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -19,7 +19,7 @@ export function RegisterForm({ callbackUrl, requireInvite }: { callbackUrl: stri
     const form = event.currentTarget;
     const data = new FormData(form);
     const value = (key: string) => String(data.get(key) ?? "");
-    const body = { name: value("name"), email: value("email"), password: value("password"), confirmPassword: value("confirmPassword"), inviteCode: value("inviteCode") };
+    const body = { name: value("name"), email: value("email"), password: value("password"), confirmPassword: value("confirmPassword") };
     const invalid = personalPasswordError(body.password, body.confirmPassword);
     if (invalid) { setError(invalid); return; }
     busy.current = true; setPending(true); setError("");
@@ -39,7 +39,6 @@ export function RegisterForm({ callbackUrl, requireInvite }: { callbackUrl: stri
     <AccountField id="register-email" name="email" label="邮箱" type="email" required autoComplete="email" />
     <AccountField id="register-password" name="password" label="密码" type="password" required autoComplete="new-password" hint="至少 6 个字符，UTF-8 长度不超过 72 字节" />
     <AccountField id="register-confirm" name="confirmPassword" label="确认密码" type="password" required autoComplete="new-password" />
-    {requireInvite && <AccountField id="register-invite" name="inviteCode" label="团队邀请码" type="password" required autoComplete="off" hint="请向团队负责人索取" />}
     <AccountNotice error>{error}</AccountNotice>
     <Button type="submit" className="w-full" size="lg" disabled={pending}>{pending ? "注册中…" : "注册账号"}</Button>
     <Link href={loginUrl} className="block text-center text-[12px] underline underline-offset-4">已有账号，返回登录</Link>

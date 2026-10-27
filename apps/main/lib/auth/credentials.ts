@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, type SQL } from "drizzle-orm";
 import { db, users, verifyPassword } from "@prd-lab/core";
 import { verifySharedPassword } from "./shared-password";
 import { AuthenticationUnavailableError, LoginLockedError } from "./errors";
@@ -18,7 +18,7 @@ export function isValidPersonalPassword(value: unknown): value is string {
   return typeof value === "string" && [...value].length >= 6 && Buffer.byteLength(value, "utf8") <= 72;
 }
 
-/** Also usable by registration's invite-code check; production never has an empty-config bypass. */
+/** Production never has an empty-config bypass. */
 export function verifyAccountSharedPassword(input: string | undefined): boolean {
   const expected = process.env.AUTH_SHARED_PASSWORD ?? "";
   if (!expected && process.env.NODE_ENV === "production") return false;
@@ -37,13 +37,11 @@ export async function verifyAccountPassword(password: unknown, passwordHash: str
  * Return failed/locked outcomes from the transaction: throwing inside it would roll back the fifth failure.
  */
 export async function authenticateCredentials(identifier: unknown, password: unknown): Promise<AuthenticatedUser | null> {
-  if (typeof identifier !== "string" || !identifier.trim() || identifier.trim().length > 255) return null;
-  const normalized = identifier.trim();
+  const match = identifierMatch(identifier);
+  if (!match) return null;
   try {
     const result = await db.transaction<AuthenticatedUser | { lockedUntil: Date } | null>(async (tx) => {
-      const [user] = await tx.select().from(users)
-        .where(normalized.includes("@") ? eq(users.email, normalized.toLowerCase()) : eq(users.name, normalized))
-        .limit(1).for("update");
+      const [user] = await tx.select().from(users).where(match).limit(1).for("update");
       if (!user || user.archivedAt) return null;
       // Read the clock after acquiring the lock, not before waiting for concurrent attempts.
       const now = new Date();
@@ -52,7 +50,9 @@ export async function authenticateCredentials(identifier: unknown, password: unk
       }
       const expired = user.loginLockedUntil !== null || !user.loginFailureWindowStartedAt ||
         now.getTime() - user.loginFailureWindowStartedAt.getTime() >= LOGIN_WINDOW_MS;
-      if (await verifyAccountPassword(password, user.passwordHash)) {
+      // Admins must use a personal password: the shared password is known to every team member.
+      const sharedPasswordBarred = user.passwordHash === null && user.role === "admin";
+      if (!sharedPasswordBarred && await verifyAccountPassword(password, user.passwordHash)) {
         await tx.update(users).set({ failedLoginCount: 0, loginFailureWindowStartedAt: null, loginLockedUntil: null })
           .where(eq(users.id, user.id));
         return { id: user.id, name: user.name, role: user.role, credentialVersion: user.credentialVersion };
@@ -72,4 +72,18 @@ export async function authenticateCredentials(identifier: unknown, password: unk
     if (error instanceof LoginLockedError) throw error;
     throw new AuthenticationUnavailableError({ cause: error });
   }
+}
+
+/** Called right after a successful sign-in to decide whether the account must first set a personal password. */
+export async function accountUsesSharedPassword(identifier: unknown): Promise<boolean> {
+  const match = identifierMatch(identifier);
+  if (!match) return false;
+  const [user] = await db.select({ passwordHash: users.passwordHash }).from(users).where(match).limit(1);
+  return user !== undefined && user.passwordHash === null;
+}
+
+function identifierMatch(identifier: unknown): SQL | null {
+  if (typeof identifier !== "string" || !identifier.trim() || identifier.trim().length > 255) return null;
+  const normalized = identifier.trim();
+  return normalized.includes("@") ? eq(users.email, normalized.toLowerCase()) : eq(users.name, normalized);
 }

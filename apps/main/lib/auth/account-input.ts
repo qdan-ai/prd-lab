@@ -1,4 +1,4 @@
-import { isValidPersonalPassword, verifyAccountSharedPassword } from "./credentials";
+import { isValidPersonalPassword } from "./credentials";
 import { AccountError } from "./account-errors";
 
 export async function readAccountBody(request: Request): Promise<unknown> {
@@ -44,13 +44,8 @@ function password(value: unknown, confirmation: unknown, field = "password"): st
 }
 
 export function parseRegistration(value: unknown) {
-  const b = fields(value, ["name", "email", "password", "confirmPassword", "inviteCode"]);
-  const result = { name: name(b.name), email: email(b.email), password: password(b.password, b.confirmPassword) };
-  if (b.inviteCode !== undefined && typeof b.inviteCode !== "string") {
-    throw new AccountError("validation_error", "invalid_invite_code", { field: "inviteCode" });
-  }
-  if (!verifyAccountSharedPassword(b.inviteCode as string | undefined)) throw new AccountError("invite_code_invalid");
-  return result;
+  const b = fields(value, ["name", "email", "password", "confirmPassword"]);
+  return { name: name(b.name), email: email(b.email), password: password(b.password, b.confirmPassword) };
 }
 
 export function parseProfile(value: unknown): { name?: string; email?: string } {

@@ -18,6 +18,7 @@ export const errorCodes = {
   name_taken: { status: 409 },
   email_taken: { status: 409 },
   login_locked: { status: 429 },
+  personal_password_required: { status: 403 }, // 还在用团队共享密码的账户不能签发 API Token
   authentication_unavailable: { status: 503 },
   // ---- S5 分享链接 ----
   share_already_exists: { status: 409 }, // 同 version 已存在 active share_link

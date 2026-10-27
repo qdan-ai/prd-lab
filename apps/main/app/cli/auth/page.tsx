@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Cpu, Lock, ShieldCheck } from "lucide-react";
 import { getSession } from "@/lib/api/auth-guard";
 import { createAccountToken } from "@/lib/auth/account-tokens";
-import { accountErrorResponse } from "@/lib/auth/account-errors";
+import { cliApprovalFailure } from "@/lib/account-ui/cli-approval";
 import { ApprovalForm } from "./approval-form";
 
 /**
@@ -75,10 +75,7 @@ export default async function CliAuthPage({ searchParams }: { searchParams: Sear
       if (current.userId !== userId) return { message: "登录账号已变更，请重新打开授权页并确认身份。", reopen: back };
       plainToken = (await createAccountToken(current, tokenName)).plainToken;
     } catch (error) {
-      const response = accountErrorResponse(error);
-      if (response.status === 401) return { message: "登录已失效，请重新登录后授权。", login };
-      if (response.status === 503) return { message: "认证服务暂时不可用，请稍后重试。" };
-      throw error;
+      return cliApprovalFailure(error, back, login);
     }
     const target = new URL(cb!.toString());
     target.searchParams.set("token", plainToken);

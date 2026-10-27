@@ -38,9 +38,12 @@ export const authCallbacks = {
       try {
         const [current] = await db.select({
           name: users.name, role: users.role, credentialVersion: users.credentialVersion, archivedAt: users.archivedAt,
+          passwordHash: users.passwordHash,
         }).from(users).where(eq(users.id, token.userId)).limit(1);
         // In particular, never pair an old password verification with a newly reset version at sign-in.
-        if (!current || current.archivedAt || current.credentialVersion !== token.credentialVersion) {
+        // An admin without a personal password can only have signed in with the team shared password.
+        if (!current || current.archivedAt || current.credentialVersion !== token.credentialVersion ||
+          (current.role === "admin" && current.passwordHash === null)) {
           // Auth.js treats a null sign-in JWT as a successful redirect with a cleared cookie.
           // Throw on new sign-ins so callers cannot report successful reauthentication.
           if (user) throw new CredentialsSignin();

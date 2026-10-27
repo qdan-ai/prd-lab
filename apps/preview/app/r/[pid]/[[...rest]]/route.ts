@@ -95,7 +95,7 @@ async function handle(request: NextRequest, { params }: Ctx) {
     .where(and(eq(versions.id, repo.versionId), isNull(versions.archivedAt), notTeamVersion(versions.id))).limit(1);
   if (!version) return text(404, "repo not found");
 
-  const response = await dispatch(repo, rest, request, verified.payload.origin ?? null);
+  const response = await dispatch(repo, rest, request, verified.payload.origin ?? null, showsShare(verified.payload));
   if (tokenInQuery) {
     response.headers.append(
       "Set-Cookie",
@@ -108,12 +108,14 @@ async function handle(request: NextRequest, { params }: Ctx) {
 
 /**
  * @param mainOrigin 主站 origin，取自会话令牌里受签名保护的 claim；拼项目访客链接用，没有时不给链接
+ * @param canSeeShare 项目当前的访客链接能否展示给这位查看者（见 {@link showsShare}）
  */
 async function dispatch(
   repo: RepoProject,
   rest: string[],
   request: NextRequest,
   mainOrigin: string | null,
+  canSeeShare: (shareId: string) => boolean,
 ): Promise<Response> {
   const v = request.nextUrl.searchParams.get("v");
   const k = request.nextUrl.searchParams.get("k");
@@ -132,7 +134,7 @@ async function dispatch(
         initialVersion: resolved.key,
         notice: resolved.notice,
         versionParam: "v",
-        shareUrl: share && mainOrigin ? `${mainOrigin}/share/${share.shareId}` : null,
+        shareUrl: share && mainOrigin && canSeeShare(share.shareId) ? `${mainOrigin}/share/${share.shareId}` : null,
       },
     });
     return new Response(html, {
@@ -164,6 +166,9 @@ async function dispatch(
     // 提示词里的主站地址只取自会话令牌里受签名保护的 claim；没有就无从拼出接口地址
     if (!mainOrigin) return json(404, { error: "no_share", message: "没有可用的访客链接" });
     const result = await buildRepoAgentPrompt(repo, mainOrigin, k);
+    if (result.status === "ok" && !canSeeShare(result.shareId)) {
+      return json(404, { error: "no_share", message: "没有可用的访客链接" });
+    }
     switch (result.status) {
       case "no_share":
         return json(404, { error: "no_share", message: "项目还没有访客链接" });
@@ -237,9 +242,25 @@ function buildRefreshUrl(payload: RepoTokenPayload, pid: string, request: NextRe
   const rest = params.toString();
   const next = encodeURIComponent(request.nextUrl.pathname + (rest ? `?${rest}` : ""));
   if (payload.kind === "share") {
-    const sep = payload.sub.lastIndexOf(":");
-    if (sep <= 0) return null;
-    return `${payload.origin}/share/${payload.sub.slice(0, sep)}/preview-refresh?rid=${pid}&next=${next}`;
+    const shareId = tokenShareId(payload);
+    if (!shareId) return null;
+    return `${payload.origin}/share/${shareId}/preview-refresh?rid=${pid}&next=${next}`;
   }
   return `${payload.origin}/api/v1/repos/${pid}/preview-refresh?next=${next}`;
+}
+
+/** 访客令牌的 sub 形如 `${shareId}:${pv}`；解不出时返回 null */
+function tokenShareId(payload: RepoTokenPayload): string | null {
+  const sep = payload.sub.lastIndexOf(":");
+  return sep > 0 ? payload.sub.slice(0, sep) : null;
+}
+
+/**
+ * 访客只能看到自己进来的那条链接：链接被撤销并重建后，旧链接的会话在到期前也拿不到新链接。
+ * 账户令牌（主人、成员）看到项目当前的链接。
+ */
+function showsShare(payload: RepoTokenPayload): (shareId: string) => boolean {
+  if (payload.kind !== "share") return () => true;
+  const own = tokenShareId(payload);
+  return (shareId) => shareId === own;
 }

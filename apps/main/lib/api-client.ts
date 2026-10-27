@@ -70,6 +70,7 @@ const ERROR_TOAST_LABELS: Record<string, string> = {
   content_duplicate: "内容与既有快照一致",
   version_label_conflict: "版本号已被占用",
   network_error: "网络错误，请重试",
+  personal_password_required: "请先在个人资料中设置个人密码，再创建 Token",
 };
 
 function toastMessageForError(error: ApiError): string {

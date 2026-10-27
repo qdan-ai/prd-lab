@@ -19,7 +19,9 @@ import { SESSION_VERIFY_TTL_SECONDS, authCallbacks } from "./session";
 type JwtArgs = Parameters<typeof authCallbacks.jwt>[0];
 const jwt = (token: Record<string, unknown>) => authCallbacks.jwt({ token } as unknown as JwtArgs);
 const now = () => Math.floor(Date.now() / 1000);
-const current = (credentialVersion: number) => [{ name: "alice", role: "editor", credentialVersion, archivedAt: null }];
+const current = (credentialVersion: number, over: Record<string, unknown> = {}) =>
+  [{ name: "alice", role: "editor", credentialVersion, archivedAt: null, passwordHash: "hash", ...over }];
+const due = () => now() - SESSION_VERIFY_TTL_SECONDS;
 
 beforeEach(() => {
   h.db = fakeDb([]);
@@ -36,6 +38,17 @@ describe("authCallbacks.jwt", () => {
     const token = await jwt({ userId: "u1", credentialVersion: 3, verifiedAt: now() - SESSION_VERIFY_TTL_SECONDS });
     expect(token).toMatchObject({ userId: "u1", credentialVersion: 3, name: "alice", role: "editor" });
     expect((token as { verifiedAt: number }).verifiedAt).toBeGreaterThanOrEqual(now() - 1);
+  });
+
+  it("管理员没有个人密码（只能是用共享密码登进来的）：复核失败，返回 null", async () => {
+    h.db = fakeDb([current(3, { role: "admin", passwordHash: null })]);
+    expect(await jwt({ userId: "u1", credentialVersion: 3, verifiedAt: due() })).toBeNull();
+  });
+
+  it("管理员有个人密码、编辑者没有个人密码：复核照常通过", async () => {
+    h.db = fakeDb([current(3, { role: "admin" }), current(3, { passwordHash: null })]);
+    expect(await jwt({ userId: "u1", credentialVersion: 3, verifiedAt: due() })).toMatchObject({ role: "admin" });
+    expect(await jwt({ userId: "u1", credentialVersion: 3, verifiedAt: due() })).toMatchObject({ role: "editor" });
   });
 
   it("复核间隔内不查库", async () => {

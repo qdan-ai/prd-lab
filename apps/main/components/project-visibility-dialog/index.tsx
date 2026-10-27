@@ -72,7 +72,6 @@ export function ProjectVisibilityDialog({ target, onClose, onChanged }: {
               ? "改为私有后，站内只有创建者和协作成员能看到这个项目。已发出的访客链接不受影响，拿到链接的人仍可查看；如需停止外部访问，请撤销访客链接。"
               : "改为团队可见后，所有登录用户都能在站内查看这个项目。已发出的访客链接不受影响。"}
           </DialogDescription>
-          {makePrivate ? <p className="text-xs text-ink-500 mt-3">不追回已下载、已显示的内容或此前已开始的响应。</p> : null}
           {target && !target.ownedByMe ? <p className="text-xs text-ink-500 mt-3">操作后返回工作台；若你是有效协作成员，可从工作台重新进入。</p> : null}
           {error ? <p role="alert" className="text-sm text-red-600 mt-3">未能更改可见性，请重试或取消。</p> : null}
         </div>

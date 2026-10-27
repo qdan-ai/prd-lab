@@ -20,7 +20,7 @@ vi.mock("@/lib/db/insert-returning", () => import("../db/insert-returning"));
 import { createAccountToken } from "./account-tokens";
 import { AccountError } from "./account-errors";
 
-const user = { id: "u1", name: "alice", role: "editor", credentialVersion: 4, archivedAt: null };
+const user = { id: "u1", name: "alice", role: "editor", credentialVersion: 4, archivedAt: null, passwordHash: "hash" };
 const tokenRow = { id: "t-new", name: "CLI on mac", tokenPrefix: "prd_abc", scopes: null, createdAt: new Date() };
 
 beforeEach(() => {
@@ -41,6 +41,13 @@ describe("createAccountToken", () => {
     const error = await createAccountToken({ userId: "u1", userName: "alice", tokenId: "t-old", isAdmin: false }, "CLI")
       .catch((e: unknown) => e);
     expect(error).toBeInstanceOf(AccountError);
+    expect(h.db.inserts()).toHaveLength(0);
+  });
+
+  it("账户还在用团队共享密码（没有个人密码）→ personal_password_required，不建 token", async () => {
+    h.db = fakeDb([[{ ...user, passwordHash: null }]]);
+    await expect(createAccountToken({ userId: "u1", userName: "alice", credentialVersion: 4, isAdmin: false }, "CLI"))
+      .rejects.toMatchObject({ code: "personal_password_required" });
     expect(h.db.inserts()).toHaveLength(0);
   });
 

@@ -5,7 +5,11 @@ import { NextRequest } from "next/server";
 import { issueRepoShareToken, issueRepoToken } from "@prd-lab/core";
 import { fakeDb, type FakeDb } from "../../../../../../packages/core/src/testing/fake-db";
 
-const h = vi.hoisted(() => ({ db: null as unknown as FakeDb, visibility: "team" as "team" | "private" }));
+const h = vi.hoisted(() => ({
+  db: null as unknown as FakeDb,
+  visibility: "team" as "team" | "private",
+  currentShareId: null as string | null,
+}));
 
 vi.mock("@prd-lab/core", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -20,7 +24,16 @@ vi.mock("@prd-lab/core/repo", async (importOriginal) => ({
   findSnapshotFile: async (_sid: string, path: string) =>
     path === "missing.png" ? null : { s3Key: "k", contentType: path.endsWith(".html") ? "text/html; charset=utf-8" : "image/png" },
   listSnapshotFiles: async () => [],
+  getRepoShare: async () =>
+    h.currentShareId ? { shareId: h.currentShareId, hasPassword: false, passwordVersion: 1, createdAt: new Date() } : null,
+  getRepoView: async () => ({ view: { versions: [], draft: null, online: { key: null } }, resolveInput: {} }),
+  resolveRepoVersion: () => ({ key: null, notice: null }),
+  buildRepoAgentPrompt: async (_repo: unknown, origin: string) =>
+    h.currentShareId
+      ? { status: "ok", shareId: h.currentShareId, hasPassword: false, version: null, prompt: `${origin}/share/${h.currentShareId}` }
+      : { status: "no_share" },
 }));
+vi.mock("../../../../lib/gcanvas-viewer", () => ({ currentViewerBundle: () => null }));
 
 import { GET } from "./route";
 
@@ -34,11 +47,14 @@ function get(rest: string[], token: string) {
   return GET(request, { params: Promise.resolve({ pid: PID, rest }) });
 }
 
-const userToken = () => issueRepoToken({ repoId: PID, sessionUserId: "owner" }, 600);
+const MAIN = "http://app.test";
+const userToken = () => issueRepoToken({ repoId: PID, sessionUserId: "owner", origin: MAIN }, 600);
+const shareToken = (shareId: string) => issueRepoShareToken({ repoId: PID, shareSessionId: `${shareId}:1`, origin: MAIN }, 600);
 
 beforeEach(() => {
   process.env.HMAC_SECRET = "test-hmac-secret";
   h.visibility = "team";
+  h.currentShareId = null;
   h.db = fakeDb([[{ id: "v-sys" }]]);
 });
 
@@ -73,5 +89,36 @@ describe("/r/ 访客令牌", () => {
     const token = issueRepoShareToken({ repoId: PID, shareSessionId: "share-1:1" }, 600);
     const res = await get(["v", KEY, "img", "a.png"], token);
     expect(res.status).toBe(200);
+  });
+});
+
+describe("/r/ 查看器页与「复制给 AI」只给出访客自己那条链接", () => {
+  it("链接已撤销并重建：旧链接的会话在查看器页拿不到新链接", async () => {
+    h.currentShareId = "share-new";
+    const html = await (await get([], shareToken("share-old"))).text();
+    expect(html).not.toContain("share-new");
+  });
+
+  it("链接已撤销并重建：旧链接的会话请求提示词 404", async () => {
+    h.currentShareId = "share-new";
+    const res = await get(["agent-prompt"], shareToken("share-old"));
+    expect(res.status).toBe(404);
+    expect(JSON.stringify(await res.json())).not.toContain("share-new");
+  });
+
+  it("同一条链接：查看器页带链接，提示词 200", async () => {
+    h.currentShareId = "share-a";
+    expect(await (await get([], shareToken("share-a"))).text()).toContain(`${MAIN}/share/share-a`);
+    h.db = fakeDb([[{ id: "v-sys" }]]);
+    const res = await get(["agent-prompt"], shareToken("share-a"));
+    expect(res.status).toBe(200);
+    expect((await res.json()).prompt).toContain("share-a");
+  });
+
+  it("账户令牌（主人、成员）看到项目当前的链接", async () => {
+    h.currentShareId = "share-new";
+    expect(await (await get([], userToken())).text()).toContain(`${MAIN}/share/share-new`);
+    h.db = fakeDb([[{ id: "v-sys" }]]);
+    expect((await get(["agent-prompt"], userToken())).status).toBe(200);
   });
 });

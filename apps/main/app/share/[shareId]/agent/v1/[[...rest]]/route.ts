@@ -8,6 +8,7 @@ import {
   checkRepoPath,
   fileRoles,
   formatBytes,
+  agentDefaultVersionKey,
   getRepoView,
   isValidKey,
   listSnapshotFileLocations,
@@ -169,8 +170,8 @@ async function versionsResponse(repo: RepoProject, url: URL): Promise<Response> 
     nextCursor,
     online: view.online,
     draft: view.draft ? { key: view.draft.key, line: view.draft.line, basedOn: view.draft.basedOn } : null,
-    defaultVersionKey: view.defaultVersionKey,
-    ...(v !== null || k !== null ? { resolved: resolveRepoVersion(resolveInput, v, k) } : {}),
+    defaultVersionKey: agentDefaultVersionKey(resolveInput),
+    ...(v !== null || k !== null ? { resolved: resolveRepoVersion(resolveInput, v, k, "agent") } : {}),
   });
 }
 

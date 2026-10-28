@@ -21,6 +21,8 @@ type VersionRow = {
   specDocs: unknown;
   withdrawnAt: Date | null;
   createdAt: Date;
+  /** 草稿：成为当前草稿的时间（新建或同内容恢复时写） */
+  updatedAt: Date;
   contentDigest: string;
 };
 
@@ -46,6 +48,7 @@ async function loadVersionRows(projectId: string, contentOnly = false): Promise<
       specDocs: repoVersions.specDocs,
       withdrawnAt: repoVersions.withdrawnAt,
       createdAt: repoVersions.createdAt,
+      updatedAt: repoVersions.updatedAt,
       contentDigest: snapshots.contentSha256,
     })
     .from(repoVersions)
@@ -104,7 +107,7 @@ function toResolveInput(rows: VersionRow[], onlineKey: string | null): ResolveIn
       withdrawn: r.withdrawnAt !== null,
     }));
   const draft = rows.find((r) => r.kind === "draft" && r.withdrawnAt === null);
-  return { versions, draft: draft ? { key: draft.key } : null, onlineKey };
+  return { versions, draft: draft ? { key: draft.key, publishedAt: draft.updatedAt } : null, onlineKey };
 }
 
 /**
@@ -158,7 +161,7 @@ export async function getRepoView(repo: RepoProject) {
     project: { id: repo.id, name: repo.name, summary: state.summary },
     versions: live.filter((r) => r.kind === "version" || r.kind === "baseline").map(versionView),
     draft: draft
-      ? { key: draft.key, line: draft.line, basedOn: draft.parentKey, pushedAt: draft.createdAt.toISOString() }
+      ? { key: draft.key, line: draft.line, basedOn: draft.parentKey, pushedAt: draft.updatedAt.toISOString() }
       : null,
     hidden: live.filter((r) => r.kind === "hidden").map((r) => ({ key: r.key })),
     online: {

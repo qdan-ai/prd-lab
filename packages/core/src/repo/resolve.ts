@@ -1,8 +1,10 @@
 /**
- * 访客打开仓库时落到哪一版：默认规则与 `?v=` 解析。纯函数，主站分享跳转、预览站外壳、
- * repo.json 共用。
+ * 打开仓库时落到哪一版：默认规则与 `?v=` 解析。纯函数，预览站外壳、repo.json、开发 AI 接口共用。
  *
- * 默认：上线版本（未撤回）→ 主线最新封版 → 草稿 → null（空仓库）。
+ * 默认有两套（`DefaultRule`）：
+ * - 访客 `visitor`（`defaultVersionKey`）：最新的一版。草稿发布后没有新的版本或基线推上来 → 草稿；
+ *   否则未撤回的版本与基线里（主线、补丁线都算）封版最新的一个；都没有 → null。上线标记不参与。
+ * - 开发 AI `agent`（`agentDefaultVersionKey`）：上线版本（未撤回）→ 主线最新封版 → 草稿 → null。
  * `?v=<版本号>`：在未撤回的版本 / 基线里按版本号匹配（忽略大小写与开头的 v），同号取封版最新；
  * `?v=draft` 指草稿。找不到落到默认版本，并给出 notice 供查看器提示。
  * 锁版本链接 `?k=<key>`（机器入口、写进已封 spec 的链接）：严格按 key，永不回落——
@@ -25,7 +27,8 @@ export type ResolvableVersion = {
 export type ResolveInput = {
   /** 版本与基线，含已撤回的（用来区分「已撤回」与「没有这个号」） */
   versions: ReadonlyArray<ResolvableVersion>;
-  draft: { key: string } | null;
+  /** publishedAt：这份草稿成为当前草稿的时间（服务器时钟，同内容恢复时更新） */
+  draft: { key: string; publishedAt: Date } | null;
   onlineKey: string | null;
 };
 
@@ -54,7 +57,20 @@ function newestFirst(a: ResolvableVersion, b: ResolvableVersion): number {
   return b.createdAt.getTime() - a.createdAt.getTime();
 }
 
+export type DefaultRule = "visitor" | "agent";
+
+/**
+ * 访客默认：草稿与版本比到站时间（都是服务器时钟），同一次推送到站的并列时草稿优先；
+ * 版本之间比封版时间。
+ */
 export function defaultVersionKey(input: ResolveInput): string | null {
+  const visible = input.versions.filter((v) => !v.withdrawn);
+  const lastArrival = Math.max(-Infinity, ...visible.map((v) => v.createdAt.getTime()));
+  if (input.draft && input.draft.publishedAt.getTime() >= lastArrival) return input.draft.key;
+  return [...visible].sort(newestFirst)[0]?.key ?? null;
+}
+
+export function agentDefaultVersionKey(input: ResolveInput): string | null {
   const visible = input.versions.filter((v) => !v.withdrawn);
   if (input.onlineKey && visible.some((v) => v.key === input.onlineKey)) return input.onlineKey;
   const main = visible.filter((v) => v.line === MAIN_LINE).sort(newestFirst);
@@ -66,8 +82,9 @@ export function resolveRepoVersion(
   input: ResolveInput,
   requested: string | null | undefined,
   lockedKey?: string | null,
+  rule: DefaultRule = "visitor",
 ): ResolveResult {
-  const fallback = defaultVersionKey(input);
+  const fallback = rule === "agent" ? agentDefaultVersionKey(input) : defaultVersionKey(input);
   if (lockedKey) return resolveLocked(input, lockedKey, fallback);
   if (requested === undefined || requested === null || requested.trim() === "") {
     return { key: fallback, notice: null };
